@@ -9,12 +9,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Embedded Custom Styles -->
+  <!-- Monastic Custom CSS -->
   <style>
-    :root {
-      color-scheme: dark;
-    }
-
+    :root { color-scheme: dark; }
     .text-gold-gradient {
       color: #fbbf24 !important;
       background: linear-gradient(135deg, #fef08a 0%, #facc15 50%, #d97706 100%) !important;
@@ -22,7 +19,6 @@
       -webkit-text-fill-color: transparent !important;
       background-clip: text !important;
     }
-
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: #0f0e0c; }
     ::-webkit-scrollbar-thumb { background: #261e17; border-radius: 4px; }
@@ -75,9 +71,7 @@
       color: #e7dfd5 !important;
     }
 
-    table tbody tr:hover {
-      background-color: rgba(245, 158, 11, 0.08) !important;
-    }
+    table tbody tr:hover { background-color: rgba(245, 158, 11, 0.08) !important; }
 
     table th.sticky, table td.sticky, th.right-0, td.right-0 {
       position: sticky !important;
@@ -90,7 +84,7 @@
 </head>
 <body class="bg-[#0f0e0c] font-sans flex h-screen overflow-hidden text-amber-100/90">
 
-  <!-- 💡 MONASTIC GOLD LOGIN OVERLAY -->
+  <!-- LOGIN OVERLAY -->
   <div id="login-overlay" class="fixed inset-0 bg-[#080705] z-[100] flex items-center justify-center p-4">
     <div class="relative w-full max-w-md bg-[#14110d]/95 border border-amber-600/30 backdrop-blur-xl rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
       
@@ -98,13 +92,11 @@
 
       <div class="text-center">
         <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-amber-500/20 to-amber-700/5 border border-amber-500/40 shadow-inner mb-3">
-          <i class="fa-solid fa-dharmachakra text-4xl text-amber-400 animate-spin-slow"></i>
+          <i class="fa-solid fa-dharmachakra text-4xl text-amber-400"></i>
         </div>
-        
         <h2 class="text-xl font-black text-gold-gradient filter drop-shadow">
           ဓမ္မအလင်းရောင်တောရရိပ်သာ
         </h2>
-        
         <p class="text-[11px] font-extrabold uppercase tracking-widest text-amber-200/80 pt-1 pb-3 border-b border-amber-500/20">
           ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ်
         </p>
@@ -113,7 +105,6 @@
       <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left">
         <div>
           <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (USERNAME)</label>
-          <!-- 💡 DROPDOWN SELECTION FOR USERNAME -->
           <select id="login-username" required class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
             <option value="" disabled selected>-- အသုံးပြုသူအမည် ရွေးချယ်ပါ --</option>
             <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
@@ -142,7 +133,6 @@
         </div>
         <span class="font-mono">v3.0 Sāsana ERP</span>
       </div>
-
     </div>
   </div>
 
@@ -161,12 +151,10 @@
 
       <!-- SIDEBAR NAV -->
       <nav class="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto" id="sidebar-nav">
-        <!-- Dashboard -->
         <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-bold">
           <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400"></i> Home Dashboard
         </button>
 
-        <!-- Bank Group -->
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">Bank Group (ဘဏ်စာရင်းများ)</p>
         <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
           <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center"></i> 1CB - အထွေထွေ ရန်ပုံငွေ (Bank)
@@ -178,7 +166,6 @@
           <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center"></i> 3CB - တစ်ဦးတည်းစာရင်း (Bank)
         </button>
 
-        <!-- Ledger Group -->
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">Ledger Group (ပင်မစာအုပ်များ)</p>
         <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
           <i class="fa-solid fa-vihara text-amber-300 w-4 text-center"></i> 4GB - ကျောင်းရန်ပုံငွေ စာအုပ်
@@ -202,7 +189,6 @@
           <i class="fa-solid fa-wallet text-amber-300 w-4 text-center"></i> 10GB - အထွေထွေရန်ပုံငွေစာအုပ်
         </button>
 
-        <!-- System & Reports -->
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">System Controls</p>
         <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center"></i> Reporting Center
