@@ -236,8 +236,7 @@ function openAddModal() {
   document.getElementById("entry-voucher").value = "";
   document.getElementById("entry-description").value = "";
 
-  const auth = getAuthUser();
-  document.getElementById("entry-receiver").value = auth ? auth.user : "User";
+  document.getElementById("entry-receiver").value = "None";
 
   onTypeChange();
   document.getElementById("entry-modal").classList.remove("hidden");
