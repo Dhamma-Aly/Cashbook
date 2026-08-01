@@ -24,6 +24,12 @@
     ::-webkit-scrollbar-thumb { background: #261e17; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #3d3025; }
 
+    /* 🔧 FIX: nav buttons were wrapping onto a 2nd line for longer labels
+       (especially once :hover nudged padding-left and shrank the available
+       width). white-space:nowrap + text-overflow:ellipsis keeps every item
+       a single line, truncating gracefully instead of wrapping. The hover
+       effect is now a background/left-border highlight only -- no more
+       padding-left shift -- so nothing reflows on hover either. */
     .nav-btn {
       transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       color: #a89f91 !important;
@@ -75,19 +81,6 @@
     }
 
     table tbody tr:hover { background-color: rgba(245, 158, 11, 0.08) !important; }
-    
-    /* Total row styling */
-    table tbody tr.total-row {
-      background-color: rgba(245, 158, 11, 0.15) !important;
-      border-top: 2px solid rgba(245, 158, 11, 0.4) !important;
-      border-bottom: 2px solid rgba(245, 158, 11, 0.4) !important;
-      font-weight: 700;
-    }
-    
-    table tbody tr.total-row td {
-      color: #fbbf24 !important;
-      border-bottom: none !important;
-    }
 
     table th.sticky, table td.sticky, th.right-0, td.right-0 {
       position: sticky !important;
@@ -96,76 +89,12 @@
       z-index: 25 !important;
       border-left: 1px solid rgba(245, 158, 11, 0.2) !important;
     }
-    
-    /* Mindful splash animation */
-    @keyframes fadeInSlowly {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    
-    @keyframes slideUpGently {
-      from { transform: translateY(20px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-    
-    .mindful-splash {
-      animation: fadeInSlowly 1s ease-in-out;
-    }
-    
-    .mindful-content {
-      animation: slideUpGently 0.8s ease-out 0.3s both;
-    }
   </style>
 </head>
 <body class="bg-[#0f0e0c] font-sans flex h-screen overflow-hidden text-amber-100/90">
 
-  <!-- MINDFUL SPLASH SCREEN -->
-  <div id="mindful-splash" class="fixed inset-0 bg-[#0a0805] z-[200] flex items-center justify-center p-4 mindful-splash">
-    <div class="max-w-2xl w-full text-center space-y-8 mindful-content">
-      <!-- Dharma Wheel Icon -->
-      <div class="inline-flex items-center justify-center p-6 rounded-full bg-gradient-to-b from-amber-500/30 to-amber-700/10 border border-amber-500/50">
-        <i class="fa-solid fa-dharmachakra text-6xl text-amber-400"></i>
-      </div>
-      
-      <!-- Main Message -->
-      <div class="space-y-6">
-        <h1 class="text-4xl md:text-5xl font-black text-gold-gradient filter drop-shadow-lg">
-          Be Mindful
-        </h1>
-        
-        <!-- Five Senses Meditation -->
-        <div class="space-y-3 text-lg md:text-xl leading-relaxed text-amber-100/95 font-medium">
-          <p><span class="text-amber-400">In every sight,</span> <span class="text-amber-200/60">ဘာပဲမြင်မြင်</span></p>
-          <p><span class="text-amber-400">In every sound,</span> <span class="text-amber-200/60">ဘာပဲကြားကြား</span></p>
-          <p><span class="text-amber-400">In every smell,</span> <span class="text-amber-200/60">ဘယ်လို အနံ့ပဲရရ</span></p>
-          <p><span class="text-amber-400">In every taste,</span> <span class="text-amber-200/60">ဘာပဲစားစား</span></p>
-          <p><span class="text-amber-400">In every touch,</span> <span class="text-amber-200/60">ဘာနဲ့ပဲ ထိတွေ့ရပါစေ</span></p>
-          <p><span class="text-amber-400">In every thought,</span> <span class="text-amber-200/60">တွေးတွေး</span></p>
-        </div>
-        
-        <!-- Quote -->
-        <div class="pt-6 border-t border-amber-700/40">
-          <p class="text-3xl font-black text-gold-gradient mb-4">— stay mindful —</p>
-          <p class="text-base text-amber-200/70 mb-3">အမြဲသတိ ထားပါလေ</p>
-          <p class="text-sm text-amber-400/80 italic">"Appamādena sampādetha"</p>
-          <p class="text-xs text-amber-500/60 uppercase tracking-widest mt-2">— The Buddha</p>
-        </div>
-      </div>
-      
-      <!-- Loading Indicator -->
-      <div class="flex flex-col items-center gap-3 pt-6">
-        <div class="flex gap-1.5">
-          <div class="w-2 h-2 rounded-full bg-amber-500 animate-bounce" style="animation-delay: 0s"></div>
-          <div class="w-2 h-2 rounded-full bg-amber-500 animate-bounce" style="animation-delay: 0.2s"></div>
-          <div class="w-2 h-2 rounded-full bg-amber-500 animate-bounce" style="animation-delay: 0.4s"></div>
-        </div>
-        <p class="text-xs text-amber-500/60 tracking-widest">Initializing...</p>
-      </div>
-    </div>
-  </div>
-
   <!-- LOGIN OVERLAY -->
-  <div id="login-overlay" class="fixed inset-0 bg-[#080705] z-[100] flex items-center justify-center p-4 hidden">
+  <div id="login-overlay" class="fixed inset-0 bg-[#080705] z-[100] flex items-center justify-center p-4">
     <div class="relative w-full max-w-md bg-[#14110d]/95 border border-amber-600/30 backdrop-blur-xl rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
       
       <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -216,89 +145,90 @@
     </div>
   </div>
 
-  <!-- MAIN ERP WORKSPACE -->
-  <div id="erp-workspace" class="hidden flex w-full h-screen">
-    <!-- SIDEBAR -->
-    <aside class="w-56 bg-[#14110d] border-r border-amber-900/30 flex flex-col shadow-2xl overflow-hidden">
-      <!-- Logo / Header -->
-      <div class="px-5 py-5 border-b border-amber-900/30 flex items-center gap-3 shrink-0 bg-[#1a1410]">
-        <div class="inline-flex items-center justify-center p-2 rounded-lg bg-amber-500/20 border border-amber-500/40">
+  <!-- MAIN WORKSPACE -->
+  <!-- 🔧 FIX: added "flex" class below so the sidebar (<aside>) and the
+       main content column render SIDE-BY-SIDE instead of stacking vertically.
+       Without it, the content column was pushed below the sidebar and got
+       clipped by the body's overflow-hidden/h-screen, so only the sidebar
+       was ever visible. -->
+  <div id="erp-workspace" class="hidden flex h-full w-full">
+    <aside class="w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0">
+      <div class="h-[64px] px-4 border-b border-amber-900/30 flex items-center justify-between text-amber-100 bg-[#18130f] shrink-0">
+        <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide">
           <i class="fa-solid fa-dharmachakra text-amber-400 text-lg"></i>
+          <span class="text-gold-gradient">ဓမ္မအလင်းရောင်</span>
         </div>
-        <div>
-          <p class="text-xs font-black text-gold-gradient">ရိပ်သာ ERP</p>
-          <p class="text-[9px] text-amber-500/60">v3.0</p>
-        </div>
+        <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg" title="Logout">
+          <i class="fa-solid fa-power-off text-xs"></i>
+        </button>
       </div>
 
-      <!-- Main Navigation Menu -->
-      <nav class="flex-1 overflow-y-auto space-y-1 px-3 py-4">
-        <!-- Ledger Sheets -->
-        <div class="text-[10px] uppercase font-bold text-amber-500/50 px-2 py-2">ငွေစာရင်းများ</div>
-        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">1CB - အထွေထွေ ရန်ပုံငွေ</button>
-        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">2CB - ဆွမ်းပဒေသာပင်</button>
-        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">3CB - တစ်ဦးတည်း</button>
-        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">4GB - ကျောင်းရန်ပုံငွေ</button>
-        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">5FB - ဆွမ်းပဒေသာ</button>
-        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">6HB - ဓမ္မာရုံငွေ</button>
-        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">7PB - စေတီငွေ</button>
-        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">8EB - လျှပ်စစ်ပဒေသာ</button>
-        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">9MB - ဆေးပဒေသာ</button>
-        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">10GB - အထွေထွေ</button>
+      <!-- SIDEBAR NAV -->
+      <nav class="flex-1 px-2.5 py-3.5 space-y-1.5 overflow-y-auto" id="sidebar-nav">
+        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold" title="Home Dashboard">
+          <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
+        </button>
 
-        <!-- Other Sections -->
-        <div class="text-[10px] uppercase font-bold text-amber-500/50 px-2 py-2 pt-4">အခြား အပိုင်း</div>
-        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">
-          <i class="fa-solid fa-boxes-stacked mr-2"></i>11Inv - ပစ္စည်းစာရင်း
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
+        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="1CB - အထွေထွေ ရန်ပုံငွေ (Bank)">
+          <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">1CB - အထွေထွေ ရန်ပုံငွေ (Bank)</span>
         </button>
-        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">
-          <i class="fa-solid fa-house mr-2"></i>Home - အဓိက မွန်း
+        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="2CB - ဆွမ်းပဒေသာပင် (Bank)">
+          <i class="fa-solid fa-bowl-rice text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">2CB - ဆွမ်းပဒေသာပင် (Bank)</span>
         </button>
-        <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">
-          <i class="fa-solid fa-chart-pie mr-2"></i>Report - အစီရင်ခံစာ
+        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="3CB - တစ်ဦးတည်းစာရင်း (Bank)">
+          <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">3CB - တစ်ဦးတည်းစာရင်း (Bank)</span>
         </button>
-        <button onclick="switchTab('System')" id="btn-System" class="nav-btn w-full text-left px-3 py-2.5 rounded-lg hover:bg-amber-500/10">
-          <i class="fa-solid fa-gears mr-2"></i>System - ပြင်ဆင်ချက်
+
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
+        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="4GB - ကျောင်းရန်ပုံငွေ စာအုပ်">
+          <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">4GB - ကျောင်းရန်ပုံငွေ စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="5FB - ဆွမ်းပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-utensils text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">5FB - ဆွမ်းပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်">
+          <i class="fa-solid fa-om text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="7PB - စေတီငွေစာရင်း စာအုပ်">
+          <i class="fa-solid fa-gopuram text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">7PB - စေတီငွေစာရင်း စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-bolt text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="9MB - ဆေးပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-notes-medical text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">9MB - ဆေးပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="10GB - အထွေထွေရန်ပုံငွေစာအုပ်">
+          <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">10GB - အထွေထွေရန်ပုံငွေစာအုပ်</span>
+        </button>
+
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
+        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="11Inv - ပစ္စည်းစာရင်း">
+          <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">11Inv - ပစ္စည်းစာရင်း</span>
+        </button>
+
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">System Controls</p>
+        <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="Reporting Center">
+          <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">Reporting Center</span>
+        </button>
+        <button onclick="switchTab('System')" id="btn-System" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="System Settings">
+          <i class="fa-solid fa-gears text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">System Settings</span>
         </button>
       </nav>
-
-      <!-- Logout Button -->
-      <div class="border-t border-amber-900/30 p-3 shrink-0">
-        <button onclick="handleLogout()" class="w-full py-2.5 px-3 bg-rose-950/30 hover:bg-rose-900/40 border border-rose-500/30 rounded-lg text-xs font-bold text-rose-400 transition-all">
-          <i class="fa-solid fa-sign-out-alt mr-2"></i>ထွက်မည်
-        </button>
-      </div>
     </aside>
 
-    <!-- MAIN CONTENT AREA -->
-    <div class="flex-1 flex flex-col bg-[#0f0e0c] overflow-hidden">
-      <!-- Header Bar -->
-      <header class="border-b border-amber-900/30 px-6 py-4 bg-[#1a1410] flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-4">
-          <h1 id="page-title" class="text-base font-black text-gold-gradient">Home Dashboard</h1>
-        </div>
-        <div id="header-info" class="flex items-center gap-6 text-xs font-mono text-amber-300/80">
-          <span id="current-date-display">Date: --</span>
-          <span id="current-user-display" class="flex items-center gap-1">
-            <i class="fa-solid fa-user-shield text-amber-400"></i> <span>User: --</span>
-          </span>
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <header class="bg-[#120e0b] border-b border-amber-900/30 h-[64px] px-6 flex justify-between items-center z-10 shrink-0">
+        <h1 id="page-title" class="text-base md:text-lg font-extrabold text-amber-100 tracking-wide">Home Dashboard</h1>
+        <div id="user-badge" class="text-xs font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30 px-3.5 py-1.5 rounded-lg flex items-center gap-2">
+          <i class="fa-solid fa-user-shield text-amber-400"></i> <span id="current-user-display">User: Admin</span>
         </div>
       </header>
 
       <main id="main-content" class="p-6 overflow-y-auto flex-1 bg-[#0f0e0c] relative">
         <div id="view-container"></div>
       </main>
-
-      <!-- Pagination Footer -->
-      <footer id="pagination-footer" class="border-t border-amber-900/30 px-6 py-4 bg-[#1a1410] flex items-center justify-between shrink-0 hidden">
-        <button onclick="goToPreviousPage()" class="px-4 py-2 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/50 rounded-lg text-xs font-bold text-amber-400 transition-all flex items-center gap-2">
-          <i class="fa-solid fa-chevron-left"></i> အရှေ့
-        </button>
-        <span id="pagination-info" class="text-xs text-amber-500/70 font-mono">Page 1</span>
-        <button onclick="goToNextPage()" class="px-4 py-2 bg-amber-900/30 hover:bg-amber-900/50 border border-amber-700/50 rounded-lg text-xs font-bold text-amber-400 transition-all flex items-center gap-2">
-          အနောက် <i class="fa-solid fa-chevron-right"></i>
-        </button>
-      </footer>
     </div>
   </div>
 
