@@ -1,3 +1,5 @@
+// js/app.js
+
 let currentSheet = "1CB";
 let rawData = [];
 
@@ -19,11 +21,13 @@ function initApp() {
 function switchTab(sheetName) {
   currentSheet = sheetName;
   
+  // Sidebar active tab toggle
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
   const activeBtn = document.getElementById("btn-" + sheetName);
   if (activeBtn) activeBtn.classList.add("active");
 
-  document.getElementById("page-title").innerText = CONFIG.SHEETS[sheetName] ? `${sheetName} - ${CONFIG.SHEETS[sheetName]}` : sheetName;
+  const titleText = CONFIG.SHEETS[sheetName] ? `${sheetName} - ${CONFIG.SHEETS[sheetName]}` : sheetName;
+  document.getElementById("page-title").innerText = titleText;
 
   loadSheetView();
 }
@@ -34,15 +38,17 @@ async function loadSheetView() {
   if (currentSheet === "Home" || currentSheet === "Report" || currentSheet === "System") {
     container.innerHTML = `
       <div class="p-8 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl">
-        <i class="fa-solid fa-dharmachakra text-4xl text-amber-400 mb-3 animate-spin-slow"></i>
+        <i class="fa-solid fa-dharmachakra text-4xl text-amber-400 mb-3"></i>
         <h3 class="text-base font-bold text-amber-200">${currentSheet} Module</h3>
         <p class="text-xs text-amber-500/60 mt-1">ဤအပိုင်းကို နောက်ပိုင်းတွင် ပြင်ဆင်ပေါင်းစပ်ပါမည်။</p>
       </div>`;
     return;
   }
 
+  // 1. Render Immediate UI Frame (Prevents Blank Screen)
   container.innerHTML = `
     <div class="space-y-5">
+      <!-- Top 4 KPI Cards -->
       <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div class="stats-card">
           <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
@@ -62,6 +68,7 @@ async function loadSheetView() {
         </div>
       </div>
 
+      <!-- Action Bar -->
       <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
         <div class="relative w-full sm:w-64">
           <input type="text" id="search-input" oninput="renderTable()" placeholder="ရှာဖွေရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-lg bg-[#0a0806] border border-amber-900/40 text-amber-100 outline-none focus:border-amber-400">
@@ -73,6 +80,7 @@ async function loadSheetView() {
         </div>
       </div>
 
+      <!-- Table Container -->
       <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
         <table class="w-full text-left border-collapse min-w-[1400px]">
           <thead>
@@ -93,24 +101,28 @@ async function loadSheetView() {
             </tr>
           </thead>
           <tbody id="table-body">
-            <tr><td colspan="13" class="text-center py-8 text-amber-500/60">အချက်အလက်များ ရယူနေပါသည်...</td></tr>
+            <tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
           </tbody>
         </table>
       </div>
     </div>
   `;
 
+  // Hide Add button for Viewer
   const auth = getAuthUser();
   if (auth && auth.role === "Viewer") {
     const addBtn = document.getElementById("btn-add-entry");
     if (addBtn) addBtn.style.display = "none";
   }
 
-  document.getElementById("loading-overlay").classList.remove("hidden");
-  rawData = await fetchSheetData(currentSheet);
-  document.getElementById("loading-overlay").classList.add("hidden");
-
-  renderTable();
+  // 2. Asynchronously Fetch Data from Google Sheet
+  try {
+    rawData = await fetchSheetData(currentSheet);
+    renderTable();
+  } catch (err) {
+    console.error("Sheet load error:", err);
+    document.getElementById("table-body").innerHTML = `<tr><td colspan="13" class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။ မကြာမီ ပြန်လည် ကြိုးစားပါ။</td></tr>`;
+  }
 }
 
 function renderTable() {
@@ -150,7 +162,7 @@ function renderTable() {
     html += `
       <tr>
         <td class="text-center font-mono">${count}</td>
-        <td>${date}</td>
+        <td class="font-mono">${date}</td>
         <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${category === 'ဝင်ငွေ' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950 text-rose-400 border border-rose-800/40'}">${category}</span></td>
         <td>${subCat}</td>
         <td class="font-mono text-amber-300">${voucher}</td>
@@ -201,7 +213,16 @@ function openEditModal(uniqueId) {
 
   document.getElementById("modal-form-title").innerText = "စာရင်း ပြန်လည်ပြင်ဆင်ရန်";
   document.getElementById("entry-uniqueId").value = uniqueId;
-  document.getElementById("entry-date").value = row[1];
+  
+  // Format Date back to YYYY-MM-DD for date input
+  let dVal = row[1];
+  if (dVal && dVal.includes("-")) {
+    const parts = dVal.split("-");
+    if (parts[0].length === 2) {
+      dVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  document.getElementById("entry-date").value = dVal;
   document.getElementById("entry-type").value = row[2];
   
   onTypeChange();
@@ -226,7 +247,7 @@ function onTypeChange() {
 
   let subMap = CONFIG.SUB_CATEGORIES[currentSheet] || CONFIG.SUB_CATEGORIES["DefaultLedger"];
   if (["1CB", "2CB", "3CB"].includes(currentSheet)) {
-    subMap = CONFIG.SUB_CATEGORIES["Bank"];
+    subMap = CONFIG.SUB_CATEGORIES["BankGroup"];
   }
 
   const options = subMap[type] || [];
@@ -245,18 +266,18 @@ async function saveEntryForm(e) {
   const desc = document.getElementById("entry-description").value;
 
   const dParts = dateStr.split("-");
-  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
+  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; // DD-MM-YYYY
 
   const dObj = new Date(dateStr);
   const mName = dObj.toLocaleString('en-US', { month: 'short' });
   const yName = dObj.getFullYear().toString().slice(-2);
-  const monthYear = `${mName}-${yName}`;
+  const monthYear = `${mName}-${yName}`; // e.g. Aug-26
 
   const bookName = CONFIG.SHEETS[currentSheet] || currentSheet;
   const recId = uniqueId || ("ID-" + new Date().getTime());
 
   const rowArray = [
-    0,
+    0, // Index auto-set by backend
     formattedDate,
     type,
     subCat,
@@ -265,7 +286,7 @@ async function saveEntryForm(e) {
     receiver,
     type === "ဝင်ငွေ" ? amt : 0,
     type === "ထွက်ငွေ" ? amt : 0,
-    0,
+    0, // Balance
     monthYear,
     bookName,
     recId
