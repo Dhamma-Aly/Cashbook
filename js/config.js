@@ -3,8 +3,8 @@
 const CONFIG = {
   // Google Apps Script Web App Deployment URL
   API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
-  
-  // 10 Sheet Name Mapping
+
+  // Sheet Name Mapping (used for page titles / book-name auto-fill)
   SHEETS: {
     "1CB": "အထွေထွေ ရန်ပုံငွေ (Bank)",
     "2CB": "ဆွမ်းပဒေသာပင် (Bank)",
@@ -15,10 +15,11 @@ const CONFIG = {
     "7PB": "စေတီငွေစာရင်း စာအုပ်",
     "8EB": "လျှပ်စစ်ပဒေသာပင် စာအုပ်",
     "9MB": "ဆေးပဒေသာပင် စာအုပ်",
-    "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်"
+    "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်",
+    "11Inv": "ပစ္စည်းစာရင်း (Inventory)"
   },
 
-  // Exact Subcategory Rules per Sheet
+  // Exact Subcategory Rules per Sheet (used by the Ledger add/edit modal)
   SUB_CATEGORIES: {
     "BankGroup": { // Applied to 1CB, 2CB, 3CB
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဘဏ်ထည့်ငွေ", "ဘဏ်တိုးရရှိ"],
@@ -40,5 +41,14 @@ const CONFIG = {
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
       "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
     }
+  },
+
+  // 💡 Inventory (11Inv) dropdown option lists
+  INVENTORY: {
+    LOCATIONS: ["မီးဖိုဆောင်", "ဓမ္မာရုံ", "သိမ်", "စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
+    // Locations that get rolled up together into the single "စတို" KPI card
+    STORAGE_LOCATIONS: ["စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
+    CATEGORIES: ["စားပွဲ", "ကုလားထိုင်", "ရေခဲသေတ္တာ", "မီးစက်", "ကြွေထည်ပစ္စည်း", "စတီးပစ္စည်း", "အိုးခွက်", "အိပ်ရာပစ္စည်း", "ထိုင်ခင်း", "ဖျာ", "အထွေထွေပစ္စည်း"],
+    UNITS: ["ခု", "ချောင်း", "လုံး", "ချပ်", "ထည်", "စုံ", "ဒါဇင်", "ပုံး", "လက်", "အထွေထွေ"]
   }
 };
