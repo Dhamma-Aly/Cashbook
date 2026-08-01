@@ -1,4 +1,5 @@
 // js/app.js - Enhanced with Be Mindful splash, pagination, and Report page
+// 💡 Note: USERS constant is defined in js/auth.js - NOT here to avoid conflicts
 
 let currentSheet = "Home";
 let rawData = [];
