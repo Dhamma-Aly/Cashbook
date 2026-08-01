@@ -278,6 +278,7 @@ function closeEntryModal() {
 function onTypeChange() {
   const type = document.getElementById("entry-type").value;
   const subSelect = document.getElementById("entry-subcategory");
+  const amountInput = document.getElementById("entry-amount");
 
   let subMap = CONFIG.SUB_CATEGORIES[currentSheet] || CONFIG.SUB_CATEGORIES["DefaultLedger"];
   if (["1CB", "2CB", "3CB"].includes(currentSheet)) {
@@ -286,6 +287,16 @@ function onTypeChange() {
 
   const options = subMap[type] || [];
   subSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join("");
+
+  // 💡 Color the Amount field: green = ဝင်ငွေ (income/credit), red = ထွက်ငွေ (expense/debit)
+  // Using inline styles so it always wins over the Tailwind CDN's default classes.
+  if (type === "ဝင်ငွေ") {
+    amountInput.style.color = "#34d399";        // emerald-400
+    amountInput.style.borderColor = "rgba(16, 185, 129, 0.5)";
+  } else {
+    amountInput.style.color = "#fb7185";        // rose-400
+    amountInput.style.borderColor = "rgba(244, 63, 94, 0.5)";
+  }
 }
 
 async function saveEntryForm(e) {
