@@ -24,12 +24,21 @@
     ::-webkit-scrollbar-thumb { background: #261e17; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #3d3025; }
 
+    /* 🔧 FIX: nav buttons were wrapping onto a 2nd line for longer labels
+       (especially once :hover nudged padding-left and shrank the available
+       width). white-space:nowrap + text-overflow:ellipsis keeps every item
+       a single line, truncating gracefully instead of wrapping. The hover
+       effect is now a background/left-border highlight only -- no more
+       padding-left shift -- so nothing reflows on hover either. */
     .nav-btn {
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       color: #a89f91 !important;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-left: 4px solid transparent;
     }
     .nav-btn:hover {
-      padding-left: 1.25rem;
       background-color: rgba(245, 158, 11, 0.1) !important;
       color: #fef08a !important;
     }
@@ -155,51 +164,56 @@
       </div>
 
       <!-- SIDEBAR NAV -->
-      <nav class="flex-1 px-2.5 py-3 space-y-1 overflow-y-auto" id="sidebar-nav">
-        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-bold">
-          <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400"></i> Home Dashboard
+      <nav class="flex-1 px-2.5 py-3.5 space-y-1.5 overflow-y-auto" id="sidebar-nav">
+        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold" title="Home Dashboard">
+          <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">Bank Group (ဘဏ်စာရင်းများ)</p>
-        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center"></i> 1CB - အထွေထွေ ရန်ပုံငွေ (Bank)
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
+        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="1CB - အထွေထွေ ရန်ပုံငွေ (Bank)">
+          <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">1CB - အထွေထွေ ရန်ပုံငွေ (Bank)</span>
         </button>
-        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-bowl-rice text-amber-400 w-4 text-center"></i> 2CB - ဆွမ်းပဒေသာပင် (Bank)
+        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="2CB - ဆွမ်းပဒေသာပင် (Bank)">
+          <i class="fa-solid fa-bowl-rice text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">2CB - ဆွမ်းပဒေသာပင် (Bank)</span>
         </button>
-        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center"></i> 3CB - တစ်ဦးတည်းစာရင်း (Bank)
-        </button>
-
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">Ledger Group (ပင်မစာအုပ်များ)</p>
-        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-vihara text-amber-300 w-4 text-center"></i> 4GB - ကျောင်းရန်ပုံငွေ စာအုပ်
-        </button>
-        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-utensils text-amber-300 w-4 text-center"></i> 5FB - ဆွမ်းပဒေသာပင် စာအုပ်
-        </button>
-        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-om text-amber-300 w-4 text-center"></i> 6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်
-        </button>
-        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-gopuram text-amber-300 w-4 text-center"></i> 7PB - စေတီငွေစာရင်း စာအုပ်
-        </button>
-        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-bolt text-amber-300 w-4 text-center"></i> 8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်
-        </button>
-        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-notes-medical text-amber-300 w-4 text-center"></i> 9MB - ဆေးပဒေသာပင် စာအုပ်
-        </button>
-        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-wallet text-amber-300 w-4 text-center"></i> 10GB - အထွေထွေရန်ပုံငွေစာအုပ်
+        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="3CB - တစ်ဦးတည်းစာရင်း (Bank)">
+          <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">3CB - တစ်ဦးတည်းစာရင်း (Bank)</span>
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-3 mb-1">System Controls</p>
-        <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center"></i> Reporting Center
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
+        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="4GB - ကျောင်းရန်ပုံငွေ စာအုပ်">
+          <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">4GB - ကျောင်းရန်ပုံငွေ စာအုပ်</span>
         </button>
-        <button onclick="switchTab('System')" id="btn-System" class="nav-btn w-full text-left px-3.5 py-2 rounded-lg flex items-center gap-2.5 text-xs font-semibold">
-          <i class="fa-solid fa-gears text-amber-400 w-4 text-center"></i> System Settings
+        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="5FB - ဆွမ်းပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-utensils text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">5FB - ဆွမ်းပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်">
+          <i class="fa-solid fa-om text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="7PB - စေတီငွေစာရင်း စာအုပ်">
+          <i class="fa-solid fa-gopuram text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">7PB - စေတီငွေစာရင်း စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-bolt text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="9MB - ဆေးပဒေသာပင် စာအုပ်">
+          <i class="fa-solid fa-notes-medical text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">9MB - ဆေးပဒေသာပင် စာအုပ်</span>
+        </button>
+        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="10GB - အထွေထွေရန်ပုံငွေစာအုပ်">
+          <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">10GB - အထွေထွေရန်ပုံငွေစာအုပ်</span>
+        </button>
+
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
+        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="11Inv - ပစ္စည်းစာရင်း">
+          <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">11Inv - ပစ္စည်းစာရင်း</span>
+        </button>
+
+        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">System Controls</p>
+        <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="Reporting Center">
+          <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">Reporting Center</span>
+        </button>
+        <button onclick="switchTab('System')" id="btn-System" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="System Settings">
+          <i class="fa-solid fa-gears text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">System Settings</span>
         </button>
       </nav>
     </aside>
@@ -284,6 +298,63 @@
 
         <div class="flex justify-end items-center gap-3 pt-4 border-t border-amber-900/30">
           <button type="button" onclick="closeEntryModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition">မလုပ်တော့ပါ</button>
+          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all">အတည်ပြုသည်</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Inventory (11Inv) Add/Edit Modal -->
+  <div id="inv-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
+        <h3 id="inv-modal-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">ပစ္စည်း အသစ် ထည့်သွင်းရန်</h3>
+        <button onclick="closeInvModal()" class="text-amber-500/60 hover:text-white transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+      </div>
+
+      <form id="inv-entry-form" onsubmit="saveInvEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+        <input type="hidden" id="inv-uniqueId">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">ရက်စွဲ (Date)</label>
+            <input type="date" id="inv-date" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">နေရာ (Location)</label>
+            <select id="inv-location" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အမျိုးအစား (Category)</label>
+            <select id="inv-category" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold"></select>
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">ရေတွက်ပုံ (Counting Unit)</label>
+            <select id="inv-unit" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold"></select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အရေအတွက် (Quantity)</label>
+            <input type="number" step="1" min="0" id="inv-qty" required placeholder="0" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-200 font-bold font-mono outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အကြောင်းအရာ (Item / Description)</label>
+            <input type="text" id="inv-desc" required placeholder="ဥပမာ- စားပွဲ (ပလတ်စတစ်)" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-amber-400/80 mb-1">မှတ်ချက် (Notes)</label>
+          <textarea id="inv-note" rows="2" placeholder="လိုအပ်သည့် မှတ်ချက်များ..." class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400"></textarea>
+        </div>
+
+        <div class="flex justify-end items-center gap-3 pt-4 border-t border-amber-900/30">
+          <button type="button" onclick="closeInvModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition">မလုပ်တော့ပါ</button>
           <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all">အတည်ပြုသည်</button>
         </div>
       </form>
