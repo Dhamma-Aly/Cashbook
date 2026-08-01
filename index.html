@@ -9,7 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Embedded Custom Styles (Fixes 404 MIME Mismatch Error) -->
+  <!-- Embedded Custom Styles -->
   <style>
     :root {
       color-scheme: dark;
@@ -113,7 +113,13 @@
       <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left">
         <div>
           <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (USERNAME)</label>
-          <input type="text" id="login-username" required placeholder="Type username..." class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 placeholder:text-amber-700/50 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
+          <!-- 💡 DROPDOWN SELECTION FOR USERNAME -->
+          <select id="login-username" required class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
+            <option value="" disabled selected>-- အသုံးပြုသူအမည် ရွေးချယ်ပါ --</option>
+            <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
+            <option value="Account">Account (ငွေစာရင်းကိုင်)</option>
+            <option value="Viewer">Viewer (ကြည့်ရှုသူ)</option>
+          </select>
         </div>
 
         <div>
