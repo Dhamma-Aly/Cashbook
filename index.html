@@ -137,7 +137,12 @@
   </div>
 
   <!-- MAIN WORKSPACE -->
-  <div id="erp-workspace" class="hidden h-full w-full">
+  <!-- 🔧 FIX: added "flex" class below so the sidebar (<aside>) and the
+       main content column render SIDE-BY-SIDE instead of stacking vertically.
+       Without it, the content column was pushed below the sidebar and got
+       clipped by the body's overflow-hidden/h-screen, so only the sidebar
+       was ever visible. -->
+  <div id="erp-workspace" class="hidden flex h-full w-full">
     <aside class="w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0">
       <div class="h-[64px] px-4 border-b border-amber-900/30 flex items-center justify-between text-amber-100 bg-[#18130f] shrink-0">
         <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide">
