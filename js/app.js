@@ -1,54 +1,66 @@
-// js/config.js
+// js/auth.js
 
-const CONFIG = {
-  // Google Apps Script Web App Deployment URL
-  API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
-
-  // Sheet Name Mapping (used for page titles / book-name auto-fill)
-  SHEETS: {
-    "1CB": "အထွေထွေ ရန်ပုံငွေ (Bank)",
-    "2CB": "ဆွမ်းပဒေသာပင် (Bank)",
-    "3CB": "တစ်ဦးတည်းစာရင်း (Bank)",
-    "4GB": "ကျောင်းရန်ပုံငွေ စာအုပ်",
-    "5FB": "ဆွမ်းပဒေသာပင် စာအုပ်",
-    "6HB": "ဓမ္မာရုံငွေစာရင်း စာအုပ်",
-    "7PB": "စေတီငွေစာရင်း စာအုပ်",
-    "8EB": "လျှပ်စစ်ပဒေသာပင် စာအုပ်",
-    "9MB": "ဆေးပဒေသာပင် စာအုပ်",
-    "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်",
-    "11Inv": "ပစ္စည်းစာရင်း (Inventory)"
-  },
-
-  // Exact Subcategory Rules per Sheet (used by the Ledger add/edit modal)
-  SUB_CATEGORIES: {
-    "BankGroup": { // Applied to 1CB, 2CB, 3CB
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဘဏ်ထည့်ငွေ", "ဘဏ်တိုးရရှိ"],
-      "ထွက်ငွေ": ["ဘဏ်ထုတ်", "စာရင်းပြောင်း"]
-    },
-    "4GB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဆွမ်းအလှူငွေ", "အထွေထွေအလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဆွမ်းကုန်ကျစရိတ်", "ကျောင်းအထွေထွေသုံး", "ကျောင်းပိုင်ပစ္စည်း", "ယာဉ်အသုံးစရိတ်", "သင်္ကြန်စခန်းကုန်ကျစရိတ်", "ကြိုတင်ငွေ", "စာရင်းပြောင်း"]
-    },
-    "5FB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
-    },
-    "6HB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ကန်ထရိုက်ထုတ်ပေးငွေ", "အထွေထွေသုံး", "စာရင်းပြောင်း"]
-    },
-    "DefaultLedger": { // Applied to 7PB, 8EB, 9MB, 10GB
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
-    }
-  },
-
-  // 💡 Inventory (11Inv) dropdown option lists
-  INVENTORY: {
-    LOCATIONS: ["မီးဖိုဆောင်", "ဓမ္မာရုံ", "သိမ်", "စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
-    // Locations that get rolled up together into the single "စတို" KPI card
-    STORAGE_LOCATIONS: ["စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
-    CATEGORIES: ["စားပွဲ", "ကုလားထိုင်", "ရေခဲသေတ္တာ", "မီးစက်", "ကြွေထည်ပစ္စည်း", "စတီးပစ္စည်း", "အိုးခွက်", "အိပ်ရာပစ္စည်း", "ထိုင်ခင်း", "ဖျာ", "အထွေထွေပစ္စည်း"],
-    UNITS: ["ခု", "ချောင်း", "လုံး", "ချပ်", "ထည်", "စုံ", "ဒါဇင်", "ပုံး", "လက်", "အထွေထွေ"]
-  }
+const USERS = {
+  "Admin": { pass: "Admin123", role: "Admin" },
+  "Account": { pass: "Account123", role: "Account" },
+  "Viewer": { pass: "Viewer123", role: "Viewer" }
 };
+
+function handleLoginSubmit(e) {
+  e.preventDefault();
+  const u = document.getElementById("login-username").value;
+  const p = document.getElementById("login-password").value.trim();
+  const err = document.getElementById("login-error");
+
+  if (USERS[u] && USERS[u].pass === p) {
+    const authData = { user: u, role: USERS[u].role, token: "AUTH-" + new Date().getTime() };
+    localStorage.setItem("dhamma_auth", JSON.stringify(authData));
+    err.classList.add("hidden");
+    initApp();
+  } else {
+    err.innerText = "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+    err.classList.remove("hidden");
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem("dhamma_auth");
+  location.reload();
+}
+
+function getAuthUser() {
+  const data = localStorage.getItem("dhamma_auth");
+  return data ? JSON.parse(data) : null;
+}
+
+// Check if user is allowed to edit based on 30-day rule
+function canEditRecord(recordDateStr) {
+  const auth = getAuthUser();
+  if (!auth) return false;
+  if (auth.role === "Admin") return true;
+  if (auth.role === "Viewer") return false;
+
+  if (auth.role === "Account") {
+    if (!recordDateStr) return true;
+    
+    // Parse DD-MM-YYYY or YYYY-MM-DD
+    let recDate;
+    if (recordDateStr.includes("-")) {
+      const parts = recordDateStr.split("-");
+      if (parts[0].length === 4) {
+        recDate = new Date(recordDateStr);
+      } else {
+        recDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    } else {
+      recDate = new Date(recordDateStr);
+    }
+
+    const today = new Date();
+    const diffTime = Math.abs(today - recDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays <= 30; // Locked if older than 30 days
+  }
+  return false;
+}
