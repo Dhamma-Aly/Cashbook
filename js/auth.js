@@ -1,3 +1,5 @@
+// js/auth.js
+
 const USERS = {
   "Admin": { pass: "Admin123", role: "Admin" },
   "Account": { pass: "Account123", role: "Account" },
@@ -6,7 +8,7 @@ const USERS = {
 
 function handleLoginSubmit(e) {
   e.preventDefault();
-  const u = document.getElementById("login-username").value.trim();
+  const u = document.getElementById("login-username").value;
   const p = document.getElementById("login-password").value.trim();
   const err = document.getElementById("login-error");
 
@@ -31,19 +33,34 @@ function getAuthUser() {
   return data ? JSON.parse(data) : null;
 }
 
-function canEditRecord(recordDate) {
+// Check if user is allowed to edit based on 30-day rule
+function canEditRecord(recordDateStr) {
   const auth = getAuthUser();
   if (!auth) return false;
   if (auth.role === "Admin") return true;
   if (auth.role === "Viewer") return false;
 
   if (auth.role === "Account") {
-    if (!recordDate) return true;
-    const recDate = new Date(recordDate);
+    if (!recordDateStr) return true;
+    
+    // Parse DD-MM-YYYY or YYYY-MM-DD
+    let recDate;
+    if (recordDateStr.includes("-")) {
+      const parts = recordDateStr.split("-");
+      if (parts[0].length === 4) {
+        recDate = new Date(recordDateStr);
+      } else {
+        recDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    } else {
+      recDate = new Date(recordDateStr);
+    }
+
     const today = new Date();
     const diffTime = Math.abs(today - recDate);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30; // Cannot edit if > 30 days old
+    
+    return diffDays <= 30; // Locked if older than 30 days
   }
   return false;
 }
