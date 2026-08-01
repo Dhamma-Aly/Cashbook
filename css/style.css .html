@@ -71,6 +71,19 @@ table tbody tr:hover {
   background-color: rgba(245, 158, 11, 0.08) !important;
 }
 
+/* 🔧 Larger text for the Home Dashboard fund summary + Report tables.
+   The generic table rules above use !important, so this needs matching
+   specificity to actually take effect. */
+table.table-lg thead th {
+  font-size: 0.85rem !important;
+  padding: 14px 18px !important;
+}
+table.table-lg tbody td {
+  font-size: 0.9rem !important;
+  padding: 12px 18px !important;
+  white-space: normal !important;
+}
+
 table th.sticky, table td.sticky, th.right-0, td.right-0 {
   position: sticky !important;
   right: 0 !important;
