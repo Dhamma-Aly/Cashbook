@@ -82,6 +82,19 @@
 
     table tbody tr:hover { background-color: rgba(245, 158, 11, 0.08) !important; }
 
+    /* 🔧 Larger text for the Home Dashboard fund summary + Report tables.
+       The rules above use !important, so this needs matching specificity
+       to actually take effect. */
+    table.table-lg thead th {
+      font-size: 0.85rem !important;
+      padding: 14px 18px !important;
+    }
+    table.table-lg tbody td {
+      font-size: 0.9rem !important;
+      padding: 12px 18px !important;
+      white-space: normal !important;
+    }
+
     table th.sticky, table td.sticky, th.right-0, td.right-0 {
       position: sticky !important;
       right: 0 !important;
@@ -222,7 +235,7 @@
       <header class="bg-[#120e0b] border-b border-amber-900/30 h-[64px] px-6 flex justify-between items-center z-10 shrink-0">
         <h1 id="page-title" class="text-base md:text-lg font-extrabold text-amber-100 tracking-wide">Home Dashboard</h1>
         <div id="user-badge" class="text-xs font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30 px-3.5 py-1.5 rounded-lg flex items-center gap-2">
-          <i class="fa-solid fa-user-shield text-amber-400"></i> <span id="current-user-display">User: Admin</span>
+          <i class="fa-solid fa-calendar-day text-amber-400"></i> <span id="current-user-display">Date: -- | Admin</span>
         </div>
       </header>
 
