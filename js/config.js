@@ -1,10 +1,10 @@
 // js/config.js
 
 const CONFIG = {
-  // 💡 မိမိ၏ Google Apps Script API URL
+  // Google Apps Script Web App Deployment URL
   API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
   
-  // Sheet အမည်များ
+  // 10 Sheet Name Mapping
   SHEETS: {
     "1CB": "အထွေထွေ ရန်ပုံငွေ (Bank)",
     "2CB": "ဆွမ်းပဒေသာပင် (Bank)",
@@ -18,9 +18,9 @@ const CONFIG = {
     "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်"
   },
 
-  // Category & Sub-Category Mapping
+  // Exact Subcategory Rules per Sheet
   SUB_CATEGORIES: {
-    "Bank": {
+    "BankGroup": { // Applied to 1CB, 2CB, 3CB
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဘဏ်ထည့်ငွေ", "ဘဏ်တိုးရရှိ"],
       "ထွက်ငွေ": ["ဘဏ်ထုတ်", "စာရင်းပြောင်း"]
     },
@@ -36,7 +36,7 @@ const CONFIG = {
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
       "ထွက်ငွေ": ["ကန်ထရိုက်ထုတ်ပေးငွေ", "အထွေထွေသုံး", "စာရင်းပြောင်း"]
     },
-    "DefaultLedger": {
+    "DefaultLedger": { // Applied to 7PB, 8EB, 9MB, 10GB
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
       "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
     }
