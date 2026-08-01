@@ -29,6 +29,19 @@ async function fetchHomeDashboard() {
   }
 }
 
+// 💡 Fetch the fixed A1:P15 range of the "12Rep" report summary sheet.
+async function fetchReportData() {
+  try {
+    const url = `${CONFIG.API_BASE_URL}?action=report`;
+    const res = await fetch(url);
+    const json = await res.json();
+    return json.status === "success" ? json.data : [];
+  } catch (err) {
+    console.error("API Report Error:", err);
+    return [];
+  }
+}
+
 async function createSheetEntry(sheetName, rowArray) {
   try {
     const res = await fetch(CONFIG.API_BASE_URL, {
