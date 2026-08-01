@@ -8,7 +8,85 @@
   <!-- Tailwind CSS & FontAwesome CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Embedded Custom Styles (Fixes 404 MIME Mismatch Error) -->
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    .text-gold-gradient {
+      color: #fbbf24 !important;
+      background: linear-gradient(135deg, #fef08a 0%, #facc15 50%, #d97706 100%) !important;
+      -webkit-background-clip: text !important;
+      -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f0e0c; }
+    ::-webkit-scrollbar-thumb { background: #261e17; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #3d3025; }
+
+    .nav-btn {
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      color: #a89f91 !important;
+    }
+    .nav-btn:hover {
+      padding-left: 1.25rem;
+      background-color: rgba(245, 158, 11, 0.1) !important;
+      color: #fef08a !important;
+    }
+    .nav-btn.active {
+      background-color: #211912 !important;
+      color: #facc15 !important;
+      font-weight: 700 !important;
+      border-left: 4px solid #f59e0b;
+    }
+
+    .stats-card {
+      background: linear-gradient(135deg, #1c1510 0%, #120e0b 100%) !important;
+      border: 1.5px solid rgba(245, 158, 11, 0.25) !important;
+      border-radius: 0.85rem !important;
+      box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.7) !important;
+      padding: 0.85rem 1.1rem !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 0.85rem !important;
+    }
+
+    table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background-color: #1a1410 !important;
+      padding: 12px 16px;
+      font-size: 0.725rem !important;
+      text-transform: uppercase;
+      color: #fbbf24 !important;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.3) !important;
+    }
+
+    table tbody td {
+      padding: 10px 16px;
+      border-bottom: 1px solid rgba(245, 158, 11, 0.1) !important;
+      font-size: 0.8rem !important;
+      white-space: nowrap !important;
+      color: #e7dfd5 !important;
+    }
+
+    table tbody tr:hover {
+      background-color: rgba(245, 158, 11, 0.08) !important;
+    }
+
+    table th.sticky, table td.sticky, th.right-0, td.right-0 {
+      position: sticky !important;
+      right: 0 !important;
+      background-color: #14100c !important;
+      z-index: 25 !important;
+      border-left: 1px solid rgba(245, 158, 11, 0.2) !important;
+    }
+  </style>
 </head>
 <body class="bg-[#0f0e0c] font-sans flex h-screen overflow-hidden text-amber-100/90">
 
@@ -34,12 +112,12 @@
 
       <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left">
         <div>
-          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (Username)</label>
+          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (USERNAME)</label>
           <input type="text" id="login-username" required placeholder="Type username..." class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 placeholder:text-amber-700/50 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
         </div>
 
         <div>
-          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">လျှို့ဝှက်နံပါတ် (Password)</label>
+          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">လျှို့ဝှက်နံပါတ် (PASSWORD)</label>
           <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 placeholder:text-amber-700/50 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
         </div>
 
