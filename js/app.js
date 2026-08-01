@@ -1,138 +1,87 @@
-// js/app.js - Enhanced with Be Mindful splash, pagination, and Report page
-// 💡 Note: USERS constant is defined in js/auth.js - NOT here to avoid conflicts
+// js/app.js - Home Dashboard + Inventory (11Inv) + instant tab-switch caching
 
-let currentSheet = "Home";
+let currentSheet = "Home"; // 💡 Default to Home Dashboard on App Start
 let rawData = [];
-let currentPageIndex = 0;
-let pageSize = 20;
 
-let sheetCache = {};
-let homeCache = null;
+// 💡 IN-MEMORY CACHE: keyed by sheet name. When the user re-opens a tab
+// they already visited, we render the cached rows immediately (no
+// spinner, no wait) and silently refetch in the background to keep the
+// numbers fresh. This is what makes "switch away and come back" feel
+// instant, on top of the server-side CacheService layer in worker.js.
+let sheetCache = {};   // { sheetName: { data, ts } }
+let homeCache = null;  // { cards, table, ts }
 
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.innerText = text;
 }
-
 function formatNum(v) {
   const n = parseFloat(v) || 0;
   return n.toLocaleString();
 }
 
-// ============================================================
-// BE MINDFUL SPLASH SCREEN
-// ============================================================
-function showMindfulSplash() {
-  const splash = document.getElementById("mindful-splash");
-  if (splash) {
-    splash.classList.remove("hidden");
-    setTimeout(() => {
-      splash.style.opacity = "0";
-      splash.style.transition = "opacity 0.8s ease-out";
-      setTimeout(() => {
-        splash.classList.add("hidden");
-        splash.style.opacity = "1";
-        splash.style.transition = "none";
-      }, 800);
-    }, 2500);
-  }
-}
-
-function hideMindfulSplash() {
-  const splash = document.getElementById("mindful-splash");
-  if (splash) splash.classList.add("hidden");
-}
-
-// ============================================================
-// DATE & USER DISPLAY IN HEADER
-// ============================================================
-function updateHeaderInfo() {
+// 💡 Top-right badge: "Date: Sat 1 Aug 26 | Admin" — date always today,
+// role reflects whoever is actually logged in (Admin / Account / Viewer).
+function updateHeaderBadge() {
   const auth = getAuthUser();
-  if (!auth) return;
+  const el = document.getElementById("current-user-display");
+  if (!el) return;
 
-  // Format current date as "Sat 1 Aug 26"
-  const now = new Date();
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const dayName = days[now.getDay()];
-  const monthName = months[now.getMonth()];
-  const date = now.getDate();
-  const year = String(now.getFullYear()).slice(-2);
+  const d = new Date();
+  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
+  const month = d.toLocaleDateString('en-US', { month: 'short' });
+  const dateStr = `${weekday} ${d.getDate()} ${month} ${String(d.getFullYear()).slice(-2)}`;
 
-  const dateStr = `${dayName} ${date} ${monthName} ${year}`;
-  const userRole = auth.role;
-
-  setText("current-date-display", `Date: ${dateStr}`);
-  
-  const userDisplay = document.getElementById("current-user-display");
-  if (userDisplay) {
-    userDisplay.innerHTML = `<i class="fa-solid fa-user-shield text-amber-400"></i> <span>${userRole}</span>`;
-  }
+  el.innerText = `Date: ${dateStr}  |  ${auth ? auth.role : ""}`;
 }
 
-// ============================================================
-// PAGINATION CONTROLS
-// ============================================================
-function showPaginationFooter(show = true) {
-  const footer = document.getElementById("pagination-footer");
-  if (footer) {
-    if (show) {
-      footer.classList.remove("hidden");
-    } else {
-      footer.classList.add("hidden");
-    }
-  }
+// 💡 PREVIOUS / NEXT page navigation (every ledger + inventory page,
+// i.e. everything except Home / Report / System).
+function renderPrevNextBar() {
+  const order = CONFIG.NAV_ORDER;
+  const idx = order.indexOf(currentSheet);
+  if (idx === -1) return "";
+
+  const prev = idx > 0 ? order[idx - 1] : null;
+  const next = idx < order.length - 1 ? order[idx + 1] : null;
+
+  const prevLabel = prev ? (CONFIG.SHEETS[prev] || prev) : "";
+  const nextLabel = next ? (CONFIG.SHEETS[next] || next) : "";
+
+  return `
+    <div class="flex justify-between items-center gap-3 pt-1">
+      <button ${prev ? `onclick="switchTab('${prev}')"` : 'disabled'}
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${prev ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i>
+        <span class="truncate max-w-[220px]">${prev ? `${prev} - ${prevLabel}` : 'Previous'}</span>
+      </button>
+      <button ${next ? `onclick="switchTab('${next}')"` : 'disabled'}
+        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${next ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
+        <span class="truncate max-w-[220px]">${next ? `${next} - ${nextLabel}` : 'Next'}</span>
+        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
+  `;
 }
 
-function updatePaginationInfo() {
-  const totalPages = Math.ceil(rawData.length / pageSize);
-  const currentPage = Math.floor(currentPageIndex / pageSize) + 1;
-  setText("pagination-info", `Page ${currentPage} of ${totalPages}`);
-}
-
-function goToPreviousPage() {
-  if (currentPageIndex > 0) {
-    currentPageIndex -= pageSize;
-    loadSheetView();
-  }
-}
-
-function goToNextPage() {
-  const totalPages = Math.ceil(rawData.length / pageSize);
-  const currentPage = Math.floor(currentPageIndex / pageSize) + 1;
-  if (currentPage < totalPages) {
-    currentPageIndex += pageSize;
-    loadSheetView();
-  }
-}
-
-// ============================================================
-// INIT APP
-// ============================================================
 function initApp() {
   const auth = getAuthUser();
   if (!auth) {
-    hideMindfulSplash();
     document.getElementById("login-overlay").classList.remove("hidden");
     document.getElementById("erp-workspace").classList.add("hidden");
     return;
   }
 
-  // Show Be Mindful splash and then initialize
-  showMindfulSplash();
+  document.getElementById("login-overlay").classList.add("hidden");
+  document.getElementById("erp-workspace").classList.remove("hidden");
+  updateHeaderBadge();
 
-  setTimeout(() => {
-    document.getElementById("login-overlay").classList.add("hidden");
-    document.getElementById("erp-workspace").classList.remove("hidden");
-    
-    updateHeaderInfo();
-    switchTab("Home");
-  }, 3300);
+  // 💡 Open Home Dashboard by Default
+  switchTab("Home");
 }
 
 function switchTab(sheetName) {
   currentSheet = sheetName;
-  currentPageIndex = 0;
 
   // Sidebar Nav Active Highlight
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
@@ -140,15 +89,10 @@ function switchTab(sheetName) {
   if (activeBtn) activeBtn.classList.add("active");
 
   const titleText = CONFIG.SHEETS[sheetName] ? `${sheetName} - ${CONFIG.SHEETS[sheetName]}` : sheetName;
-  
-  if (sheetName === "Home") {
-    document.getElementById("page-title").innerText = "Home Dashboard";
-  } else if (sheetName === "Report") {
-    document.getElementById("page-title").innerText = "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်";
-  } else {
-    document.getElementById("page-title").innerText = titleText;
-  }
+  const specialTitles = { Home: "Home Dashboard", Report: "Reporting Center", System: "System Settings" };
+  document.getElementById("page-title").innerText = specialTitles[sheetName] || titleText;
 
+  updateHeaderBadge();
   loadSheetView();
 }
 
@@ -156,45 +100,20 @@ async function loadSheetView() {
   const container = document.getElementById("view-container");
   if (!container) return;
 
-  if (currentSheet === "Home") { 
-    showPaginationFooter(false);
-    await renderHomeDashboard(container); 
-    return; 
-  }
-  if (currentSheet === "Report") {
-    showPaginationFooter(false);
-    await renderReportPage(container); 
-    return;
-  }
-  if (currentSheet === "System") {
-    showPaginationFooter(false);
-    renderPlaceholderView(container); 
-    return;
-  }
-  if (currentSheet === "11Inv") { 
-    showPaginationFooter(true);
-    await renderInventoryView(container); 
-    return;
-  }
-
-  // Ledger sheets - show pagination
-  showPaginationFooter(true);
+  if (currentSheet === "Home") { await renderHomeDashboard(container); return; }
+  if (currentSheet === "Report") { await renderReportView(container); return; }
+  if (currentSheet === "System") { renderPlaceholderView(container); return; }
+  if (currentSheet === "11Inv") { await renderInventoryView(container); return; }
   await renderLedgerView(container);
 }
 
 // ============================================================
-// PLACEHOLDER VIEW (System Settings)
+// PLACEHOLDER VIEW (Report / System)
 // ============================================================
 function renderPlaceholderView(container) {
-  let title = "Home Dashboard";
-  let subtitle = "ဓမ္မအလင်းရောင် တောရရိပ်သာ ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ် မှ ကြိုဆိုပါသည်";
-  let icon = "fa-gauge-high";
-
-  if (currentSheet === "System") {
-    title = "System Settings";
-    subtitle = "စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ";
-    icon = "fa-gears";
-  }
+  const title = "System Settings";
+  const subtitle = "စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ";
+  const icon = "fa-gears";
 
   container.innerHTML = `
     <div class="p-10 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl shadow-2xl my-6 max-w-2xl mx-auto space-y-4">
@@ -211,78 +130,135 @@ function renderPlaceholderView(container) {
 }
 
 // ============================================================
+// REPORT VIEW — "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်" (12Rep!A1:P15)
+// ============================================================
+async function renderReportView(container) {
+  const requestedSheet = currentSheet;
+
+  container.innerHTML = `
+    <div class="space-y-5">
+      <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
+        <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
+          <i class="fa-solid fa-chart-pie text-amber-400"></i> ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
+        </h3>
+        <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+      </div>
+
+      <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
+        <table class="table-lg w-full text-left border-collapse min-w-[1200px] text-sm">
+          <tbody id="report-table-body">
+            <tr><td class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+
+  try {
+    const rows = await fetchReportData();
+    if (currentSheet === requestedSheet) renderReportTable(rows);
+  } catch (err) {
+    console.error("Report load error:", err);
+    const tbody = document.getElementById("report-table-body");
+    if (tbody) tbody.innerHTML = `<tr><td class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။</td></tr>`;
+  }
+}
+
+function renderReportTable(rows) {
+  const tbody = document.getElementById("report-table-body");
+  if (!tbody) return;
+  if (!rows || !rows.length) {
+    tbody.innerHTML = `<tr><td class="text-center py-6 text-amber-500/50">ဒေတာ မရှိသေးပါ။</td></tr>`;
+    return;
+  }
+
+  // Row indices (0-based) with special meaning per spreadsheet layout:
+  //   row 0        -> header
+  //   row 4 (R5)   -> ဝင်ငွေ စုစုပေါင်း (income total)
+  //   row 11 (R12) -> ထွက်ငွေ စုစုပေါင်း (expense total)
+  //   row 12 (R13) -> လက်ကျန်ငွေ စုစုပေါင်း (balance total)
+  const INCOME_TOTAL = 4, EXPENSE_TOTAL = 11, BALANCE_TOTAL = 12;
+
+  let html = "";
+  rows.forEach((row, ri) => {
+    let rowClass, cellClass, borderClass = "border-b border-amber-900/10";
+
+    if (ri === 0) {
+      rowClass = "bg-[#1a1410] sticky top-0";
+      cellClass = "px-4 py-3 font-black text-amber-400 uppercase text-xs tracking-wide";
+    } else if (ri === INCOME_TOTAL) {
+      rowClass = "bg-emerald-500/10 font-black text-emerald-300";
+      cellClass = "px-4 py-3 font-mono";
+      borderClass = "border-t-2 border-emerald-600/50 border-b border-amber-900/10";
+    } else if (ri === EXPENSE_TOTAL) {
+      rowClass = "bg-rose-500/10 font-black text-rose-300";
+      cellClass = "px-4 py-3 font-mono";
+      borderClass = "border-t-2 border-rose-600/50 border-b border-amber-900/10";
+    } else if (ri === BALANCE_TOTAL) {
+      rowClass = "bg-amber-500/10 font-black text-amber-300 text-base";
+      cellClass = "px-4 py-3 font-mono";
+      borderClass = "border-t-2 border-amber-600/60 border-b-2 border-amber-600/60";
+    } else if (ri < INCOME_TOTAL) {
+      rowClass = "bg-emerald-500/[0.03] text-emerald-100/90 hover:bg-emerald-500/5";
+      cellClass = "px-4 py-2.5 font-mono";
+    } else if (ri < EXPENSE_TOTAL) {
+      rowClass = "bg-rose-500/[0.03] text-rose-100/90 hover:bg-rose-500/5";
+      cellClass = "px-4 py-2.5 font-mono";
+    } else {
+      rowClass = "text-amber-100/90 hover:bg-amber-500/5";
+      cellClass = "px-4 py-2.5 font-mono";
+    }
+
+    html += `<tr class="${rowClass} ${borderClass}">`;
+    row.forEach((cell) => {
+      const display = cell !== "" && cell !== null && !isNaN(cell) && cell !== "" ? (typeof cell === "number" ? cell.toLocaleString() : cell) : (cell || "");
+      html += `<td class="${cellClass}">${display}</td>`;
+    });
+    html += `</tr>`;
+  });
+
+  tbody.innerHTML = html;
+}
+
+// ============================================================
 // HOME DASHBOARD
 // ============================================================
 async function renderHomeDashboard(container) {
   const requestedSheet = currentSheet;
 
   container.innerHTML = `
-    <div class="space-y-5">
-      <!-- Top 4 KPI Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div class="stats-card">
-          <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-vault text-xl"></i></div>
-          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ရန်ပုံငွေစုစုပေါင်း</p><h3 id="kpi-home-fund" class="text-base font-extrabold text-amber-300 mt-1">...</h3></div>
-        </div>
-        <div class="stats-card">
-          <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-building-columns text-xl"></i></div>
-          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဘဏ်ရှိငွေစုစုပေါင်း</p><h3 id="kpi-home-bank" class="text-base font-extrabold text-sky-300 mt-1">...</h3></div>
-        </div>
-        <div class="stats-card">
-          <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-sack-dollar text-xl"></i></div>
-          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ငွေသားစုစုပေါင်း</p><h3 id="kpi-home-cash" class="text-base font-extrabold text-emerald-300 mt-1">...</h3></div>
-        </div>
-        <div class="stats-card">
-          <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-list-check text-xl"></i></div>
-          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စာကြောင်းရေ စုစုပေါင်း</p><h3 id="kpi-home-count" class="text-base font-extrabold text-amber-100 mt-1">...</h3></div>
+    <div class="h-full flex flex-col space-y-5">
+      <!-- "Be Mindful" hero banner -->
+      <div class="shrink-0 bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl px-8 py-6 relative overflow-hidden">
+        <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <i class="fa-solid fa-dharmachakra text-amber-500/10 text-8xl absolute -bottom-3 right-6"></i>
+        <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h2 class="text-3xl md:text-4xl font-black text-gold-gradient tracking-wide">Be Mindful</h2>
+            <p class="text-sm text-amber-200/70 italic mt-1">အမြဲသတိ ထားပါလေ ... — stay mindful —</p>
+          </div>
+          <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-amber-700/20 pt-3 md:pt-0 md:pl-6">
+            <p class="text-sm text-amber-400/80 italic">"Appamādena sampādetha"</p>
+            <p class="text-[11px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
+          </div>
         </div>
       </div>
 
-      <!-- Two Equal-Height Boxes -->
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
-        <!-- Mindfulness Quote Box -->
-        <div class="h-full flex flex-col justify-center bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
-          <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-          <i class="fa-solid fa-dharmachakra text-amber-500/20 text-6xl absolute bottom-4 right-5"></i>
-          <div class="relative space-y-2.5 text-center">
-            <p class="text-[13px] leading-relaxed text-amber-100/90 font-medium">
-              In every sight, <span class="text-amber-400/70 text-[11px]">ဘာပဲမြင်မြင်</span> ...<br>
-              In every sound, <span class="text-amber-400/70 text-[11px]">ဘာပဲကြားကြား</span> ...<br>
-              In every smell, <span class="text-amber-400/70 text-[11px]">ဘယ်လို အနံ့ပဲရရ</span> ...<br>
-              In every taste, <span class="text-amber-400/70 text-[11px]">ဘာပဲစားစား</span> ...<br>
-              In every touch, <span class="text-amber-400/70 text-[11px]">ဘာနဲ့ပဲ ထိတွေ့ရပါစေ</span> ...<br>
-              In every thought, <span class="text-amber-400/70 text-[11px]">တွေးတွေး</span> ...
-            </p>
-            <p class="text-gold-gradient text-lg font-black tracking-wide pt-2">— stay mindful —</p>
-            <p class="text-[12px] text-amber-200/60 italic">အမြဲသတိ ထားပါလေ ...</p>
-            <div class="pt-3 mt-3 border-t border-amber-700/20">
-              <p class="text-[11px] text-amber-400/80 italic">"Appamādena sampādetha"</p>
-              <p class="text-[10px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
-            </div>
-          </div>
+      <!-- Fund Summary Table -->
+      <div class="flex-1 flex flex-col bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
+        <div class="px-6 py-4 border-b border-amber-900/30 bg-[#1a1410] shrink-0">
+          <h3 class="text-base font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
+            <i class="fa-solid fa-building-columns text-amber-400"></i> ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
+          </h3>
         </div>
-
-        <!-- Bank Summary Table Box -->
-        <div class="h-full flex flex-col bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
-          <div class="px-5 py-3.5 border-b border-amber-900/30 bg-[#1a1410] shrink-0">
-            <h3 class="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
-              <i class="fa-solid fa-building-columns text-amber-400"></i> ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
-            </h3>
-          </div>
-          <div id="home-bank-table" class="flex-1 overflow-auto">
-            <div class="p-8 text-center text-amber-500/50 text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</div>
-          </div>
+        <div id="home-bank-table" class="flex-1 overflow-auto">
+          <div class="p-8 text-center text-amber-500/50 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</div>
         </div>
       </div>
     </div>
   `;
 
   const applyData = (data) => {
-    const cards = data.cards || [];
-    setText("kpi-home-fund", formatNum(cards[0]) + " MMK");
-    setText("kpi-home-bank", formatNum(cards[1]) + " MMK");
-    setText("kpi-home-cash", formatNum(cards[2]) + " MMK");
-    setText("kpi-home-count", formatNum(cards[3]));
     renderHomeBankTable(data.table || []);
   };
 
@@ -311,493 +287,561 @@ function renderHomeBankTable(rows) {
   const header = rows[0];
   const body = rows.slice(1);
 
-  let html = `<table class="w-full text-left border-collapse text-[11px]"><thead><tr>`;
+  let html = `<table class="table-lg w-full text-left border-collapse text-sm"><thead><tr>`;
   header.forEach((h, i) => {
-    html += `<th class="px-3 py-2.5 sticky top-0 bg-[#1a1410] text-amber-400/90 font-bold uppercase text-[9.5px] tracking-wide ${i >= 2 ? 'text-right' : ''}">${h}</th>`;
+    html += `<th class="px-4 py-3.5 sticky top-0 bg-[#1a1410] text-amber-400/90 font-bold uppercase text-xs tracking-wide ${i >= 2 ? 'text-right' : ''}">${h}</th>`;
   });
   html += `</tr></thead><tbody>`;
-  body.forEach((row) => {
-    html += `<tr class="hover:bg-amber-500/5">`;
-    row.forEach((cell, i) => {
-      html += `<td class="px-3 py-2 ${i >= 2 ? 'text-right font-mono text-amber-200' : 'text-amber-100/80'}">${cell}</td>`;
+
+  body.forEach((row, ri) => {
+    const isTotal = ri === body.length - 1;
+    html += `<tr class="${isTotal ? 'font-black text-amber-300 bg-amber-500/5 border-t-2 border-amber-600/40 text-base' : 'border-b border-amber-900/10 hover:bg-amber-500/5'}">`;
+    row.forEach((cell, ci) => {
+      const isNumeric = ci >= 2;
+      const display = isNumeric && cell !== "" && !isNaN(cell) ? Number(cell).toLocaleString() : cell;
+      html += `<td class="px-4 py-3 font-mono ${isNumeric ? 'text-right' : ''} ${!isNumeric ? 'font-sans' : ''}">${display}</td>`;
     });
     html += `</tr>`;
   });
+
   html += `</tbody></table>`;
   box.innerHTML = html;
 }
 
 // ============================================================
-// REPORT PAGE - Enhanced with styling
-// ============================================================
-async function renderReportPage(container) {
-  container.innerHTML = `
-    <div class="space-y-6">
-      <div class="bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-amber-900/30 bg-[#1a1410]">
-          <h2 class="text-sm font-black text-amber-300 uppercase tracking-wider">
-            <i class="fa-solid fa-chart-line text-amber-400 mr-2"></i>
-            ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
-          </h2>
-        </div>
-        
-        <div id="report-content" class="overflow-x-auto">
-          <div class="p-8 text-center text-amber-500/50 text-xs">
-            <i class="fa-solid fa-spinner fa-spin mr-2"></i> အစီရင်ခံစာ ပြင်ဆင်နေပါသည်...
-          </div>
-        </div>
-      </div>
-
-      <div class="text-[11px] text-amber-500/60 italic text-center border-t border-amber-900/20 pt-4">
-        <i class="fa-solid fa-info-circle mr-2"></i>
-        ရိပ်သာ အထွေထွေရန်ပုံငွေ ၏ အသေးစိတ် စာရင်း အကျဉ်းချုပ် ဖြစ်ပါသည်။
-      </div>
-    </div>
-  `;
-
-  try {
-    // Simulate fetching report data (in production, this would come from the backend)
-    const reportData = await generateReportData();
-    renderReportTable(reportData);
-  } catch (err) {
-    console.error("Report load error:", err);
-    document.getElementById("report-content").innerHTML = `
-      <div class="p-8 text-center text-rose-400 text-xs font-bold">
-        အစီရင်ခံစာ ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။
-      </div>
-    `;
-  }
-}
-
-async function generateReportData() {
-  // This simulates the report data structure
-  // In production, fetch from backend: A1:P15 range
-  return {
-    title: "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်",
-    rows: [
-      { date: "01-01-2026", type: "ဝင်ငွေ", category: "စာရင်းဖွင့်", amount: 50000, balance: 50000 },
-      { date: "02-01-2026", type: "ထွက်ငွေ", category: "ဘဏ်ထုတ်", amount: 10000, balance: 40000 },
-      { date: "03-01-2026", type: "ဝင်ငွေ", category: "အလှူ", amount: 75000, balance: 115000 },
-      { date: "04-01-2026", type: "ထွက်ငွေ", category: "ကုန်ကျစရိတ်", amount: 20000, balance: 95000 },
-      { date: "05-01-2026", type: "ဝင်ငွေ", category: "အလှူ", amount: 100000, balance: 195000 }
-    ],
-    totalIncome: 225000,
-    totalExpense: 30000,
-    totalBalance: 195000
-  };
-}
-
-function renderReportTable(data) {
-  const content = document.getElementById("report-content");
-  if (!content) return;
-
-  let html = `
-    <div class="overflow-x-auto">
-      <table class="w-full text-left border-collapse">
-        <thead>
-          <tr class="bg-[#1a1410] border-b-2 border-amber-700/50">
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide">စဉ်</th>
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide">ရက်စွဲ</th>
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide">အမျိုးအစား</th>
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide">ခေါင်းစဉ်ခွဲ</th>
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide text-right">ငွေပမာဏ</th>
-            <th class="px-4 py-3 text-xs font-black text-amber-300 uppercase tracking-wide text-right">လက်ကျန်</th>
-          </tr>
-        </thead>
-        <tbody>
-  `;
-
-  data.rows.forEach((row, idx) => {
-    html += `
-      <tr class="border-b border-amber-900/10 hover:bg-amber-500/5">
-        <td class="px-4 py-2.5 text-xs text-amber-100/80">${idx + 1}</td>
-        <td class="px-4 py-2.5 text-xs text-amber-100/80 font-mono">${row.date}</td>
-        <td class="px-4 py-2.5 text-xs text-amber-100/80">${row.type}</td>
-        <td class="px-4 py-2.5 text-xs text-amber-100/80">${row.category}</td>
-        <td class="px-4 py-2.5 text-xs text-right font-mono text-amber-200">${formatNum(row.amount)}</td>
-        <td class="px-4 py-2.5 text-xs text-right font-mono text-amber-300">${formatNum(row.balance)}</td>
-      </tr>
-    `;
-  });
-
-  // Total Income Row
-  html += `
-    <tr class="total-row bg-amber-500/15 border-y-2 border-amber-700/40 font-bold">
-      <td colspan="4" class="px-4 py-3 text-xs text-amber-300 uppercase tracking-wide">စုစုပေါင်း ဝင်ငွေ</td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-300">${formatNum(data.totalIncome)}</td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-300"></td>
-    </tr>
-  `;
-
-  // Total Expense Row
-  html += `
-    <tr class="total-row bg-amber-500/15 border-b-2 border-amber-700/40 font-bold">
-      <td colspan="4" class="px-4 py-3 text-xs text-amber-300 uppercase tracking-wide">စုစုပေါင်း ထွက်ငွေ</td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-300">${formatNum(data.totalExpense)}</td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-300"></td>
-    </tr>
-  `;
-
-  // Total Balance Row
-  html += `
-    <tr class="total-row bg-amber-600/20 border-y-2 border-amber-600/50 font-bold">
-      <td colspan="4" class="px-4 py-3 text-xs text-amber-200 uppercase tracking-wide font-extrabold">စုစုပေါင်း လက်ကျန်</td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-200"></td>
-      <td class="px-4 py-3 text-xs text-right font-mono text-amber-200 font-extrabold">${formatNum(data.totalBalance)}</td>
-    </tr>
-  `;
-
-  html += `</tbody></table></div>`;
-  content.innerHTML = html;
-}
-
-// ============================================================
-// LEDGER VIEW (with pagination)
+// LEDGER TABLE VIEW (1CB..10GB) - with instant-return caching
 // ============================================================
 async function renderLedgerView(container) {
   const requestedSheet = currentSheet;
 
   container.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
-        <button onclick="openEntryModal()" class="px-4 py-2.5 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-amber-950 font-black rounded-lg text-xs shadow-lg transition-all flex items-center gap-2">
-          <i class="fa-solid fa-plus"></i> အသစ် ထည့်သွင်းရန်
-        </button>
-      </div>
-
-      <div id="ledger-table-container" class="bg-[#14110d] border border-amber-900/30 rounded-2xl overflow-hidden shadow-2xl">
-        <div class="p-8 text-center text-amber-500/50 text-xs">
-          <i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...
+    <div class="space-y-5">
+      <!-- Top 4 KPI Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်းဝင်ငွေ</p><h3 id="kpi-income" class="text-base font-extrabold text-emerald-400 mt-1">0 MMK</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-arrow-trend-down text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်းထွက်ငွေ</p><h3 id="kpi-expense" class="text-base font-extrabold text-rose-400 mt-1">0 MMK</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-scale-balanced text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">လက်ကျန်ငွေ</p><h3 id="kpi-balance" class="text-base font-extrabold text-amber-300 mt-1">0 MMK</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-list-check text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စာကြောင်းရေ</p><h3 id="kpi-count" class="text-base font-extrabold text-amber-100 mt-1">0</h3></div>
         </div>
       </div>
+
+      <!-- Action Bar -->
+      <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
+        <div class="relative w-full sm:w-64">
+          <input type="text" id="search-input" oninput="renderTable()" placeholder="ရှာဖွေရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-lg bg-[#0a0806] border border-amber-900/40 text-amber-100 outline-none focus:border-amber-400">
+        </div>
+        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+          <button onclick="exportCSV()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+          <button id="btn-add-entry" onclick="openAddModal()" class="p-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all"><i class="fa-solid fa-plus text-xs"></i> + စာရင်းအသစ်ထည့်ရန်</button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
+        <table class="w-full text-left border-collapse min-w-[1400px]">
+          <thead>
+            <tr>
+              <th class="w-12 text-center">စဉ်</th>
+              <th class="w-28">ရက်စွဲ</th>
+              <th class="w-24">ခေါင်းစဉ်</th>
+              <th class="w-36">ခေါင်းစဉ်ခွဲ</th>
+              <th class="w-28">ဘောင်ချာ</th>
+              <th class="min-w-[200px]">အကြောင်းအရာ</th>
+              <th class="w-28">လက်ခံသူ</th>
+              <th class="w-32 text-right">ဝင်ငွေ</th>
+              <th class="w-32 text-right">ထွက်ငွေ</th>
+              <th class="w-32 text-right">လက်ကျန်</th>
+              <th class="w-24">လနှစ်</th>
+              <th class="w-36">စာအုပ်အမည်</th>
+              <th class="w-24 text-center right-0 sticky">လုပ်ဆောင်ချက်</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      ${renderPrevNextBar()}
     </div>
   `;
 
-  try {
-    const data = await fetchSheetData(currentSheet);
-    if (data && data.length > 0) {
-      rawData = data;
-      updatePaginationInfo();
-    }
-    if (currentSheet === requestedSheet) {
-      renderLedgerTable(data || []);
-    }
-  } catch (err) {
-    console.error("Ledger load error:", err);
-    const container2 = document.getElementById("ledger-table-container");
-    if (container2) container2.innerHTML = `<div class="p-8 text-center text-rose-400 text-xs font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။</div>`;
-  }
-}
-
-function renderLedgerTable(data) {
-  const container = document.getElementById("ledger-table-container");
-  if (!container) return;
-  if (!data || data.length === 0) {
-    container.innerHTML = `<div class="p-8 text-center text-amber-500/50 text-xs">စာရင်း မရှိသေးပါ။</div>`;
-    return;
-  }
-
+  // Hide Add button for Viewer
   const auth = getAuthUser();
-  const pageStart = currentPageIndex;
-  const pageEnd = Math.min(pageStart + pageSize, data.length);
-  const pageData = data.slice(pageStart, pageEnd);
+  if (auth && auth.role === "Viewer") {
+    const addBtn = document.getElementById("btn-add-entry");
+    if (addBtn) addBtn.style.display = "none";
+  }
 
-  let html = `<div class="overflow-x-auto"><table class="w-full text-left border-collapse text-[10px]"><thead><tr class="bg-[#1a1410] border-b border-amber-700/40">`;
-  
-  // Headers - simplified for space
-  const headers = ["စဉ်", "ရက်စွဲ", "ခေါင်းစဉ်", "ခွဲ", "ဘောင်ချာ", "ငွေပမာဏ", "လက်ခံ", "ဝင်", "ထွက်", "လက်ကျန်", "လနှစ်", "စာအုပ်", ""];
-  headers.forEach((h) => {
-    html += `<th class="px-2.5 py-2 font-bold text-amber-400/90 uppercase tracking-wide ${['ဝင်', 'ထွက်', 'လက်ကျန်', 'ငွေပမာဏ'].includes(h) ? 'text-right' : ''}">${h}</th>`;
-  });
-  
-  html += `</tr></thead><tbody>`;
-
-  pageData.forEach((row, idx) => {
-    const isLocked = !canEditRecord(row[1]);
-    const lockClass = isLocked ? 'opacity-60' : '';
-    html += `<tr class="${lockClass} border-b border-amber-900/10 hover:bg-amber-500/5">`;
-    
-    row.forEach((cell, i) => {
-      const isNumeric = [6, 7, 8, 9].includes(i);
-      const isDate = [1, 10].includes(i);
-      html += `<td class="px-2.5 py-2 text-amber-100/80 ${isNumeric ? 'text-right font-mono text-amber-200' : ''} ${isDate ? 'font-mono' : ''}">${cell}</td>`;
-    });
-
-    html += `<td class="px-2.5 py-2 text-right sticky right-0 bg-[#14100c] z-10">
-      <button onclick="editEntry('${row[12]}', '${currentSheet}')" class="text-amber-500 hover:text-amber-300 transition text-xs" ${isLocked ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-        <i class="fa-solid fa-edit"></i>
-      </button>
-      <button onclick="deleteEntry('${row[12]}', '${currentSheet}')" class="text-rose-500 hover:text-rose-300 transition text-xs ml-1" ${isLocked ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
-        <i class="fa-solid fa-trash"></i>
-      </button>
-    </td></tr>`;
-  });
-
-  html += `</tbody></table></div>`;
-  container.innerHTML = html;
-}
-
-// ============================================================
-// INVENTORY VIEW (with pagination)
-// ============================================================
-async function renderInventoryView(container) {
-  const requestedSheet = currentSheet;
-
-  container.innerHTML = `
-    <div class="space-y-4">
-      <div class="flex items-center justify-between gap-3">
-        <button onclick="openInvModal()" class="px-4 py-2.5 bg-gradient-to-r from-amber-700 to-amber-600 hover:from-amber-600 hover:to-amber-500 text-amber-950 font-black rounded-lg text-xs shadow-lg transition-all flex items-center gap-2">
-          <i class="fa-solid fa-plus"></i> ပစ္စည်းအသစ် ထည့်သွင်းရန်
-        </button>
-      </div>
-
-      <div id="inv-table-container" class="bg-[#14110d] border border-amber-900/30 rounded-2xl overflow-hidden shadow-2xl">
-        <div class="p-8 text-center text-amber-500/50 text-xs">
-          <i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...
-        </div>
-      </div>
-    </div>
-  `;
+  // 💡 Instant render from cache (if this tab was visited before), then
+  // silently refresh from the server so the numbers stay accurate.
+  const cached = sheetCache[requestedSheet];
+  if (cached) {
+    rawData = cached.data;
+    renderTable();
+  }
 
   try {
-    const data = await fetchSheetData(currentSheet);
-    if (data && data.length > 0) {
-      rawData = data;
-      updatePaginationInfo();
-    }
+    const fresh = await fetchSheetData(requestedSheet);
+    sheetCache[requestedSheet] = { data: fresh, ts: Date.now() };
     if (currentSheet === requestedSheet) {
-      renderInvTable(data || []);
+      rawData = fresh;
+      renderTable();
     }
   } catch (err) {
-    console.error("Inventory load error:", err);
-    const container2 = document.getElementById("inv-table-container");
-    if (container2) container2.innerHTML = `<div class="p-8 text-center text-rose-400 text-xs font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။</div>`;
-  }
-}
-
-function renderInvTable(data) {
-  const container = document.getElementById("inv-table-container");
-  if (!container) return;
-  if (!data || data.length === 0) {
-    container.innerHTML = `<div class="p-8 text-center text-amber-500/50 text-xs">ပစ္စည်းစာရင်း မရှိသေးပါ။</div>`;
-    return;
-  }
-
-  const pageStart = currentPageIndex;
-  const pageEnd = Math.min(pageStart + pageSize, data.length);
-  const pageData = data.slice(pageStart, pageEnd);
-
-  let html = `<div class="overflow-x-auto"><table class="w-full text-left border-collapse text-[10px]"><thead><tr class="bg-[#1a1410] border-b border-amber-700/40">`;
-  
-  const headers = ["စဉ်", "ရက်စွဲ", "နေရာ", "အမျိုးအစား", "ယူနစ်", "အရေအတွက်", "အကြောင်းအရာ", "မှတ်ချက်", "လနှစ်", "", ""];
-  headers.forEach((h) => {
-    html += `<th class="px-2.5 py-2 font-bold text-amber-400/90 uppercase tracking-wide ${h === 'အရေအတွက်' ? 'text-right' : ''}">${h}</th>`;
-  });
-  
-  html += `</tr></thead><tbody>`;
-
-  pageData.forEach((row) => {
-    html += `<tr class="border-b border-amber-900/10 hover:bg-amber-500/5">`;
-    row.forEach((cell, i) => {
-      const isNumeric = i === 5;
-      html += `<td class="px-2.5 py-2 text-amber-100/80 ${isNumeric ? 'text-right font-mono text-amber-200' : ''}">${cell}</td>`;
-    });
-
-    html += `<td class="px-2.5 py-2 text-right sticky right-0 bg-[#14100c] z-10">
-      <button onclick="editInvEntry('${row[10]}', '${currentSheet}')" class="text-amber-500 hover:text-amber-300 transition text-xs">
-        <i class="fa-solid fa-edit"></i>
-      </button>
-      <button onclick="deleteInvEntry('${row[10]}', '${currentSheet}')" class="text-rose-500 hover:text-rose-300 transition text-xs ml-1">
-        <i class="fa-solid fa-trash"></i>
-      </button>
-    </td></tr>`;
-  });
-
-  html += `</tbody></table></div>`;
-  container.innerHTML = html;
-}
-
-// ============================================================
-// MODAL FUNCTIONS (entry)
-// ============================================================
-function openEntryModal(uniqueId = null, sheetName = null) {
-  const modal = document.getElementById("entry-modal");
-  if (!modal) return;
-
-  const sheet = sheetName || currentSheet;
-  document.getElementById("modal-form-title").innerText = uniqueId ? "စာရင်း ပြင်ဆင်ရန်" : "စာရင်းအသစ် ထည့်သွင်းရန်";
-  document.getElementById("entry-uniqueId").value = uniqueId || "";
-
-  // Reset form
-  document.getElementById("entry-form").reset();
-  document.getElementById("entry-date").valueAsDate = new Date();
-
-  // Populate subcategory based on sheet
-  populateSubcategories(sheet);
-
-  if (uniqueId) {
-    const row = rawData.find(r => r[12] === uniqueId);
-    if (row) {
-      document.getElementById("entry-date").value = row[1];
-      document.getElementById("entry-type").value = row[2];
-      document.getElementById("entry-subcategory").value = row[3];
-      document.getElementById("entry-voucher").value = row[4];
-      document.getElementById("entry-amount").value = row[6];
-      document.getElementById("entry-receiver").value = row[7];
-      document.getElementById("entry-description").value = row[11];
-      onTypeChange();
+    console.error("Sheet load error:", err);
+    if (!cached) {
+      const tbody = document.getElementById("table-body");
+      if (tbody) {
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။ မကြာမီ ပြန်လည် ကြိုးစားပါ။</td></tr>`;
+      }
     }
   }
+}
 
-  modal.classList.remove("hidden");
+function renderTable() {
+  const tbody = document.getElementById("table-body");
+  if (!tbody) return; // Safely exit if table-body doesn't exist
+
+  const searchInput = document.getElementById("search-input");
+  const search = searchInput ? searchInput.value.toLowerCase() : "";
+  const auth = getAuthUser();
+
+  let totIncome = 0;
+  let totExpense = 0;
+  let runningBalance = 0;
+  let html = "";
+  let count = 0;
+
+  rawData.forEach((row) => {
+    const date = row[1] || "";
+    const category = row[2] || "";
+    const subCat = row[3] || "";
+    const voucher = row[4] || "";
+    const desc = row[5] || "";
+    const receiver = row[6] || "";
+    const income = parseFloat(row[7]) || 0;
+    const expense = parseFloat(row[8]) || 0;
+    const monthYear = row[10] || "";
+    const bookName = row[11] || "";
+    const uniqueId = row[12] || "";
+
+    const rowStr = `${date} ${category} ${subCat} ${voucher} ${desc} ${receiver} ${bookName}`.toLowerCase();
+    if (search && !rowStr.includes(search)) return;
+
+    count++;
+    totIncome += income;
+    totExpense += expense;
+    runningBalance += (income - expense);
+
+    const editable = canEditRecord(date);
+
+    html += `
+      <tr>
+        <td class="text-center font-mono">${count}</td>
+        <td class="font-mono">${date}</td>
+        <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${category === 'ဝင်ငွေ' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/40' : 'bg-rose-950 text-rose-400 border border-rose-800/40'}">${category}</span></td>
+        <td>${subCat}</td>
+        <td class="font-mono text-amber-300">${voucher}</td>
+        <td>${desc}</td>
+        <td>${receiver}</td>
+        <td class="text-right font-mono text-emerald-400 font-bold">${income ? income.toLocaleString() : '-'}</td>
+        <td class="text-right font-mono text-rose-400 font-bold">${expense ? expense.toLocaleString() : '-'}</td>
+        <td class="text-right font-mono text-amber-300 font-bold">${runningBalance.toLocaleString()}</td>
+        <td class="font-mono text-amber-500/80">${monthYear}</td>
+        <td class="text-amber-200/80">${bookName}</td>
+        <td class="text-center right-0 sticky">
+          ${auth && auth.role !== "Viewer" && editable ? `
+            <button onclick="openEditModal('${uniqueId}')" class="text-amber-400 hover:text-amber-200 mr-2" title="ပြင်ဆင်မည်"><i class="fa-solid fa-pen-to-square"></i></button>
+            ${auth.role === "Admin" ? `<button onclick="handleDelete('${uniqueId}')" class="text-rose-400 hover:text-rose-200" title="ဖျက်မည်"><i class="fa-solid fa-trash"></i></button>` : ''}
+          ` : `<span class="text-amber-700/50 text-[10px] italic">Locked</span>`}
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html || `<tr><td colspan="13" class="text-center py-6 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
+
+  setText("kpi-income", totIncome.toLocaleString() + " MMK");
+  setText("kpi-expense", totExpense.toLocaleString() + " MMK");
+  setText("kpi-balance", runningBalance.toLocaleString() + " MMK");
+  setText("kpi-count", count);
+}
+
+function openAddModal() {
+  document.getElementById("modal-form-title").innerText = "စာရင်းအသစ် ထည့်သွင်းရန်";
+  document.getElementById("entry-uniqueId").value = "";
+  document.getElementById("entry-date").value = new Date().toISOString().split('T')[0];
+  document.getElementById("entry-type").value = "ဝင်ငွေ";
+  document.getElementById("entry-amount").value = "";
+  document.getElementById("entry-voucher").value = "";
+  document.getElementById("entry-description").value = "";
+
+  document.getElementById("entry-receiver").value = "None";
+
+  onTypeChange();
+  document.getElementById("entry-modal").classList.remove("hidden");
+}
+
+function openEditModal(uniqueId) {
+  const row = rawData.find(r => String(r[12]) === String(uniqueId));
+  if (!row) return;
+
+  document.getElementById("modal-form-title").innerText = "စာရင်း ပြန်လည်ပြင်ဆင်ရန်";
+  document.getElementById("entry-uniqueId").value = uniqueId;
+
+  let dVal = row[1];
+  if (dVal && dVal.includes("-")) {
+    const parts = dVal.split("-");
+    if (parts[0].length === 2) {
+      dVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  document.getElementById("entry-date").value = dVal;
+  document.getElementById("entry-type").value = row[2];
+
+  onTypeChange();
+  document.getElementById("entry-subcategory").value = row[3];
+  document.getElementById("entry-voucher").value = row[4];
+  document.getElementById("entry-description").value = row[5];
+  document.getElementById("entry-receiver").value = row[6];
+
+  const amt = row[2] === "ဝင်ငွေ" ? row[7] : row[8];
+  document.getElementById("entry-amount").value = amt;
+
+  document.getElementById("entry-modal").classList.remove("hidden");
 }
 
 function closeEntryModal() {
   document.getElementById("entry-modal").classList.add("hidden");
 }
 
+function onTypeChange() {
+  const type = document.getElementById("entry-type").value;
+  const subSelect = document.getElementById("entry-subcategory");
+  const amountInput = document.getElementById("entry-amount");
+
+  let subMap = CONFIG.SUB_CATEGORIES[currentSheet] || CONFIG.SUB_CATEGORIES["DefaultLedger"];
+  if (["1CB", "2CB", "3CB"].includes(currentSheet)) {
+    subMap = CONFIG.SUB_CATEGORIES["BankGroup"];
+  }
+
+  const options = subMap[type] || [];
+  subSelect.innerHTML = options.map(o => `<option value="${o}">${o}</option>`).join("");
+
+  // 💡 Color the Amount field: green = ဝင်ငွေ (income/credit), red = ထွက်ငွေ (expense/debit)
+  // Using inline styles so it always wins over the Tailwind CDN's default classes.
+  if (type === "ဝင်ငွေ") {
+    amountInput.style.color = "#34d399";        // emerald-400
+    amountInput.style.borderColor = "rgba(16, 185, 129, 0.5)";
+  } else {
+    amountInput.style.color = "#fb7185";        // rose-400
+    amountInput.style.borderColor = "rgba(244, 63, 94, 0.5)";
+  }
+}
+
 async function saveEntryForm(e) {
   e.preventDefault();
   const uniqueId = document.getElementById("entry-uniqueId").value;
-  const date = document.getElementById("entry-date").value;
+  const dateStr = document.getElementById("entry-date").value;
   const type = document.getElementById("entry-type").value;
-  const subcat = document.getElementById("entry-subcategory").value;
+  const subCat = document.getElementById("entry-subcategory").value;
   const voucher = document.getElementById("entry-voucher").value;
-  const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
+  const amt = parseFloat(document.getElementById("entry-amount").value) || 0;
   const receiver = document.getElementById("entry-receiver").value;
   const desc = document.getElementById("entry-description").value;
 
-  const schema = getSchema(currentSheet);
-  const row = new Array(13).fill("");
-  row[0] = ""; // Will be auto-indexed
-  row[1] = date;
-  row[2] = type;
-  row[3] = subcat;
-  row[4] = voucher;
-  row[5] = amount;
-  row[6] = receiver;
-  row[7] = amount;
-  row[8] = 0;
-  row[9] = 0;
-  row[10] = "Aug-26"; // Auto month-year
-  row[11] = currentSheet;
-  row[12] = uniqueId || "TMP-" + new Date().getTime();
+  const dParts = dateStr.split("-");
+  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
 
-  const loading = document.getElementById("loading-overlay");
-  if (loading) loading.classList.remove("hidden");
+  const dObj = new Date(dateStr);
+  const mName = dObj.toLocaleString('en-US', { month: 'short' });
+  const yName = dObj.getFullYear().toString().slice(-2);
+  const monthYear = `${mName}-${yName}`;
 
-  try {
-    const result = uniqueId 
-      ? await updateSheetEntry(currentSheet, uniqueId, row)
-      : await createSheetEntry(currentSheet, row);
+  const bookName = CONFIG.SHEETS[currentSheet] || currentSheet;
+  const recId = uniqueId || ("ID-" + new Date().getTime());
 
-    if (result.status === "success") {
-      closeEntryModal();
-      loadSheetView();
-    } else {
-      alert("Error: " + result.message);
-    }
-  } finally {
-    if (loading) loading.classList.add("hidden");
-  }
-}
+  const rowArray = [
+    0,
+    formattedDate,
+    type,
+    subCat,
+    voucher,
+    desc,
+    receiver,
+    type === "ဝင်ငွေ" ? amt : 0,
+    type === "ထွက်ငွေ" ? amt : 0,
+    0,
+    monthYear,
+    bookName,
+    recId
+  ];
 
-function editEntry(uniqueId, sheetName) {
-  openEntryModal(uniqueId, sheetName);
-}
-
-async function deleteEntry(uniqueId, sheetName) {
-  if (confirm("ဒီစာရင်းကို ဖျက်မလား?")) {
-    const loading = document.getElementById("loading-overlay");
-    if (loading) loading.classList.remove("hidden");
-
-    try {
-      await deleteSheetEntry(sheetName, uniqueId);
-      loadSheetView();
-    } finally {
-      if (loading) loading.classList.add("hidden");
-    }
-  }
-}
-
-function onTypeChange() {
-  const type = document.getElementById("entry-type").value;
-  const sheet = currentSheet;
-  const subCategories = CONFIG.SUB_CATEGORIES;
-
-  let options = [];
-  if (sheet === "1CB" || sheet === "2CB" || sheet === "3CB") {
-    options = subCategories.BankGroup[type] || [];
-  } else if (sheet === "4GB") {
-    options = subCategories["4GB"][type] || [];
-  } else if (sheet === "5FB") {
-    options = subCategories["5FB"][type] || [];
-  } else if (sheet === "6HB") {
-    options = subCategories["6HB"][type] || [];
-  } else {
-    options = subCategories.DefaultLedger[type] || [];
-  }
-
-  const select = document.getElementById("entry-subcategory");
-  select.innerHTML = options.map(opt => `<option value="${opt}">${opt}</option>`).join("");
-}
-
-function populateSubcategories(sheet) {
-  const subCategories = CONFIG.SUB_CATEGORIES;
-  let options = [];
-  if (sheet === "1CB" || sheet === "2CB" || sheet === "3CB") {
-    options = subCategories.BankGroup["ဝင်ငွေ"] || [];
-  } else if (sheet === "4GB") {
-    options = subCategories["4GB"]["ဝင်ငွေ"] || [];
-  } else if (sheet === "5FB") {
-    options = subCategories["5FB"]["ဝင်ငွေ"] || [];
-  } else if (sheet === "6HB") {
-    options = subCategories["6HB"]["ဝင်ငွေ"] || [];
-  } else {
-    options = subCategories.DefaultLedger["ဝင်ငွေ"] || [];
-  }
-
-  const select = document.getElementById("entry-subcategory");
-  select.innerHTML = options.map(opt => `<option value="${opt}">${opt}</option>`).join("");
-}
-
-// ============================================================
-// MODAL FUNCTIONS (inventory)
-// ============================================================
-function openInvModal(uniqueId = null) {
-  const modal = document.getElementById("inv-entry-modal");
-  if (!modal) return;
-
-  document.getElementById("inv-modal-title").innerText = uniqueId ? "ပစ္စည်း ပြင်ဆင်ရန်" : "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
-  document.getElementById("inv-uniqueId").value = uniqueId || "";
-
-  // Populate dropdowns
-  const locSelect = document.getElementById("inv-location");
-  locSelect.innerHTML = CONFIG.INVENTORY.LOCATIONS.map(loc => `<option value="${loc}">${loc}</option>`).join("");
-
-  const catSelect = document.getElementById("inv-category");
-  catSelect.innerHTML = CONFIG.INVENTORY.CATEGORIES.map(cat => `<option value="${cat}">${cat}</option>`).join("");
-
-  const unitSelect = document.getElementById("inv-unit");
-  unitSelect.innerHTML = CONFIG.INVENTORY.UNITS.map(unit => `<option value="${unit}">${unit}</option>`).join("");
-
-  document.getElementById("inv-entry-form").reset();
-  document.getElementById("inv-date").valueAsDate = new Date();
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  closeEntryModal();
 
   if (uniqueId) {
-    const row = rawData.find(r => r[10] === uniqueId);
-    if (row) {
-      document.getElementById("inv-date").value = row[1];
-      document.getElementById("inv-location").value = row[2];
-      document.getElementById("inv-category").value = row[3];
-      document.getElementById("inv-unit").value = row[4];
-      document.getElementById("inv-qty").value = row[5];
-      document.getElementById("inv-desc").value = row[6];
-      document.getElementById("inv-note").value = row[7];
-    }
+    await updateSheetEntry(currentSheet, uniqueId, rowArray);
+  } else {
+    await createSheetEntry(currentSheet, rowArray);
   }
 
-  modal.classList.remove("hidden");
+  delete sheetCache[currentSheet]; // invalidate so the reload is guaranteed fresh
+  await loadSheetView();
+  document.getElementById("loading-overlay").classList.add("hidden");
+}
+
+async function handleDelete(uniqueId) {
+  if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  await deleteSheetEntry(currentSheet, uniqueId);
+  delete sheetCache[currentSheet];
+  await loadSheetView();
+  document.getElementById("loading-overlay").classList.add("hidden");
+}
+
+function exportCSV() {
+  let csv = "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,အကြောင်းအရာ,လက်ခံသူ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,လနှစ်,စာအုပ်အမည်\n";
+  rawData.forEach((r, i) => {
+    csv += `"${i + 1}","${r[1]}","${r[2]}","${r[3]}","${r[4]}","${r[5]}","${r[6]}","${r[7]}","${r[8]}","${r[9]}","${r[10]}","${r[11]}"\n`;
+  });
+
+  const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `${currentSheet}_Export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+}
+
+// ============================================================
+// INVENTORY VIEW (11Inv) - ပစ္စည်းစာရင်း
+// ============================================================
+async function renderInventoryView(container) {
+  const requestedSheet = currentSheet; // "11Inv"
+
+  container.innerHTML = `
+    <div class="space-y-5">
+      <!-- Top 4 KPI Cards: item counts by location group -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-kitchen-set text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">မီးဖိုဆောင်</p><h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-200 mt-1">0</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-om text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဓမ္မာရုံ</p><h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-200 mt-1">0</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-gopuram text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">သိမ်</p><h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-200 mt-1">0</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-warehouse text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စတို (၁-၅ ပေါင်း)</p><h3 id="kpi-inv-store" class="text-base font-extrabold text-rose-200 mt-1">0</h3></div>
+        </div>
+      </div>
+
+      <!-- Action Bar -->
+      <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
+        <div class="relative w-full sm:w-64">
+          <input type="text" id="inv-search-input" oninput="renderInventoryTable()" placeholder="ရှာဖွေရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-lg bg-[#0a0806] border border-amber-900/40 text-amber-100 outline-none focus:border-amber-400">
+        </div>
+        <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+          <button onclick="exportInventoryCSV()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+          <button id="btn-add-inv" onclick="openAddInvModal()" class="p-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all"><i class="fa-solid fa-plus text-xs"></i> + စာရင်းအသစ်ထည့်ရန်</button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
+        <table class="w-full text-left border-collapse min-w-[1300px]">
+          <thead>
+            <tr>
+              <th class="w-12 text-center">စဉ်</th>
+              <th class="w-28">ရက်စွဲ</th>
+              <th class="w-28">နေရာ</th>
+              <th class="w-32">အမျိုးအစား</th>
+              <th class="min-w-[180px]">အကြောင်းအရာ</th>
+              <th class="w-24">ရေတွက်ပုံ</th>
+              <th class="w-24 text-right">အရေအတွက်</th>
+              <th class="min-w-[140px]">မှတ်ချက်</th>
+              <th class="w-24">လနှစ်</th>
+              <th class="w-36">စာအုပ်အမည်</th>
+              <th class="w-24 text-center right-0 sticky">လုပ်ဆောင်ချက်</th>
+            </tr>
+          </thead>
+          <tbody id="inv-table-body">
+            <tr><td colspan="11" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      ${renderPrevNextBar()}
+    </div>
+  `;
+
+  const auth = getAuthUser();
+  if (auth && auth.role === "Viewer") {
+    const addBtn = document.getElementById("btn-add-inv");
+    if (addBtn) addBtn.style.display = "none";
+  }
+
+  const cached = sheetCache["11Inv"];
+  if (cached) {
+    rawData = cached.data;
+    renderInventoryTable();
+  }
+
+  try {
+    const fresh = await fetchSheetData("11Inv");
+    sheetCache["11Inv"] = { data: fresh, ts: Date.now() };
+    if (currentSheet === requestedSheet) {
+      rawData = fresh;
+      renderInventoryTable();
+    }
+  } catch (err) {
+    console.error("Inventory load error:", err);
+    if (!cached) {
+      const tbody = document.getElementById("inv-table-body");
+      if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။ မကြာမီ ပြန်လည် ကြိုးစားပါ။</td></tr>`;
+    }
+  }
+}
+
+function renderInventoryTable() {
+  const tbody = document.getElementById("inv-table-body");
+  if (!tbody) return;
+
+  const searchInput = document.getElementById("inv-search-input");
+  const search = searchInput ? searchInput.value.toLowerCase() : "";
+  const auth = getAuthUser();
+
+  const counts = { kitchen: 0, dhammahall: 0, sim: 0, store: 0 };
+  let html = "";
+  let count = 0;
+
+  rawData.forEach((row) => {
+    const date = row[1] || "";
+    const location = row[2] || "";
+    const category = row[3] || "";
+    const desc = row[4] || "";
+    const unit = row[5] || "";
+    const qty = parseFloat(row[6]) || 0;
+    const note = row[7] || "";
+    const monthYear = row[8] || "";
+    const bookName = row[9] || "";
+    const uniqueId = row[10] || "";
+
+    // KPI tallies always run over the full dataset (not affected by search filter)
+    if (location === "မီးဖိုဆောင်") counts.kitchen += qty;
+    else if (location === "ဓမ္မာရုံ") counts.dhammahall += qty;
+    else if (location === "သိမ်") counts.sim += qty;
+    else if (CONFIG.INVENTORY.STORAGE_LOCATIONS.includes(location)) counts.store += qty;
+
+    const rowStr = `${date} ${location} ${category} ${desc} ${note} ${bookName}`.toLowerCase();
+    if (search && !rowStr.includes(search)) return;
+
+    count++;
+    const editable = canEditRecord(date);
+
+    html += `
+      <tr>
+        <td class="text-center font-mono">${count}</td>
+        <td class="font-mono">${date}</td>
+        <td>${location}</td>
+        <td>${category}</td>
+        <td>${desc}</td>
+        <td class="text-amber-300/80">${unit}</td>
+        <td class="text-right font-mono text-amber-300 font-bold">${qty ? qty.toLocaleString() : '-'}</td>
+        <td class="text-amber-200/70">${note}</td>
+        <td class="font-mono text-amber-500/80">${monthYear}</td>
+        <td class="text-amber-200/80">${bookName}</td>
+        <td class="text-center right-0 sticky">
+          ${auth && auth.role !== "Viewer" && editable ? `
+            <button onclick="openEditInvModal('${uniqueId}')" class="text-amber-400 hover:text-amber-200 mr-2" title="ပြင်ဆင်မည်"><i class="fa-solid fa-pen-to-square"></i></button>
+            ${auth.role === "Admin" ? `<button onclick="handleInvDelete('${uniqueId}')" class="text-rose-400 hover:text-rose-200" title="ဖျက်မည်"><i class="fa-solid fa-trash"></i></button>` : ''}
+          ` : `<span class="text-amber-700/50 text-[10px] italic">Locked</span>`}
+        </td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html || `<tr><td colspan="11" class="text-center py-6 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
+
+  setText("kpi-inv-kitchen", counts.kitchen.toLocaleString());
+  setText("kpi-inv-dhammahall", counts.dhammahall.toLocaleString());
+  setText("kpi-inv-sim", counts.sim.toLocaleString());
+  setText("kpi-inv-store", counts.store.toLocaleString());
+}
+
+function populateInvDropdowns() {
+  const locSel = document.getElementById("inv-location");
+  const catSel = document.getElementById("inv-category");
+  const unitSel = document.getElementById("inv-unit");
+  if (locSel && !locSel.options.length) {
+    locSel.innerHTML = CONFIG.INVENTORY.LOCATIONS.map(o => `<option value="${o}">${o}</option>`).join("");
+  }
+  if (catSel && !catSel.options.length) {
+    catSel.innerHTML = CONFIG.INVENTORY.CATEGORIES.map(o => `<option value="${o}">${o}</option>`).join("");
+  }
+  if (unitSel && !unitSel.options.length) {
+    unitSel.innerHTML = CONFIG.INVENTORY.UNITS.map(o => `<option value="${o}">${o}</option>`).join("");
+  }
+}
+
+function openAddInvModal() {
+  populateInvDropdowns();
+  document.getElementById("inv-modal-title").innerText = "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
+  document.getElementById("inv-uniqueId").value = "";
+  document.getElementById("inv-date").value = new Date().toISOString().split('T')[0];
+  document.getElementById("inv-location").value = CONFIG.INVENTORY.LOCATIONS[0];
+  document.getElementById("inv-category").value = CONFIG.INVENTORY.CATEGORIES[0];
+  document.getElementById("inv-desc").value = "";
+  document.getElementById("inv-unit").value = CONFIG.INVENTORY.UNITS[0];
+  document.getElementById("inv-qty").value = "";
+  document.getElementById("inv-note").value = "";
+  document.getElementById("inv-entry-modal").classList.remove("hidden");
+}
+
+function openEditInvModal(uniqueId) {
+  const row = rawData.find(r => String(r[10]) === String(uniqueId));
+  if (!row) return;
+
+  populateInvDropdowns();
+  document.getElementById("inv-modal-title").innerText = "ပစ္စည်း စာရင်း ပြင်ဆင်ရန်";
+  document.getElementById("inv-uniqueId").value = uniqueId;
+
+  let dVal = row[1];
+  if (dVal && dVal.includes("-")) {
+    const parts = dVal.split("-");
+    if (parts[0].length === 2) {
+      dVal = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+  }
+  document.getElementById("inv-date").value = dVal;
+  document.getElementById("inv-location").value = row[2];
+  document.getElementById("inv-category").value = row[3];
+  document.getElementById("inv-desc").value = row[4];
+  document.getElementById("inv-unit").value = row[5];
+  document.getElementById("inv-qty").value = row[6];
+  document.getElementById("inv-note").value = row[7];
+
+  document.getElementById("inv-entry-modal").classList.remove("hidden");
 }
 
 function closeInvModal() {
@@ -807,63 +851,74 @@ function closeInvModal() {
 async function saveInvEntryForm(e) {
   e.preventDefault();
   const uniqueId = document.getElementById("inv-uniqueId").value;
-  const date = document.getElementById("inv-date").value;
-  const loc = document.getElementById("inv-location").value;
-  const cat = document.getElementById("inv-category").value;
-  const unit = document.getElementById("inv-unit").value;
-  const qty = parseInt(document.getElementById("inv-qty").value) || 0;
+  const dateStr = document.getElementById("inv-date").value;
+  const location = document.getElementById("inv-location").value;
+  const category = document.getElementById("inv-category").value;
   const desc = document.getElementById("inv-desc").value;
+  const unit = document.getElementById("inv-unit").value;
+  const qty = parseFloat(document.getElementById("inv-qty").value) || 0;
   const note = document.getElementById("inv-note").value;
 
-  const row = new Array(11).fill("");
-  row[0] = "";
-  row[1] = date;
-  row[2] = loc;
-  row[3] = cat;
-  row[4] = unit;
-  row[5] = qty;
-  row[6] = desc;
-  row[7] = note;
-  row[8] = "Aug-26";
-  row[9] = "";
-  row[10] = uniqueId || "INV-" + new Date().getTime();
+  const dParts = dateStr.split("-");
+  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
 
-  const loading = document.getElementById("loading-overlay");
-  if (loading) loading.classList.remove("hidden");
+  const dObj = new Date(dateStr);
+  const mName = dObj.toLocaleString('en-US', { month: 'short' });
+  const yName = dObj.getFullYear().toString().slice(-2);
+  const monthYear = `${mName}-${yName}`;
 
-  try {
-    const result = uniqueId
-      ? await updateSheetEntry("11Inv", uniqueId, row)
-      : await createSheetEntry("11Inv", row);
+  const bookName = CONFIG.SHEETS["11Inv"] || "11Inv";
+  const recId = uniqueId || ("INV-" + new Date().getTime());
 
-    if (result.status === "success") {
-      closeInvModal();
-      loadSheetView();
-    } else {
-      alert("Error: " + result.message);
-    }
-  } finally {
-    if (loading) loading.classList.add("hidden");
+  const rowArray = [
+    0,             // A: စဉ် (auto-indexed on the backend)
+    formattedDate, // B: ရက်စွဲ
+    location,      // C: နေရာ
+    category,      // D: အမျိုးအစား
+    desc,          // E: အကြောင်းအရာ
+    unit,          // F: ရေတွက်ပုံ
+    qty,           // G: အရေအတွက်
+    note,          // H: မှတ်ချက်
+    monthYear,     // I: လနှစ်
+    bookName,      // J: စာအုပ်အမည်
+    recId          // K: UNIQUEID
+  ];
+
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  closeInvModal();
+
+  if (uniqueId) {
+    await updateSheetEntry("11Inv", uniqueId, rowArray);
+  } else {
+    await createSheetEntry("11Inv", rowArray);
   }
+
+  delete sheetCache["11Inv"];
+  await loadSheetView();
+  document.getElementById("loading-overlay").classList.add("hidden");
 }
 
-function editInvEntry(uniqueId, sheetName) {
-  openInvModal(uniqueId);
+async function handleInvDelete(uniqueId) {
+  if (!confirm("ဤပစ္စည်းစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  await deleteSheetEntry("11Inv", uniqueId);
+  delete sheetCache["11Inv"];
+  await loadSheetView();
+  document.getElementById("loading-overlay").classList.add("hidden");
 }
 
-async function deleteInvEntry(uniqueId, sheetName) {
-  if (confirm("ဒီပစ္စည်းကို ဖျက်မလား?")) {
-    const loading = document.getElementById("loading-overlay");
-    if (loading) loading.classList.remove("hidden");
+function exportInventoryCSV() {
+  let csv = "စဉ်,ရက်စွဲ,နေရာ,အမျိုးအစား,အကြောင်းအရာ,ရေတွက်ပုံ,အရေအတွက်,မှတ်ချက်,လနှစ်,စာအုပ်အမည်\n";
+  rawData.forEach((r, i) => {
+    csv += `"${i + 1}","${r[1]}","${r[2]}","${r[3]}","${r[4]}","${r[5]}","${r[6]}","${r[7]}","${r[8]}","${r[9]}"\n`;
+  });
 
-    try {
-      await deleteSheetEntry(sheetName, uniqueId);
-      loadSheetView();
-    } finally {
-      if (loading) loading.classList.add("hidden");
-    }
-  }
+  const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `Inventory_Export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
 }
 
-// Auto initialize on load
-document.addEventListener("DOMContentLoaded", initApp);
+window.onload = initApp;
