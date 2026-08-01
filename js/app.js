@@ -1,6 +1,6 @@
-// js/app.js
+// js/app.js - FIXES NULL innerHTML BUG & DEFAULTS TO HOME DASHBOARD
 
-let currentSheet = "1CB";
+let currentSheet = "Home"; // 💡 Default to Home Dashboard on App Start
 let rawData = [];
 
 function initApp() {
@@ -15,13 +15,14 @@ function initApp() {
   document.getElementById("erp-workspace").classList.remove("hidden");
   document.getElementById("current-user-display").innerText = `${auth.user} (${auth.role})`;
 
-  switchTab("1CB");
+  // 💡 Open Home Dashboard by Default
+  switchTab("Home");
 }
 
 function switchTab(sheetName) {
   currentSheet = sheetName;
   
-  // Sidebar active tab toggle
+  // Sidebar Nav Active Highlight
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
   const activeBtn = document.getElementById("btn-" + sheetName);
   if (activeBtn) activeBtn.classList.add("active");
@@ -34,18 +35,41 @@ function switchTab(sheetName) {
 
 async function loadSheetView() {
   const container = document.getElementById("view-container");
+  if (!container) return;
   
+  // 💡 1. HANDLE NON-TABLE VIEWS (Home, Report, System) - Early Return to prevent null crashes
   if (currentSheet === "Home" || currentSheet === "Report" || currentSheet === "System") {
+    let title = "Home Dashboard";
+    let subtitle = "ဓမ္မအလင်းရောင် တောရရိပ်သာ ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ် မှ ကြိုဆိုပါသည်";
+    let icon = "fa-gauge-high";
+
+    if (currentSheet === "Report") {
+      title = "Reporting Center";
+      subtitle = "ဘဏ္ဍာရေး အစီရင်ခံစာများ စင်တာ";
+      icon = "fa-chart-pie";
+    } else if (currentSheet === "System") {
+      title = "System Settings";
+      subtitle = "စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ";
+      icon = "fa-gears";
+    }
+
     container.innerHTML = `
-      <div class="p-8 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl">
-        <i class="fa-solid fa-dharmachakra text-4xl text-amber-400 mb-3"></i>
-        <h3 class="text-base font-bold text-amber-200">${currentSheet} Module</h3>
-        <p class="text-xs text-amber-500/60 mt-1">ဤအပိုင်းကို နောက်ပိုင်းတွင် ပြင်ဆင်ပေါင်းစပ်ပါမည်။</p>
-      </div>`;
-    return;
+      <div class="p-10 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl shadow-2xl my-6 max-w-2xl mx-auto space-y-4">
+        <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+          <i class="fa-solid ${icon} text-4xl"></i>
+        </div>
+        <h2 class="text-xl font-black text-gold-gradient">${title}</h2>
+        <p class="text-xs text-amber-200/70">${subtitle}</p>
+        <p class="text-[11px] text-amber-500/50 italic pt-3 border-t border-amber-900/20">
+          (ဤအပိုင်းအတွက် သီးသန့် အချက်အလက်များကို အနီးကပ် ထပ်မံဖြည့်သွင်းပေးပါမည်)
+        </p>
+      </div>
+    `;
+    return; // ★ CRITICAL RETURN: Stops code execution from trying to update non-existent table elements!
   }
 
-  // 1. Render Immediate UI Frame (Prevents Blank Screen)
+  // 💡 2. HANDLE TABLE SHEETS (1CB to 10GB)
+  // Immediate UI Skeleton Render
   container.innerHTML = `
     <div class="space-y-5">
       <!-- Top 4 KPI Cards -->
@@ -115,19 +139,25 @@ async function loadSheetView() {
     if (addBtn) addBtn.style.display = "none";
   }
 
-  // 2. Asynchronously Fetch Data from Google Sheet
+  // Fetch Data Safely
   try {
     rawData = await fetchSheetData(currentSheet);
     renderTable();
   } catch (err) {
     console.error("Sheet load error:", err);
-    document.getElementById("table-body").innerHTML = `<tr><td colspan="13" class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။ မကြာမီ ပြန်လည် ကြိုးစားပါ။</td></tr>`;
+    const tbody = document.getElementById("table-body");
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။ မကြာမီ ပြန်လည် ကြိုးစားပါ။</td></tr>`;
+    }
   }
 }
 
 function renderTable() {
   const tbody = document.getElementById("table-body");
-  const search = document.getElementById("search-input") ? document.getElementById("search-input").value.toLowerCase() : "";
+  if (!tbody) return; // Safely exit if table-body doesn't exist
+
+  const searchInput = document.getElementById("search-input");
+  const search = searchInput ? searchInput.value.toLowerCase() : "";
   const auth = getAuthUser();
 
   let totIncome = 0;
@@ -174,7 +204,7 @@ function renderTable() {
         <td class="font-mono text-amber-500/80">${monthYear}</td>
         <td class="text-amber-200/80">${bookName}</td>
         <td class="text-center right-0 sticky">
-          ${auth.role !== "Viewer" && editable ? `
+          ${auth && auth.role !== "Viewer" && editable ? `
             <button onclick="openEditModal('${uniqueId}')" class="text-amber-400 hover:text-amber-200 mr-2" title="ပြင်ဆင်မည်"><i class="fa-solid fa-pen-to-square"></i></button>
             ${auth.role === "Admin" ? `<button onclick="handleDelete('${uniqueId}')" class="text-rose-400 hover:text-rose-200" title="ဖျက်မည်"><i class="fa-solid fa-trash"></i></button>` : ''}
           ` : `<span class="text-amber-700/50 text-[10px] italic">Locked</span>`}
@@ -185,10 +215,16 @@ function renderTable() {
 
   tbody.innerHTML = html || `<tr><td colspan="13" class="text-center py-6 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
 
-  document.getElementById("kpi-income").innerText = totIncome.toLocaleString() + " MMK";
-  document.getElementById("kpi-expense").innerText = totExpense.toLocaleString() + " MMK";
-  document.getElementById("kpi-balance").innerText = runningBalance.toLocaleString() + " MMK";
-  document.getElementById("kpi-count").innerText = count;
+  // Safely update KPI Cards
+  const kInc = document.getElementById("kpi-income");
+  const kExp = document.getElementById("kpi-expense");
+  const kBal = document.getElementById("kpi-balance");
+  const kCnt = document.getElementById("kpi-count");
+
+  if (kInc) kInc.innerText = totIncome.toLocaleString() + " MMK";
+  if (kExp) kExp.innerText = totExpense.toLocaleString() + " MMK";
+  if (kBal) kBal.innerText = runningBalance.toLocaleString() + " MMK";
+  if (kCnt) kCnt.innerText = count;
 }
 
 function openAddModal() {
@@ -214,7 +250,6 @@ function openEditModal(uniqueId) {
   document.getElementById("modal-form-title").innerText = "စာရင်း ပြန်လည်ပြင်ဆင်ရန်";
   document.getElementById("entry-uniqueId").value = uniqueId;
   
-  // Format Date back to YYYY-MM-DD for date input
   let dVal = row[1];
   if (dVal && dVal.includes("-")) {
     const parts = dVal.split("-");
@@ -266,18 +301,18 @@ async function saveEntryForm(e) {
   const desc = document.getElementById("entry-description").value;
 
   const dParts = dateStr.split("-");
-  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`; // DD-MM-YYYY
+  const formattedDate = `${dParts[2]}-${dParts[1]}-${dParts[0]}`;
 
   const dObj = new Date(dateStr);
   const mName = dObj.toLocaleString('en-US', { month: 'short' });
   const yName = dObj.getFullYear().toString().slice(-2);
-  const monthYear = `${mName}-${yName}`; // e.g. Aug-26
+  const monthYear = `${mName}-${yName}`;
 
   const bookName = CONFIG.SHEETS[currentSheet] || currentSheet;
   const recId = uniqueId || ("ID-" + new Date().getTime());
 
   const rowArray = [
-    0, // Index auto-set by backend
+    0,
     formattedDate,
     type,
     subCat,
@@ -286,7 +321,7 @@ async function saveEntryForm(e) {
     receiver,
     type === "ဝင်ငွေ" ? amt : 0,
     type === "ထွက်ငွေ" ? amt : 0,
-    0, // Balance
+    0,
     monthYear,
     bookName,
     recId
