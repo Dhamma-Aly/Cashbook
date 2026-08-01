@@ -1,7 +1,10 @@
+// js/config.js
+
 const CONFIG = {
-  // Google Apps Script Web App Deploy URL
-  API_BASE_URL: "https://script.google.com/macros/s/AKfycbxYOUR_DEPLOYED_ID_HERE/exec",
+  // 💡 မိမိ၏ Google Apps Script API URL
+  API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
   
+  // Sheet အမည်များ
   SHEETS: {
     "1CB": "အထွေထွေ ရန်ပုံငွေ (Bank)",
     "2CB": "ဆွမ်းပဒေသာပင် (Bank)",
@@ -15,6 +18,7 @@ const CONFIG = {
     "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်"
   },
 
+  // Category & Sub-Category Mapping
   SUB_CATEGORIES: {
     "Bank": {
       "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဘဏ်ထည့်ငွေ", "ဘဏ်တိုးရရှိ"],
