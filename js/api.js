@@ -12,6 +12,23 @@ async function fetchSheetData(sheetName) {
   }
 }
 
+// 💡 Single round-trip fetch of the Home Dashboard: the 4 summary cards
+// (Home!B2:E2) plus the bank-summary mini table (Home!A3:G12).
+async function fetchHomeDashboard() {
+  try {
+    const url = `${CONFIG.API_BASE_URL}?action=home`;
+    const res = await fetch(url);
+    const json = await res.json();
+    if (json.status === "success") {
+      return { cards: json.cards || [], table: json.table || [] };
+    }
+    return { cards: [], table: [] };
+  } catch (err) {
+    console.error("API Home Error:", err);
+    return { cards: [], table: [] };
+  }
+}
+
 async function createSheetEntry(sheetName, rowArray) {
   try {
     const res = await fetch(CONFIG.API_BASE_URL, {
