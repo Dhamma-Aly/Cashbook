@@ -26,9 +26,6 @@ async function renderLedgerEngine(viewName) {
 
   await loadView(viewName);
 
-  const prevNext = document.getElementById("prev-next-bar");
-  if (prevNext) prevNext.innerHTML = renderPrevNextBar();
-
   // Hide Add button for Viewer
   const auth = getAuthUser();
   if (auth && auth.role === "Viewer") {
@@ -154,8 +151,7 @@ function renderTable() {
   renderLedgerPaginationBar(filtered.length, totalPages);
 }
 
-// 💡 Row-pagination bar (50 rows/page) — separate from the tab-to-tab
-// Previous/Next bar (#prev-next-bar) at the very bottom of the page.
+// 💡 Row-pagination bar (50 rows/page), shown below the table.
 function renderLedgerPaginationBar(totalFiltered, totalPages) {
   const bar = document.getElementById("ledger-pagination-bar");
   if (!bar) return;

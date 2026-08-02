@@ -70,37 +70,6 @@ function updateHeaderBadge() {
   el.innerText = `Date: ${dateStr} | ${auth ? auth.role : ""}`;
 }
 
-// 💡 PREVIOUS / NEXT page navigation (every ledger + inventory page,
-// i.e. everything except Home / Report / System). Each of those view
-// templates has an empty <div id="prev-next-bar"></div> that the calling
-// module fills with this after loadView().
-function renderPrevNextBar() {
-  const order = CONFIG.NAV_ORDER;
-  const idx = order.indexOf(currentSheet);
-  if (idx === -1) return "";
-
-  const prev = idx > 0 ? order[idx - 1] : null;
-  const next = idx < order.length - 1 ? order[idx + 1] : null;
-
-  const prevLabel = prev ? (CONFIG.SHEETS[prev] || prev) : "";
-  const nextLabel = next ? (CONFIG.SHEETS[next] || next) : "";
-
-  return `
-    <div class="flex justify-between items-center gap-3 pt-1">
-      <button ${prev ? `onclick="switchTab('${prev}')"` : 'disabled'}
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${prev ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
-        <i class="fa-solid fa-chevron-left text-[10px]"></i>
-        <span class="truncate max-w-[220px]">${prev ? `${prev} - ${prevLabel}` : 'Previous'}</span>
-      </button>
-      <button ${next ? `onclick="switchTab('${next}')"` : 'disabled'}
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${next ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
-        <span class="truncate max-w-[220px]">${next ? `${next} - ${nextLabel}` : 'Next'}</span>
-        <i class="fa-solid fa-chevron-right text-[10px]"></i>
-      </button>
-    </div>
-  `;
-}
-
 function initApp() {
   const auth = getAuthUser();
   if (!auth) {

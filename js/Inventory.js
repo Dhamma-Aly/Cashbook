@@ -12,9 +12,6 @@ async function renderInventoryView() {
 
   await loadView("Inventory");
 
-  const prevNext = document.getElementById("prev-next-bar");
-  if (prevNext) prevNext.innerHTML = renderPrevNextBar();
-
   const auth = getAuthUser();
   if (auth && auth.role === "Viewer") {
     const addBtn = document.getElementById("btn-add-inv");
@@ -131,8 +128,7 @@ function renderInventoryTable() {
   renderInvPaginationBar(filtered.length, totalPages);
 }
 
-// 💡 Row-pagination bar (50 rows/page) — separate from the tab-to-tab
-// Previous/Next bar (#prev-next-bar) at the very bottom of the page.
+// 💡 Row-pagination bar (50 rows/page), shown below the table.
 function renderInvPaginationBar(totalFiltered, totalPages) {
   const bar = document.getElementById("inv-pagination-bar");
   if (!bar) return;
