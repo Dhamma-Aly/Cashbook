@@ -6,19 +6,16 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-window.switchTab = async function(tabKey) {
-  // Update Active Sidebar Button
+window.switchTab = async function (tabKey) {
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
   const activeBtn = document.getElementById(`btn-${tabKey}`);
   if (activeBtn) activeBtn.classList.add("active");
 
-  // Update Page Title
   const pageTitle = document.getElementById("page-title");
   if (pageTitle) {
     pageTitle.textContent = window.APP_CONFIG.BOOKS[tabKey] || tabKey;
   }
 
-  // Load Appropriate Fragment View
   if (tabKey === "Home") {
     await window.renderDashboardView();
   } else if (["1CB", "2CB", "3CB"].includes(tabKey)) {
@@ -34,8 +31,13 @@ window.switchTab = async function(tabKey) {
   }
 };
 
-// Modal Control Functions
-window.openAddModal = function() {
+window.loadSheetView = async function () {
+  if (window.currentSheetKey) {
+    await window.switchTab(window.currentSheetKey);
+  }
+};
+
+window.openAddModal = function () {
   const modal = document.getElementById("entry-modal");
   document.getElementById("entry-form").reset();
   document.getElementById("entry-uniqueId").value = "";
@@ -44,11 +46,11 @@ window.openAddModal = function() {
   modal.classList.remove("hidden");
 };
 
-window.closeEntryModal = function() {
+window.closeEntryModal = function () {
   document.getElementById("entry-modal").classList.add("hidden");
 };
 
-window.onTypeChange = function() {
+window.onTypeChange = function () {
   const type = document.getElementById("entry-type").value;
   const subSelect = document.getElementById("entry-subcategory");
   subSelect.innerHTML = "";
@@ -62,7 +64,7 @@ window.onTypeChange = function() {
   });
 };
 
-window.saveEntryForm = async function(event) {
+window.saveEntryForm = async function (event) {
   event.preventDefault();
   const sheet = window.currentSheetKey;
   const uniqueId = document.getElementById("entry-uniqueId").value;
@@ -81,9 +83,8 @@ window.saveEntryForm = async function(event) {
   const expense = type === "ထွက်ငွေ" ? amount : 0;
 
   const rowData = [
-    uniqueId || `ID-${Date.now()}`,
-    date, type, subcat, voucher, desc, receiver,
-    income, expense, "", monthYear, bookName, "Active"
+    "", date, type, subcat, voucher, desc, receiver,
+    income, expense, "", monthYear, bookName, uniqueId || `ID-${Date.now()}`
   ];
 
   window.closeEntryModal();
@@ -92,7 +93,6 @@ window.saveEntryForm = async function(event) {
   try {
     const rowIndex = uniqueId ? parseInt(uniqueId) : null;
     await window.saveSheetEntry(sheet, rowData, rowIndex);
-    await window.fetchSheetData(sheet);
     await window.switchTab(sheet);
   } catch (err) {
     alert("အချက်အလက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
@@ -101,9 +101,10 @@ window.saveEntryForm = async function(event) {
   }
 };
 
-window.editEntry = function(rowIndex) {
+window.editEntry = function (rowIndex) {
   const rows = window.currentSheetData;
-  const r = rows[rowIndex - 1];
+  // Account for header offset (Index 0 is Row 6, so array index = rowIndex - 6)
+  const r = rows[rowIndex - 1] || rows[rowIndex - 6];
   if (!r) return;
 
   window.openAddModal();
@@ -116,13 +117,13 @@ window.editEntry = function(rowIndex) {
   document.getElementById("entry-voucher").value = r[4] || "";
   document.getElementById("entry-description").value = r[5] || "";
   document.getElementById("entry-receiver").value = r[6] || "None";
-  
+
   const inc = parseFloat(r[7]) || 0;
   const exp = parseFloat(r[8]) || 0;
   document.getElementById("entry-amount").value = inc || exp || 0;
 };
 
-window.deleteEntry = async function(rowIndex) {
+window.deleteEntry = async function (rowIndex) {
   if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
   document.getElementById("loading-overlay").classList.remove("hidden");
   try {
@@ -135,7 +136,7 @@ window.deleteEntry = async function(rowIndex) {
   }
 };
 
-window.exportCSV = function() {
+window.exportCSV = function () {
   const rows = window.currentSheetData;
   if (!rows || rows.length === 0) return alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
 

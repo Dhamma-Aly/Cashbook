@@ -1,4 +1,4 @@
-// js/api.js - SWR & IndexedDB Engine
+// js/api.js - IndexedDB Local Cache & SWR Network Fetcher
 const DB_NAME = "CashbookLocalDB";
 const DB_VERSION = 1;
 
@@ -48,15 +48,12 @@ class LocalCacheEngine {
 
 window.cacheEngine = new LocalCacheEngine();
 
-// SWR Fetcher
 window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
-  // 1. Return Local Cache instantly
   const localData = await window.cacheEngine.getSheet(sheetName);
   if (localData && typeof onLocalLoaded === "function") {
     onLocalLoaded(localData);
   }
 
-  // 2. Fetch Fresh Data from Worker
   try {
     const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/data?sheet=${encodeURIComponent(sheetName)}`);
     const json = await res.json();
@@ -68,22 +65,6 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
     console.warn("Network fetch failed, using local cache", err);
   }
   return localData || [];
-};
-
-window.fetchAllSheetsData = async function() {
-  try {
-    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/all-data`);
-    const json = await res.json();
-    if (json.success && json.data) {
-      for (const sheetName of Object.keys(json.data)) {
-        await window.cacheEngine.setSheet(sheetName, json.data[sheetName]);
-      }
-      return json.data;
-    }
-  } catch (err) {
-    console.error("Fetch all sheets error", err);
-  }
-  return null;
 };
 
 window.saveSheetEntry = async function(sheet, rowData, rowIndex = null) {

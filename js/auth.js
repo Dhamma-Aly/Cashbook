@@ -1,4 +1,4 @@
-// js/auth.js - User Session & Login Logic
+// js/auth.js - Authentication & User Session Manager
 window.currentUser = null;
 
 window.initAuth = function() {
@@ -23,7 +23,6 @@ window.handleLoginSubmit = function(event) {
   const pass = document.getElementById("login-password").value;
   const errDiv = document.getElementById("login-error");
 
-  // Simple Passcode check: Admin = 123456, Account = 123456, Viewer = 123456
   if (pass === "123456" || pass === "admin") {
     window.currentUser = {
       username: username,

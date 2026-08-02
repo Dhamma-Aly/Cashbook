@@ -1,4 +1,4 @@
-// js/report-system.js - Report Center (12Rep) & Mindfulness System
+// js/report-system.js - Report & Mindfulness System Handler
 window.renderReportView = async function(activeTab = "Report") {
   const container = document.getElementById("view-container");
   const res = await fetch("view/report-system.html");

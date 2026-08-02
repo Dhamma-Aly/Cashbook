@@ -1,7 +1,7 @@
-// js/Banks.js - Bank Group (1CB, 2CB, 3CB)
+// js/Banks.js - Bank Group Table Renderer
 window.renderBankView = async function(sheetKey) {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/Banks.html");
+  const res = await fetch("view/banks.html");
   container.innerHTML = await res.text();
 
   window.currentSheetKey = sheetKey;
@@ -13,14 +13,16 @@ window.renderBankView = async function(sheetKey) {
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
 
-    const dataRows = rows.length > 1 ? rows.slice(1) : [];
+    // Header rows in Google Sheet are rows 1..5. Actual transactions start at index 5 (Row 6)
+    const dataRows = rows.length > 5 ? rows.slice(5) : [];
     
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
       dataRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
-        const rowIndex = idx + 2; // Google Sheet row index
+        const rowIndex = idx + 6; // Google Sheet Row 6+
+        const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const type = r[2] || "-";
         const subcat = r[3] || "-";
@@ -40,7 +42,7 @@ window.renderBankView = async function(sheetKey) {
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td class="text-center font-bold text-amber-500/70">${idx + 1}</td>
+          <td class="text-center font-bold text-amber-500/70">${srNo}</td>
           <td class="font-mono text-xs">${date}</td>
           <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${type === 'ဝင်ငွေ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${type}</span></td>
           <td class="font-semibold text-amber-200">${subcat}</td>
@@ -61,7 +63,6 @@ window.renderBankView = async function(sheetKey) {
       });
     }
 
-    // Update KPIs
     document.getElementById("kpi-income").textContent = `${inc.toLocaleString()} MMK`;
     document.getElementById("kpi-expense").textContent = `${exp.toLocaleString()} MMK`;
     document.getElementById("kpi-balance").textContent = `${bal.toLocaleString()} MMK`;
@@ -69,4 +70,16 @@ window.renderBankView = async function(sheetKey) {
   };
 
   await window.fetchSheetData(sheetKey, renderData).then(data => renderData(data));
+};
+
+window.onLedgerSearchInput = function() {
+  const query = document.getElementById("search-input").value.toLowerCase();
+  const tbody = document.getElementById("table-body");
+  if (!tbody) return;
+
+  const trs = tbody.getElementsByTagName("tr");
+  Array.from(trs).forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    tr.style.display = text.includes(query) ? "" : "none";
+  });
 };

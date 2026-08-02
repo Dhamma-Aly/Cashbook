@@ -1,9 +1,7 @@
-// js/config.js - Global App Settings
+// js/config.js - System Configuration & Constants
 window.APP_CONFIG = {
-  // Cloudflare Worker API URL
   API_BASE_URL: "https://cashbook-api.dhammaaly.workers.dev",
   
-  // Book definitions
   BOOKS: {
     "Home": "Home Dashboard",
     "1CB": "1CB - အထွေထွေ ရန်ပုံငွေ (Bank)",
@@ -20,7 +18,6 @@ window.APP_CONFIG = {
     "12Rep": "Reporting Center"
   },
 
-  // Myanmar Subcategories
   SUBCATEGORIES: {
     "ဝင်ငွေ": [
       "လှူဒါန်းငွေ",
@@ -35,6 +32,7 @@ window.APP_CONFIG = {
       "စာရင်းပြောင်းဝင်ငွေ"
     ],
     "ထွက်ငွေ": [
+      "ဘဏ်ထည့်ငွေ", // Auto-Transfer to 2CB
       "ဆွမ်းစရိတ်",
       "ဆွမ်းကိန်း/ဆွမ်းခဲဖွယ်",
       "မီးဖိုဆောင်စရိတ်",
@@ -50,8 +48,7 @@ window.APP_CONFIG = {
     ]
   },
 
-  // Inventory Options
   INVENTORY_LOCATIONS: ["မီးဖိုဆောင်", "ဓမ္မာရုံ", "သိမ်", "စတို", "အထွေထွေ"],
   INVENTORY_CATEGORIES: ["ပရိဘောဂ", "လျှပ်စစ်ပစ္စည်း", "မီးဖိုချောင်သုံး", "သံဃာ့ပရိက္ခရာ", "စက်ပစ္စည်း", "အထွေထွေ"],
-  INVENTORY_UNITS: ["ခု", "ထုပ်", "မူ", "စုံ", "ကဒ်", "ချောင်း", "လုံး", "အုပ်", "သေတ္တာ", "စုံ"]
+  INVENTORY_UNITS: ["ခု", "ထုပ်", "မူ", "စုံ", "ကဒ်", "ချောင်း", "လုံး", "အုပ်", "သေတ္တာ"]
 };

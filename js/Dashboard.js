@@ -1,12 +1,9 @@
-// js/Dashboard.js - Dashboard Rendering
+// js/Dashboard.js - Home Dashboard View Renderer
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
-  
-  // Load template HTML if not present
-  const res = await fetch("view/Dashboard.html");
+  const res = await fetch("view/dashboard.html");
   container.innerHTML = await res.text();
 
-  // Load Home sheet data
   const renderHomeData = (rows) => {
     let totalFund = 0, totalBank = 0, totalCash = 0, totalCount = 0;
     
@@ -22,8 +19,11 @@ window.renderDashboardView = async function() {
       </thead>
       <tbody>`;
 
-    if (rows && rows.length > 1) {
-      rows.slice(1).forEach((r, idx) => {
+    // Headers are in rows 0..4, data rows start at index 5 or 2 depending on layout
+    const dataRows = rows && rows.length > 2 ? rows.slice(2) : [];
+
+    if (dataRows.length > 0) {
+      dataRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
         const name = r[1] || r[0] || "-";
         const bank = parseFloat((r[2] || "0").toString().replace(/,/g, "")) || 0;
@@ -50,13 +50,11 @@ window.renderDashboardView = async function() {
     tableHtml += `</tbody></table>`;
     document.getElementById("home-bank-table").innerHTML = tableHtml;
 
-    // Update Top KPIs
     document.getElementById("kpi-home-fund").textContent = `${totalFund.toLocaleString()} MMK`;
     document.getElementById("kpi-home-bank").textContent = `${totalBank.toLocaleString()} MMK`;
     document.getElementById("kpi-home-cash").textContent = `${totalCash.toLocaleString()} MMK`;
     document.getElementById("kpi-home-count").textContent = totalCount;
   };
 
-  // SWR Call
   await window.fetchSheetData("Home", renderHomeData).then(data => renderHomeData(data));
 };

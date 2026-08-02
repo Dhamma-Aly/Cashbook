@@ -1,5 +1,4 @@
-// js/Books.js - Ledger Group (4GB..10GB)
+// js/Books.js - Ledger Group Module
 window.renderBookView = async function(sheetKey) {
-  // Reuses Bank view renderer logic because schemas are identical
   await window.renderBankView(sheetKey);
 };

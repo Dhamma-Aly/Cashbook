@@ -1,22 +1,26 @@
 // js/Inventory.js - Inventory (11Inv) Logic
 window.renderInventoryView = async function() {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/Inventory.html");
+  const res = await fetch("view/inventory.html");
   container.innerHTML = await res.text();
 
+  window.currentSheetKey = "11Inv";
+
   const renderData = (rows) => {
+    window.currentSheetData = rows || [];
     let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
     const tbody = document.getElementById("inv-table-body");
     tbody.innerHTML = "";
 
-    const dataRows = rows && rows.length > 1 ? rows.slice(1) : [];
+    const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
 
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
       dataRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
-        const rowIndex = idx + 2;
+        const rowIndex = idx + 6;
+        const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const loc = r[2] || "-";
         const cat = r[3] || "-";
@@ -34,7 +38,7 @@ window.renderInventoryView = async function() {
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
-          <td class="text-center font-bold text-amber-500/70">${idx + 1}</td>
+          <td class="text-center font-bold text-amber-500/70">${srNo}</td>
           <td class="font-mono text-xs">${date}</td>
           <td class="font-bold text-amber-300">${loc}</td>
           <td><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${cat}</span></td>
@@ -60,4 +64,70 @@ window.renderInventoryView = async function() {
   };
 
   await window.fetchSheetData("11Inv", renderData).then(data => renderData(data));
+};
+
+window.openAddInvModal = function() {
+  const modal = document.getElementById("inv-entry-modal");
+  document.getElementById("inv-entry-form").reset();
+  document.getElementById("inv-uniqueId").value = "";
+  document.getElementById("inv-date").valueAsDate = new Date();
+
+  // Populate Select Options
+  const locSelect = document.getElementById("inv-location");
+  locSelect.innerHTML = "";
+  window.APP_CONFIG.INVENTORY_LOCATIONS.forEach(l => locSelect.add(new Option(l, l)));
+
+  const catSelect = document.getElementById("inv-category");
+  catSelect.innerHTML = "";
+  window.APP_CONFIG.INVENTORY_CATEGORIES.forEach(c => catSelect.add(new Option(c, c)));
+
+  const unitSelect = document.getElementById("inv-unit");
+  unitSelect.innerHTML = "";
+  window.APP_CONFIG.INVENTORY_UNITS.forEach(u => unitSelect.add(new Option(u, u)));
+
+  modal.classList.remove("hidden");
+};
+
+window.closeInvModal = function() {
+  document.getElementById("inv-entry-modal").classList.add("hidden");
+};
+
+window.saveInvEntryForm = async function(event) {
+  event.preventDefault();
+  const uniqueId = document.getElementById("inv-uniqueId").value;
+  const date = document.getElementById("inv-date").value;
+  const loc = document.getElementById("inv-location").value;
+  const cat = document.getElementById("inv-category").value;
+  const unit = document.getElementById("inv-unit").value;
+  const qty = parseInt(document.getElementById("inv-qty").value) || 0;
+  const desc = document.getElementById("inv-desc").value;
+  const note = document.getElementById("inv-note").value;
+
+  const monthYear = date ? date.substring(0, 7) : "";
+  const rowData = ["", date, loc, cat, desc, unit, qty, note, monthYear, "11Inv - ပစ္စည်းစာရင်း", uniqueId || `INV-${Date.now()}`];
+
+  window.closeInvModal();
+  document.getElementById("loading-overlay").classList.remove("hidden");
+
+  try {
+    const rowIndex = uniqueId ? parseInt(uniqueId) : null;
+    await window.saveSheetEntry("11Inv", rowData, rowIndex);
+    await window.renderInventoryView();
+  } catch (err) {
+    alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
+  } finally {
+    document.getElementById("loading-overlay").classList.add("hidden");
+  }
+};
+
+window.onInvSearchInput = function() {
+  const query = document.getElementById("inv-search-input").value.toLowerCase();
+  const tbody = document.getElementById("inv-table-body");
+  if (!tbody) return;
+
+  const trs = tbody.getElementsByTagName("tr");
+  Array.from(trs).forEach(tr => {
+    const text = tr.innerText.toLowerCase();
+    tr.style.display = text.includes(query) ? "" : "none";
+  });
 };
