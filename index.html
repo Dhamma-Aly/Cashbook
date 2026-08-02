@@ -6,18 +6,27 @@
   <meta name="description" content="ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ်">
   <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - ငွေစာရင်း စီမံခန့်ခွဲမှု</title>
 
-  <!-- 🚀 PERFORMANCE: preconnect to every third-party origin up front so the
-       browser can finish DNS + TLS negotiation while the rest of the HTML is
-       still parsing, instead of paying that cost when each <script>/<link>
-       is actually reached. -->
-  <link rel="preconnect" href="https://cdn.tailwindcss.com">
-  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+  <!-- 🚀 PERFORMANCE: preconnect to the remaining third-party origin (fonts)
+       up front so the browser can finish DNS + TLS negotiation while the
+       rest of the HTML is still parsing. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- Tailwind CSS & FontAwesome CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- 💡 Tailwind: previously loaded from cdn.tailwindcss.com, which ships
+       the ENTIRE JIT compiler as JS and regenerates the stylesheet in the
+       browser on every load -- explicitly not recommended for production.
+       css/tailwind.build.css is a pre-built, minified, purged stylesheet
+       (built with `npx tailwindcss`, scanning index.html + view/*.html +
+       js/*.js for every class actually used) -- same visual result, ~22KB
+       of plain CSS instead of a multi-hundred-KB runtime compiler. -->
+  <link rel="stylesheet" href="css/tailwind.build.css">
+
+  <!-- 💡 FontAwesome: previously loaded from cdnjs (the full all.min.css +
+       all 3 icon-weight webfonts: solid/regular/brands). This app only
+       ever uses fa-solid icons, so it's now self-hosted with just the
+       solid webfont (woff2 only -- ttf fallback dropped, woff2 support is
+       effectively universal) -- no external CDN round trip either. -->
+  <link rel="stylesheet" href="css/fontawesome.min.css">
 
   <!-- 🇲🇲 Proper Myanmar-script webfont so ခေါင်းစဉ်/စာသားများ render crisp &
        readable on every OS (many devices fall back to a low-quality system
