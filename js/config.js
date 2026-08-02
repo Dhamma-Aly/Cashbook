@@ -1,64 +1,57 @@
-// js/config.js  
-
-const CONFIG = {
-  // Google Apps Script Web App Deployment URL
-  API_BASE_URL: "https://script.google.com/macros/s/AKfycbzbumPbAPfL5vDAK0Z9JmZXbxdPzQQHzyf0NkaVAPIL4QRtitb0AoEUzeGs1wQwmVfu/exec",
-
-  // 💡 Which sheets belong to which module (used by js/app.js's router to
-  // dispatch to js/banks.js vs js/books.js — both share the same engine
-  // in js/books.js since the row schema + modal are identical).
-  BANK_GROUP: ["1CB", "2CB", "3CB"],
-  LEDGER_GROUP: ["4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB"],
-
-  // 💡 Page order used for the Previous / Next navigation at the bottom of
-  // every ledger / inventory page (Home, Report, System are excluded).
-  NAV_ORDER: ["1CB", "2CB", "3CB", "4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB", "11Inv"],
-
-  // Sheet Name Mapping (used for page titles / book-name auto-fill)
-  SHEETS: {
-    "1CB": "အထွေထွေ ရန်ပုံငွေ (Bank)",
-    "2CB": "ဆွမ်းပဒေသာပင် (Bank)",
-    "3CB": "တစ်ဦးတည်းစာရင်း (Bank)",
-    "4GB": "ကျောင်းရန်ပုံငွေ စာအုပ်",
-    "5FB": "ဆွမ်းပဒေသာပင် စာအုပ်",
-    "6HB": "ဓမ္မာရုံငွေစာရင်း စာအုပ်",
-    "7PB": "စေတီငွေစာရင်း စာအုပ်",
-    "8EB": "လျှပ်စစ်ပဒေသာပင် စာအုပ်",
-    "9MB": "ဆေးပဒေသာပင် စာအုပ်",
-    "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်",
-    "11Inv": "ပစ္စည်းစာရင်း (Inventory)"
+// js/config.js - Global App Settings
+window.APP_CONFIG = {
+  // Cloudflare Worker API URL
+  API_BASE_URL: "https://cashbook-api.dhammaaly.workers.dev",
+  
+  // Book definitions
+  BOOKS: {
+    "Home": "Home Dashboard",
+    "1CB": "1CB - အထွေထွေ ရန်ပုံငွေ (Bank)",
+    "2CB": "2CB - ဆွမ်းပဒေသာပင် (Bank)",
+    "3CB": "3CB - တစ်ဦးတည်းစာရင်း (Bank)",
+    "4GB": "4GB - ကျောင်းရန်ပုံငွေ စာအုပ်",
+    "5FB": "5FB - ဆွမ်းပဒေသာပင် စာအုပ်",
+    "6HB": "6HB - ဓမ္မာရုံငွေစာရင်း စာအုပ်",
+    "7PB": "7PB - စေတီငွေစာရင်း စာအုပ်",
+    "8EB": "8EB - လျှပ်စစ်ပဒေသာပင် စာအုပ်",
+    "9MB": "9MB - ဆေးပဒေသာပင် စာအုပ်",
+    "10GB": "10GB - အထွေထွေရန်ပုံငွေစာအုပ်",
+    "11Inv": "11Inv - ပစ္စည်းစာရင်း",
+    "12Rep": "Reporting Center"
   },
 
-  // Exact Subcategory Rules per Sheet (used by the Ledger add/edit modal)
-  SUB_CATEGORIES: {
-    "BankGroup": { // Applied to 1CB, 2CB, 3CB
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဘဏ်ထည့်ငွေ", "ဘဏ်တိုးရရှိ"],
-      "ထွက်ငွေ": ["ဘဏ်ထုတ်", "စာရင်းပြောင်း"]
-    },
-    "4GB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "ဆွမ်းအလှူငွေ", "အထွေထွေအလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဆွမ်းကုန်ကျစရိတ်", "ကျောင်းအထွေထွေသုံး", "ကျောင်းပိုင်ပစ္စည်း", "ယာဉ်အသုံးစရိတ်", "သင်္ကြန်စခန်းကုန်ကျစရိတ်", "ကြိုတင်ငွေ", "စာရင်းပြောင်း"]
-    },
-    "5FB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
-    },
-    "6HB": {
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ကန်ထရိုက်ထုတ်ပေးငွေ", "အထွေထွေသုံး", "စာရင်းပြောင်း"]
-    },
-    "DefaultLedger": { // Applied to 7PB, 8EB, 9MB, 10GB
-      "ဝင်ငွေ": ["စာရင်းဖွင့်", "မတည်အလှူ", "လစဉ်အလှူ", "စာရင်းပြောင်း"],
-      "ထွက်ငွေ": ["ဘဏ်ထည့်ငွေ", "စာရင်းပြောင်း"]
-    }
+  // Myanmar Subcategories
+  SUBCATEGORIES: {
+    "ဝင်ငွေ": [
+      "လှူဒါန်းငွေ",
+      "ဆွမ်းပဒေသာပင် လှူဒါန်းငွေ",
+      "ကျောင်းရန်ပုံငွေ လှူဒါန်းငွေ",
+      "ဓမ္မာရုံလှူဒါန်းငွေ",
+      "စေတီလှူဒါန်းငွေ",
+      "လျှပ်စစ်ပဒေသာပင် လှူဒါန်းငွေ",
+      "ဆေးပဒေသာပင် လှူဒါန်းငွေ",
+      "အထွေထွေ လှူဒါန်းငွေ",
+      "ဘဏ်တိုးရရှိငွေ",
+      "စာရင်းပြောင်းဝင်ငွေ"
+    ],
+    "ထွက်ငွေ": [
+      "ဆွမ်းစရိတ်",
+      "ဆွမ်းကိန်း/ဆွမ်းခဲဖွယ်",
+      "မီးဖိုဆောင်စရိတ်",
+      "လျှပ်စစ်မီးခ/ဒီဇယ်ဆီ",
+      "ဆေးဝါးစရိတ်",
+      "အဆောက်အဦးပြုပြင်စရိတ်",
+      "သန့်ရှင်းရေးစရိတ်",
+      "လမ်းပြုပြင်စရိတ်",
+      "ဝန်ထမ်းစရိတ်/လုပ်အားခ",
+      "စာရေးကိရိယာ/ရုံးသုံး",
+      "စာရင်းပြောင်းထွက်ငွေ",
+      "အထွေထွေအသုံးစရိတ်"
+    ]
   },
 
-  // 💡 Inventory (11Inv) dropdown option lists
-  INVENTORY: {
-    LOCATIONS: ["မီးဖိုဆောင်", "ဓမ္မာရုံ", "သိမ်", "စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
-    // Locations that get rolled up together into the single "စတို" KPI card
-    STORAGE_LOCATIONS: ["စတို ၁", "စတို ၂", "စတို ၃", "စတို ၄", "စတို ၅"],
-    CATEGORIES: ["စားပွဲ", "ကုလားထိုင်", "ရေခဲသေတ္တာ", "မီးစက်", "ကြွေထည်ပစ္စည်း", "စတီးပစ္စည်း", "အိုးခွက်", "အိပ်ရာပစ္စည်း", "ထိုင်ခင်း", "ဖျာ", "အထွေထွေပစ္စည်း"],
-    UNITS: ["ခု", "ချောင်း", "လုံး", "ချပ်", "ထည်", "စုံ", "ဒါဇင်", "ပုံး", "လက်", "အထွေထွေ"]
-  }
+  // Inventory Options
+  INVENTORY_LOCATIONS: ["မီးဖိုဆောင်", "ဓမ္မာရုံ", "သိမ်", "စတို", "အထွေထွေ"],
+  INVENTORY_CATEGORIES: ["ပရိဘောဂ", "လျှပ်စစ်ပစ္စည်း", "မီးဖိုချောင်သုံး", "သံဃာ့ပရိက္ခရာ", "စက်ပစ္စည်း", "အထွေထွေ"],
+  INVENTORY_UNITS: ["ခု", "ထုပ်", "မူ", "စုံ", "ကဒ်", "ချောင်း", "လုံး", "အုပ်", "သေတ္တာ", "စုံ"]
 };

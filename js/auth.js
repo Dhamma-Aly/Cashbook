@@ -1,66 +1,58 @@
-// js/auth.js
+// js/auth.js - User Session & Login Logic
+window.currentUser = null;
 
-const USERS = {
-  "Admin": { pass: "Admin123", role: "Admin" },
-  "Account": { pass: "Account123", role: "Account" },
-  "Viewer": { pass: "Viewer123", role: "Viewer" }
+window.initAuth = function() {
+  const saved = localStorage.getItem("cashbook_user");
+  if (saved) {
+    try {
+      window.currentUser = JSON.parse(saved);
+      document.getElementById("login-overlay").classList.add("hidden");
+      document.getElementById("erp-workspace").classList.remove("hidden");
+      updateUserBadge();
+      return true;
+    } catch(e) {}
+  }
+  document.getElementById("login-overlay").classList.remove("hidden");
+  document.getElementById("erp-workspace").classList.add("hidden");
+  return false;
 };
 
-function handleLoginSubmit(e) {
-  e.preventDefault();
-  const u = document.getElementById("login-username").value;
-  const p = document.getElementById("login-password").value.trim();
-  const err = document.getElementById("login-error");
+window.handleLoginSubmit = function(event) {
+  event.preventDefault();
+  const username = document.getElementById("login-username").value;
+  const pass = document.getElementById("login-password").value;
+  const errDiv = document.getElementById("login-error");
 
-  if (USERS[u] && USERS[u].pass === p) {
-    const authData = { user: u, role: USERS[u].role, token: "AUTH-" + new Date().getTime() };
-    localStorage.setItem("dhamma_auth", JSON.stringify(authData));
-    err.classList.add("hidden");
-    initApp();
+  // Simple Passcode check: Admin = 123456, Account = 123456, Viewer = 123456
+  if (pass === "123456" || pass === "admin") {
+    window.currentUser = {
+      username: username,
+      role: username === "Admin" ? "ADMIN" : (username === "Account" ? "ACCOUNT" : "VIEWER"),
+      loginTime: new Date().toLocaleString()
+    };
+    localStorage.setItem("cashbook_user", JSON.stringify(window.currentUser));
+    errDiv.classList.add("hidden");
+    document.getElementById("login-overlay").classList.add("hidden");
+    document.getElementById("erp-workspace").classList.remove("hidden");
+    updateUserBadge();
+    window.switchTab("Home");
   } else {
-    err.innerText = "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
-    err.classList.remove("hidden");
+    errDiv.textContent = "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ (Default: 123456)";
+    errDiv.classList.remove("hidden");
   }
-}
+};
 
-function handleLogout() {
-  localStorage.removeItem("dhamma_auth");
+window.handleLogout = function() {
+  localStorage.removeItem("cashbook_user");
+  window.currentUser = null;
   location.reload();
-}
+};
 
-function getAuthUser() {
-  const data = localStorage.getItem("dhamma_auth");
-  return data ? JSON.parse(data) : null;
-}
-
-// Check if user is allowed to edit based on 30-day rule
-function canEditRecord(recordDateStr) {
-  const auth = getAuthUser();
-  if (!auth) return false;
-  if (auth.role === "Admin") return true;
-  if (auth.role === "Viewer") return false;
-
-  if (auth.role === "Account") {
-    if (!recordDateStr) return true;
-    
-    // Parse DD-MM-YYYY or YYYY-MM-DD
-    let recDate;
-    if (recordDateStr.includes("-")) {
-      const parts = recordDateStr.split("-");
-      if (parts[0].length === 4) {
-        recDate = new Date(recordDateStr);
-      } else {
-        recDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      }
-    } else {
-      recDate = new Date(recordDateStr);
-    }
-
-    const today = new Date();
-    const diffTime = Math.abs(today - recDate);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays <= 30; // Locked if older than 30 days
+function updateUserBadge() {
+  if (!window.currentUser) return;
+  const dateStr = new Date().toLocaleDateString("my-MM");
+  const badge = document.getElementById("current-user-display");
+  if (badge) {
+    badge.textContent = `Date: ${dateStr} | ${window.currentUser.username} (${window.currentUser.role})`;
   }
-  return false;
 }

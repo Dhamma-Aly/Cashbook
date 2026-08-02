@@ -1,119 +1,154 @@
-// js/app.js - Core Router + Shared State + Shared Utilities
-//
-// 💡 MODULE MAP (all loaded before this file — see index.html):
-//   js/config.js         -> CONFIG constants (sheet names, sub-categories,
-//                            NAV_ORDER, BANK_GROUP / LEDGER_GROUP)
-//   js/api.js             -> backend fetch/create/update/delete helpers
-//   js/auth.js             -> login/session/permission helpers
-//   js/dashboard.js        -> Home Dashboard          (view/dashboard.html)
-//   js/banks.js            -> Bank Group (1CB..3CB)    (view/bank.html)
-//   js/books.js            -> Ledger Group (4GB..10GB) (view/books.html)
-//                              + the SHARED ledger table/modal engine that
-//                              js/banks.js also calls into
-//   js/inventory.js        -> Inventory (11Inv)        (view/inventory.html)
-//   js/report-system.js    -> Report + System Settings (view/report-system.html)
-//
-// This file only holds: shared app state, the tab router (switchTab /
-// loadSheetView), and small utilities used by more than one module
-// (setText, formatNum, the header badge, the Previous/Next bar, and the
-// view/*.html partial loader).
-
-let currentSheet = "Home"; // 💡 Default to Home Dashboard on App Start
-let rawData = [];
-
-// 💡 IN-MEMORY CACHE: keyed by sheet name. When the user re-opens a tab
-// they already visited, we render the cached rows immediately (no
-// spinner, no wait) and silently refetch in the background to keep the
-// numbers fresh. This is what makes "switch away and come back" feel
-// instant, on top of the server-side CacheService layer in worker.js.
-let sheetCache = {};   // { sheetName: { data, ts } }
-let homeCache = null;  // { cards, table, ts }
-
-// 💡 view/*.html partials are plain static fragments (no dynamic data in
-// them), so once fetched they're cached forever for the session.
-let viewHtmlCache = {}; // { viewName: htmlString }
-
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.innerText = text;
-}
-function formatNum(v) {
-  const n = parseFloat(v) || 0;
-  return n.toLocaleString();
-}
-
-// 💡 Fetches (and caches) a view/*.html partial and injects it into
-// #view-container. Every render*View() function in the per-tab modules
-// calls this first, before touching any element inside the view.
-async function loadView(name) {
-  const container = document.getElementById("view-container");
-  if (!container) return;
-  if (!viewHtmlCache[name]) {
-    const res = await fetch(`view/${name}.html`);
-    viewHtmlCache[name] = await res.text();
+// js/app.js - Main Application Orchestrator
+document.addEventListener("DOMContentLoaded", async () => {
+  await window.cacheEngine.init();
+  if (window.initAuth()) {
+    window.switchTab("Home");
   }
-  container.innerHTML = viewHtmlCache[name];
-}
+});
 
-// 💡 Top-right badge: "Date: Sat 1 Aug 26 | Admin" — date always today,
-// role reflects whoever is actually logged in (Admin / Account / Viewer).
-function updateHeaderBadge() {
-  const auth = getAuthUser();
-  const el = document.getElementById("current-user-display");
-  if (!el) return;
-
-  const d = new Date();
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const month = d.toLocaleDateString('en-US', { month: 'short' });
-  const dateStr = `${weekday} ${d.getDate()} ${month} ${String(d.getFullYear()).slice(-2)}`;
-
-  el.innerText = `Date: ${dateStr} | ${auth ? auth.role : ""}`;
-}
-
-function initApp() {
-  const auth = getAuthUser();
-  if (!auth) {
-    document.getElementById("login-overlay").classList.remove("hidden");
-    document.getElementById("erp-workspace").classList.add("hidden");
-    return;
-  }
-
-  document.getElementById("login-overlay").classList.add("hidden");
-  document.getElementById("erp-workspace").classList.remove("hidden");
-  updateHeaderBadge();
-
-  // 💡 Open Home Dashboard by Default
-  switchTab("Home");
-}
-
-function switchTab(sheetName) {
-  currentSheet = sheetName;
-
-  // Sidebar Nav Active Highlight
+window.switchTab = async function(tabKey) {
+  // Update Active Sidebar Button
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
-  const activeBtn = document.getElementById("btn-" + sheetName);
+  const activeBtn = document.getElementById(`btn-${tabKey}`);
   if (activeBtn) activeBtn.classList.add("active");
 
-  const titleText = CONFIG.SHEETS[sheetName] ? `${sheetName} - ${CONFIG.SHEETS[sheetName]}` : sheetName;
-  const specialTitles = { Home: "Home Dashboard", Report: "Reporting Center", System: "System Settings" };
-  document.getElementById("page-title").innerText = specialTitles[sheetName] || titleText;
+  // Update Page Title
+  const pageTitle = document.getElementById("page-title");
+  if (pageTitle) {
+    pageTitle.textContent = window.APP_CONFIG.BOOKS[tabKey] || tabKey;
+  }
 
-  updateHeaderBadge();
-  loadSheetView();
-}
+  // Load Appropriate Fragment View
+  if (tabKey === "Home") {
+    await window.renderDashboardView();
+  } else if (["1CB", "2CB", "3CB"].includes(tabKey)) {
+    await window.renderBankView(tabKey);
+  } else if (["4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB"].includes(tabKey)) {
+    await window.renderBookView(tabKey);
+  } else if (tabKey === "11Inv") {
+    await window.renderInventoryView();
+  } else if (tabKey === "Report") {
+    await window.renderReportView("Report");
+  } else if (tabKey === "System") {
+    await window.renderReportView("System");
+  }
+};
 
-// 💡 Central router: decides which module's render*View() handles the
-// current tab. Each module fetches its own view/*.html partial via
-// loadView() internally, so this just needs to pick the right function.
-async function loadSheetView() {
-  const container = document.getElementById("view-container");
-  if (!container) return;
+// Modal Control Functions
+window.openAddModal = function() {
+  const modal = document.getElementById("entry-modal");
+  document.getElementById("entry-form").reset();
+  document.getElementById("entry-uniqueId").value = "";
+  document.getElementById("entry-date").valueAsDate = new Date();
+  window.onTypeChange();
+  modal.classList.remove("hidden");
+};
 
-  if (currentSheet === "Home") { await renderHomeDashboard(); return; }
-  if (currentSheet === "Report" || currentSheet === "System") { await renderReportSystemView(); return; }
-  if (currentSheet === "11Inv") { await renderInventoryView(); return; }
-  if (CONFIG.BANK_GROUP.includes(currentSheet)) { await renderBankView(); return; }
-  await renderBooksView();
-}
+window.closeEntryModal = function() {
+  document.getElementById("entry-modal").classList.add("hidden");
+};
 
-window.onload = initApp;
+window.onTypeChange = function() {
+  const type = document.getElementById("entry-type").value;
+  const subSelect = document.getElementById("entry-subcategory");
+  subSelect.innerHTML = "";
+
+  const list = window.APP_CONFIG.SUBCATEGORIES[type] || [];
+  list.forEach(item => {
+    const opt = document.createElement("option");
+    opt.value = item;
+    opt.textContent = item;
+    subSelect.appendChild(opt);
+  });
+};
+
+window.saveEntryForm = async function(event) {
+  event.preventDefault();
+  const sheet = window.currentSheetKey;
+  const uniqueId = document.getElementById("entry-uniqueId").value;
+  const date = document.getElementById("entry-date").value;
+  const type = document.getElementById("entry-type").value;
+  const subcat = document.getElementById("entry-subcategory").value;
+  const voucher = document.getElementById("entry-voucher").value;
+  const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
+  const receiver = document.getElementById("entry-receiver").value;
+  const desc = document.getElementById("entry-description").value;
+
+  const monthYear = date ? date.substring(0, 7) : "";
+  const bookName = window.APP_CONFIG.BOOKS[sheet] || sheet;
+
+  const income = type === "ဝင်ငွေ" ? amount : 0;
+  const expense = type === "ထွက်ငွေ" ? amount : 0;
+
+  const rowData = [
+    uniqueId || `ID-${Date.now()}`,
+    date, type, subcat, voucher, desc, receiver,
+    income, expense, "", monthYear, bookName, "Active"
+  ];
+
+  window.closeEntryModal();
+  document.getElementById("loading-overlay").classList.remove("hidden");
+
+  try {
+    const rowIndex = uniqueId ? parseInt(uniqueId) : null;
+    await window.saveSheetEntry(sheet, rowData, rowIndex);
+    await window.fetchSheetData(sheet);
+    await window.switchTab(sheet);
+  } catch (err) {
+    alert("အချက်အလက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
+  } finally {
+    document.getElementById("loading-overlay").classList.add("hidden");
+  }
+};
+
+window.editEntry = function(rowIndex) {
+  const rows = window.currentSheetData;
+  const r = rows[rowIndex - 1];
+  if (!r) return;
+
+  window.openAddModal();
+  document.getElementById("modal-form-title").textContent = "စာရင်း ပြင်ဆင်ရန်";
+  document.getElementById("entry-uniqueId").value = rowIndex;
+  document.getElementById("entry-date").value = r[1] || "";
+  document.getElementById("entry-type").value = r[2] || "ဝင်ငွေ";
+  window.onTypeChange();
+  document.getElementById("entry-subcategory").value = r[3] || "";
+  document.getElementById("entry-voucher").value = r[4] || "";
+  document.getElementById("entry-description").value = r[5] || "";
+  document.getElementById("entry-receiver").value = r[6] || "None";
+  
+  const inc = parseFloat(r[7]) || 0;
+  const exp = parseFloat(r[8]) || 0;
+  document.getElementById("entry-amount").value = inc || exp || 0;
+};
+
+window.deleteEntry = async function(rowIndex) {
+  if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  try {
+    await window.deleteSheetEntry(window.currentSheetKey, rowIndex);
+    await window.switchTab(window.currentSheetKey);
+  } catch (err) {
+    alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + err.message);
+  } finally {
+    document.getElementById("loading-overlay").classList.add("hidden");
+  }
+};
+
+window.exportCSV = function() {
+  const rows = window.currentSheetData;
+  if (!rows || rows.length === 0) return alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+  rows.forEach(r => {
+    csvContent += r.map(c => `"${(c || '').toString().replace(/"/g, '""')}"`).join(",") + "\n";
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `${window.currentSheetKey}_Export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};

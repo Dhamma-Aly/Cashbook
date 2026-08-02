@@ -1,101 +1,105 @@
-// js/api.js
+// js/api.js - SWR & IndexedDB Engine
+const DB_NAME = "CashbookLocalDB";
+const DB_VERSION = 1;
 
-// 💡 SHARED REQUEST HELPER: every endpoint used to call fetch()+res.json()
-// on its own, which meant a non-JSON response (Apps Script returning an
-// HTML sign-in/error page instead of JSON — the classic cause of
-// "SyntaxError: unexpected character at line 1 column 1") surfaced as a
-// confusing crash instead of a clear, actionable message. This helper
-// reads the body as text first, tries to parse it, and throws a
-// descriptive error if that fails, so every caller below gets the same
-// safe, well-diagnosed behavior for free.
-async function apiRequest(url, options) {
-  const res = await fetch(url, options);
-  const raw = await res.text();
+class LocalCacheEngine {
+  constructor() {
+    this.db = null;
+  }
 
-  try {
-    return JSON.parse(raw);
-  } catch (parseErr) {
-    // Log the actual response so it's possible to diagnose the real cause
-    // (usually: the Apps Script deployment needs a "New version" after a
-    // code change, or its "Who has access" setting isn't "Anyone").
-    console.error("Non-JSON response from API:", raw.slice(0, 300));
-    throw new Error("Server returned an invalid (non-JSON) response. The Apps Script deployment may need to be redeployed, or its access permission may not be set to \"Anyone\".");
+  async init() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains("sheets")) {
+          db.createObjectStore("sheets", { keyPath: "name" });
+        }
+      };
+      request.onsuccess = (e) => {
+        this.db = e.target.result;
+        resolve(this.db);
+      };
+      request.onerror = (e) => reject(e);
+    });
+  }
+
+  async getSheet(name) {
+    if (!this.db) await this.init();
+    return new Promise((resolve) => {
+      const tx = this.db.transaction("sheets", "readonly");
+      const store = tx.objectStore("sheets");
+      const req = store.get(name);
+      req.onsuccess = () => resolve(req.result ? req.result.data : null);
+      req.onerror = () => resolve(null);
+    });
+  }
+
+  async setSheet(name, data) {
+    if (!this.db) await this.init();
+    return new Promise((resolve) => {
+      const tx = this.db.transaction("sheets", "readwrite");
+      const store = tx.objectStore("sheets");
+      store.put({ name, data, updatedAt: Date.now() });
+      tx.oncomplete = () => resolve(true);
+    });
   }
 }
 
-async function fetchSheetData(sheetName) {
-  try {
-    const url = `${CONFIG.API_BASE_URL}?action=read&sheet=${sheetName}`;
-    const json = await apiRequest(url);
-    return json.status === "success" ? json.data : [];
-  } catch (err) {
-    console.error("API Read Error:", err);
-    return [];
-  }
-}
+window.cacheEngine = new LocalCacheEngine();
 
-// 💡 Single round-trip fetch of the Home Dashboard: the 4 summary cards
-// (Home!B2:E2) plus the bank-summary mini table (Home!A3:G12).
-async function fetchHomeDashboard() {
+// SWR Fetcher
+window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
+  // 1. Return Local Cache instantly
+  const localData = await window.cacheEngine.getSheet(sheetName);
+  if (localData && typeof onLocalLoaded === "function") {
+    onLocalLoaded(localData);
+  }
+
+  // 2. Fetch Fresh Data from Worker
   try {
-    const url = `${CONFIG.API_BASE_URL}?action=home`;
-    const json = await apiRequest(url);
-    if (json.status === "success") {
-      return { cards: json.cards || [], table: json.table || [] };
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/data?sheet=${encodeURIComponent(sheetName)}`);
+    const json = await res.json();
+    if (json.success && json.values) {
+      await window.cacheEngine.setSheet(sheetName, json.values);
+      return json.values;
     }
-    return { cards: [], table: [] };
   } catch (err) {
-    console.error("API Home Error:", err);
-    return { cards: [], table: [] };
+    console.warn("Network fetch failed, using local cache", err);
   }
-}
+  return localData || [];
+};
 
-// 💡 Fetch the fixed A1:P15 range of the "12Rep" report summary sheet.
-async function fetchReportData() {
+window.fetchAllSheetsData = async function() {
   try {
-    const url = `${CONFIG.API_BASE_URL}?action=report`;
-    const json = await apiRequest(url);
-    return json.status === "success" ? json.data : [];
+    const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/all-data`);
+    const json = await res.json();
+    if (json.success && json.data) {
+      for (const sheetName of Object.keys(json.data)) {
+        await window.cacheEngine.setSheet(sheetName, json.data[sheetName]);
+      }
+      return json.data;
+    }
   } catch (err) {
-    console.error("API Report Error:", err);
-    // Re-throw so renderReportSystemView's own catch can show the
-    // dedicated error row instead of silently rendering an empty table.
-    throw err;
+    console.error("Fetch all sheets error", err);
   }
-}
+  return null;
+};
 
-async function createSheetEntry(sheetName, rowArray) {
-  try {
-    return await apiRequest(CONFIG.API_BASE_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "create", sheet: sheetName, data: rowArray })
-    });
-  } catch (err) {
-    console.error("API Create Error:", err);
-    return { status: "error", message: err.toString() };
-  }
-}
+window.saveSheetEntry = async function(sheet, rowData, rowIndex = null) {
+  const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/entry`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sheet, rowData, rowIndex })
+  });
+  return await res.json();
+};
 
-async function updateSheetEntry(sheetName, uniqueId, rowArray) {
-  try {
-    return await apiRequest(CONFIG.API_BASE_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "update", sheet: sheetName, uniqueId: uniqueId, data: rowArray })
-    });
-  } catch (err) {
-    console.error("API Update Error:", err);
-    return { status: "error", message: err.toString() };
-  }
-}
-
-async function deleteSheetEntry(sheetName, uniqueId) {
-  try {
-    return await apiRequest(CONFIG.API_BASE_URL, {
-      method: "POST",
-      body: JSON.stringify({ action: "delete", sheet: sheetName, uniqueId: uniqueId })
-    });
-  } catch (err) {
-    console.error("API Delete Error:", err);
-    return { status: "error", message: err.toString() };
-  }
-}
+window.deleteSheetEntry = async function(sheet, rowIndex) {
+  const res = await fetch(`${window.APP_CONFIG.API_BASE_URL}/api/entry`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sheet, rowIndex })
+  });
+  return await res.json();
+};
