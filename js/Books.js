@@ -60,10 +60,16 @@ async function renderLedgerEngine(viewName) {
 }
 
 // 💡 Search input calls this (not renderTable directly) so a new search
-// term always jumps back to page 1.
+// term always jumps back to page 1. Debounced ~200ms so fast typing
+// doesn't trigger a full re-render (and re-scan of the whole dataset) on
+// every single keystroke -- only once typing pauses.
+let ledgerSearchDebounce = null;
 function onLedgerSearchInput() {
-  ledgerPage = 1;
-  renderTable();
+  clearTimeout(ledgerSearchDebounce);
+  ledgerSearchDebounce = setTimeout(() => {
+    ledgerPage = 1;
+    renderTable();
+  }, 200);
 }
 
 function renderTable() {
