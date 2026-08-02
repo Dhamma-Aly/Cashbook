@@ -1,22 +1,22 @@
-<!-- view/inventory.html - Inventory (11Inv) fragment (loaded by js/inventory.js) -->
+<!-- view/inventory.html - Inventory (11Inv) table fragment (loaded by js/inventory.js) -->
 <div class="space-y-5">
-  <!-- Top 4 KPI Cards: item counts by location group -->
+  <!-- Top 4 KPI Cards -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-kitchen-set text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">မီးဖိုဆောင်</p><h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-200 mt-1">0</h3></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">မီးဖိုဆောင်</p><h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-300 mt-1">0</h3></div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-om text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဓမ္မာရုံ</p><h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-200 mt-1">0</h3></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဓမ္မာရုံ</p><h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-400 mt-1">0</h3></div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-gopuram text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">သိမ်</p><h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-200 mt-1">0</h3></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">သိမ်</p><h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-400 mt-1">0</h3></div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-warehouse text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စတို (၁-၅ ပေါင်း)</p><h3 id="kpi-inv-store" class="text-base font-extrabold text-rose-200 mt-1">0</h3></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စတို</p><h3 id="kpi-inv-store" class="text-base font-extrabold text-amber-100 mt-1">0</h3></div>
     </div>
   </div>
 
@@ -28,7 +28,7 @@
     <div class="flex items-center gap-2.5 w-full sm:w-auto justify-end">
       <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
       <button onclick="exportInventoryCSV()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
-      <button id="btn-add-inv" onclick="openAddInvModal()" class="p-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all"><i class="fa-solid fa-plus text-xs"></i> + စာရင်းအသစ်ထည့်ရန်</button>
+      <button id="btn-add-inv" onclick="openAddInvModal()" class="p-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all"><i class="fa-solid fa-plus text-xs"></i> + ပစ္စည်းအသစ်ထည့်ရန်</button>
     </div>
   </div>
 
@@ -39,12 +39,12 @@
         <tr>
           <th class="w-12 text-center">စဉ်</th>
           <th class="w-28">ရက်စွဲ</th>
-          <th class="w-28">နေရာ</th>
-          <th class="w-32">အမျိုးအစား</th>
-          <th class="min-w-[180px]">အကြောင်းအရာ</th>
+          <th class="w-32">နေရာ</th>
+          <th class="w-36">အမျိုးအစား</th>
+          <th class="min-w-[280px]">အကြောင်းအရာ</th>
           <th class="w-24">ရေတွက်ပုံ</th>
-          <th class="w-24 text-right">အရေအတွက်</th>
-          <th class="min-w-[140px]">မှတ်ချက်</th>
+          <th class="w-28 text-right">အရေအတွက်</th>
+          <th class="min-w-[180px]">မှတ်ချက်</th>
           <th class="w-24">လနှစ်</th>
           <th class="w-36">စာအုပ်အမည်</th>
           <th class="w-24 text-center right-0 sticky">လုပ်ဆောင်ချက်</th>
