@@ -10,7 +10,7 @@ async function renderInventoryView() {
   const requestedSheet = currentSheet; // "11Inv"
   invPage = 1; // reset to page 1 every time the tab is (re)opened
 
-  await loadView("inventory");
+  await loadView("Inventory");
 
   const prevNext = document.getElementById("prev-next-bar");
   if (prevNext) prevNext.innerHTML = renderPrevNextBar();

@@ -10,5 +10,5 @@
 // the Ledger Group's.
 
 async function renderBankView() {
-  await renderLedgerEngine("bank");
+  await renderLedgerEngine("Banks");
 }

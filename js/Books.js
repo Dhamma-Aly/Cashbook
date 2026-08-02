@@ -17,7 +17,7 @@ let ledgerPage = 1;
 const LEDGER_PAGE_SIZE = 50;
 
 async function renderBooksView() {
-  await renderLedgerEngine("books");
+  await renderLedgerEngine("Books");
 }
 
 async function renderLedgerEngine(viewName) {

@@ -5,7 +5,7 @@
 async function renderHomeDashboard() {
   const requestedSheet = currentSheet;
 
-  await loadView("dashboard");
+  await loadView("Dashboard");
 
   const applyData = (data) => {
     renderHomeCards(data.cards || []);
