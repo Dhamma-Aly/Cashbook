@@ -137,27 +137,21 @@ function renderInvPaginationBar(totalFiltered, totalPages) {
   const bar = document.getElementById("inv-pagination-bar");
   if (!bar) return;
 
-  if (totalFiltered <= INV_PAGE_SIZE) {
-    bar.innerHTML = "";
-    return;
-  }
-
-  const startIdx = (invPage - 1) * INV_PAGE_SIZE + 1;
-  const endIdx = Math.min(invPage * INV_PAGE_SIZE, totalFiltered);
+  const startIdx = totalFiltered === 0 ? 0 : (invPage - 1) * INV_PAGE_SIZE + 1;
+  const endIdx = totalFiltered === 0 ? 0 : Math.min(invPage * INV_PAGE_SIZE, totalFiltered);
   const hasPrev = invPage > 1;
   const hasNext = invPage < totalPages;
 
   bar.innerHTML = `
-    <div class="flex justify-between items-center gap-3 bg-[#14110d] border border-amber-900/30 px-4 py-3 rounded-xl">
-      <span class="text-[11px] text-amber-500/60 font-mono">${startIdx}-${endIdx} / ${totalFiltered.toLocaleString()}</span>
-      <div class="flex items-center gap-2">
+    <div class="flex justify-between items-center gap-3 bg-[#14110d] border border-amber-900/30 px-5 py-4 rounded-xl">
+      <span class="text-sm font-bold text-amber-100">Showing <span class="text-amber-400 font-black">${startIdx}</span> to <span class="text-amber-400 font-black">${endIdx}</span> of <span class="text-amber-400 font-black">${totalFiltered.toLocaleString()}</span> entries</span>
+      <div class="flex items-center gap-2.5">
         <button onclick="goInvPage(${invPage - 1})" ${hasPrev ? '' : 'disabled'}
-          class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${hasPrev ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#0f0e0c] text-amber-800/40 cursor-not-allowed'}">
+          class="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold border transition-all ${hasPrev ? 'border-amber-500/50 bg-transparent hover:bg-amber-500/10 text-amber-100 cursor-pointer' : 'border-amber-900/30 text-amber-800/40 cursor-not-allowed'}">
           <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
         </button>
-        <span class="text-[11px] text-amber-400/80 font-bold px-1.5">${invPage} / ${totalPages}</span>
         <button onclick="goInvPage(${invPage + 1})" ${hasNext ? '' : 'disabled'}
-          class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${hasNext ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#0f0e0c] text-amber-800/40 cursor-not-allowed'}">
+          class="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-xs font-bold border transition-all ${hasNext ? 'border-amber-500/50 bg-transparent hover:bg-amber-500/10 text-amber-100 cursor-pointer' : 'border-amber-900/30 text-amber-800/40 cursor-not-allowed'}">
           Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
         </button>
       </div>
