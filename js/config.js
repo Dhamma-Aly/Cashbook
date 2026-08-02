@@ -1,7 +1,14 @@
 // js/config.js - System Configuration & Constants
 window.APP_CONFIG = {
+  // 👉 Point this at whichever backend actually runs worker.js:
+  //   - Google Apps Script Web App exec URL, e.g.
+  //     "https://script.google.com/macros/s/AKfycb.../exec"
+  //   - OR your own domain if you deploy cloudflare-proxy-worker.js in
+  //     front of it (e.g. keep using "https://cashbook-api.dhammaaly.workers.dev")
+  // The current value below is the OLD backend's URL and will not work
+  // with the corrected worker.js / api.js pairing - replace it.
   API_BASE_URL: "https://cashbook-api.dhammaaly.workers.dev",
-  
+
   BOOKS: {
     "Home": "Home Dashboard",
     "1CB": "1CB - အထွေထွေ ရန်ပုံငွေ (Bank)",
