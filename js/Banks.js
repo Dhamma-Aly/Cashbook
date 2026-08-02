@@ -8,20 +8,20 @@ window.renderBankView = async function(sheetKey) {
   window.currentSheetData = [];
 
   const renderData = (rows) => {
-    window.currentSheetData = rows || [];
+    // Header rows in Google Sheet are rows 1..5. Actual transactions start at index 5 (Row 6)
+    const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
+    window.currentSheetData = dataRows;
+
     let inc = 0, exp = 0, bal = 0, count = 0;
     const tbody = document.getElementById("table-body");
     tbody.innerHTML = "";
 
-    // Header rows in Google Sheet are rows 1..5. Actual transactions start at index 5 (Row 6)
-    const dataRows = rows.length > 5 ? rows.slice(5) : [];
-    
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
       dataRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
-        const rowIndex = idx + 6; // Google Sheet Row 6+
+        const uid = r[12] || ""; // Column M: real Unique-ID, used to identify this row for edit/delete
         const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const type = r[2] || "-";
@@ -55,8 +55,8 @@ window.renderBankView = async function(sheetKey) {
           <td class="font-mono text-xs">${monthYear}</td>
           <td class="text-xs text-amber-500/70">${bookName}</td>
           <td class="text-center right-0 sticky">
-            <button onclick="editEntry(${rowIndex})" class="p-1 text-amber-400 hover:text-amber-200 mr-1" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-            <button onclick="deleteEntry(${rowIndex})" class="p-1 text-rose-400 hover:text-rose-200" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="editEntry('${uid}')" class="p-1 text-amber-400 hover:text-amber-200 mr-1" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button onclick="deleteEntry('${uid}')" class="p-1 text-rose-400 hover:text-rose-200" title="Delete"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
