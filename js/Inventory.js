@@ -7,19 +7,19 @@ window.renderInventoryView = async function() {
   window.currentSheetKey = "11Inv";
 
   const renderData = (rows) => {
-    window.currentSheetData = rows || [];
+    const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
+    window.currentSheetData = dataRows;
+
     let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
     const tbody = document.getElementById("inv-table-body");
     tbody.innerHTML = "";
-
-    const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
 
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
       dataRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
-        const rowIndex = idx + 6;
+        const uid = r[10] || ""; // Column K: real Unique-ID, used to identify this row for edit/delete
         const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const loc = r[2] || "-";
@@ -49,8 +49,8 @@ window.renderInventoryView = async function() {
           <td class="font-mono text-xs">${monthYear}</td>
           <td class="text-xs text-amber-500/70">${bookName}</td>
           <td class="text-center right-0 sticky">
-            <button onclick="editInvEntry(${rowIndex})" class="p-1 text-amber-400 hover:text-amber-200 mr-1"><i class="fa-solid fa-pen-to-square"></i></button>
-            <button onclick="deleteInvEntry(${rowIndex})" class="p-1 text-rose-400 hover:text-rose-200"><i class="fa-solid fa-trash"></i></button>
+            <button onclick="editInvEntry('${uid}')" class="p-1 text-amber-400 hover:text-amber-200 mr-1"><i class="fa-solid fa-pen-to-square"></i></button>
+            <button onclick="deleteInvEntry('${uid}')" class="p-1 text-rose-400 hover:text-rose-200"><i class="fa-solid fa-trash"></i></button>
           </td>
         `;
         tbody.appendChild(tr);
@@ -71,6 +71,8 @@ window.openAddInvModal = function() {
   document.getElementById("inv-entry-form").reset();
   document.getElementById("inv-uniqueId").value = "";
   document.getElementById("inv-date").valueAsDate = new Date();
+  const titleEl = document.getElementById("inv-modal-title");
+  if (titleEl) titleEl.textContent = "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
 
   // Populate Select Options
   const locSelect = document.getElementById("inv-location");
@@ -94,7 +96,7 @@ window.closeInvModal = function() {
 
 window.saveInvEntryForm = async function(event) {
   event.preventDefault();
-  const uniqueId = document.getElementById("inv-uniqueId").value;
+  const uniqueId = document.getElementById("inv-uniqueId").value; // "" = new item, else editing this row
   const date = document.getElementById("inv-date").value;
   const loc = document.getElementById("inv-location").value;
   const cat = document.getElementById("inv-category").value;
@@ -104,17 +106,50 @@ window.saveInvEntryForm = async function(event) {
   const note = document.getElementById("inv-note").value;
 
   const monthYear = date ? date.substring(0, 7) : "";
-  const rowData = ["", date, loc, cat, desc, unit, qty, note, monthYear, "11Inv - ပစ္စည်းစာရင်း", uniqueId || `INV-${Date.now()}`];
+  const finalUniqueId = uniqueId || `INV-${Date.now()}`;
+  const rowData = ["", date, loc, cat, desc, unit, qty, note, monthYear, "11Inv - ပစ္စည်းစာရင်း", finalUniqueId];
 
   window.closeInvModal();
   document.getElementById("loading-overlay").classList.remove("hidden");
 
   try {
-    const rowIndex = uniqueId ? parseInt(uniqueId) : null;
-    await window.saveSheetEntry("11Inv", rowData, rowIndex);
+    await window.saveSheetEntry("11Inv", rowData, uniqueId || null);
     await window.renderInventoryView();
   } catch (err) {
     alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
+  } finally {
+    document.getElementById("loading-overlay").classList.add("hidden");
+  }
+};
+
+// 💡 These two were referenced by the table's action buttons but were
+// never actually defined anywhere - inventory edit/delete has never
+// worked. Added here, mirroring how app.js does it for ledger entries.
+window.editInvEntry = function(uid) {
+  const r = (window.currentSheetData || []).find(row => String(row[10]) === String(uid));
+  if (!r) return;
+
+  window.openAddInvModal();
+  const titleEl = document.getElementById("inv-modal-title");
+  if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
+  document.getElementById("inv-uniqueId").value = uid;
+  document.getElementById("inv-date").value = r[1] || "";
+  document.getElementById("inv-location").value = r[2] || "";
+  document.getElementById("inv-category").value = r[3] || "";
+  document.getElementById("inv-desc").value = r[4] || "";
+  document.getElementById("inv-unit").value = r[5] || "";
+  document.getElementById("inv-qty").value = parseInt(r[6]) || 0;
+  document.getElementById("inv-note").value = r[7] || "";
+};
+
+window.deleteInvEntry = async function(uid) {
+  if (!confirm("ဤပစ္စည်းစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+  document.getElementById("loading-overlay").classList.remove("hidden");
+  try {
+    await window.deleteSheetEntry("11Inv", uid);
+    await window.renderInventoryView();
+  } catch (err) {
+    alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + err.message);
   } finally {
     document.getElementById("loading-overlay").classList.add("hidden");
   }
