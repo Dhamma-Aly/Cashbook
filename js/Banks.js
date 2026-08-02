@@ -1,7 +1,7 @@
 // js/Banks.js - Bank Group Table Renderer
 window.renderBankView = async function(sheetKey) {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/banks.html");
+  const res = await fetch("view/Banks.html");
   container.innerHTML = await res.text();
 
   window.currentSheetKey = sheetKey;

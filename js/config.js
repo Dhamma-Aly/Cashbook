@@ -22,7 +22,9 @@ window.APP_CONFIG = {
     "9MB": "9MB - ဆေးပဒေသာပင် စာအုပ်",
     "10GB": "10GB - အထွေထွေရန်ပုံငွေစာအုပ်",
     "11Inv": "11Inv - ပစ္စည်းစာရင်း",
-    "12Rep": "Reporting Center"
+    "12Rep": "Reporting Center",
+    "Report": "Reporting Center",
+    "System": "System Settings"
   },
 
   SUBCATEGORIES: {

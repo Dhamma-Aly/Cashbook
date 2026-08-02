@@ -1,7 +1,7 @@
 // js/Dashboard.js - Home Dashboard View Renderer
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/dashboard.html");
+  const res = await fetch("view/Dashboard.html");
   container.innerHTML = await res.text();
 
   const renderHomeData = (rows) => {

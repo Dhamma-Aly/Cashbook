@@ -1,7 +1,7 @@
 // js/Inventory.js - Inventory (11Inv) Logic
 window.renderInventoryView = async function() {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/inventory.html");
+  const res = await fetch("view/Inventory.html");
   container.innerHTML = await res.text();
 
   window.currentSheetKey = "11Inv";
