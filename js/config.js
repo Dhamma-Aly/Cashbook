@@ -4,6 +4,12 @@ const CONFIG = {
   // Google Apps Script Web App Deployment URL
   API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
 
+  // 💡 Which sheets belong to which module (used by js/app.js's router to
+  // dispatch to js/banks.js vs js/books.js — both share the same engine
+  // in js/books.js since the row schema + modal are identical).
+  BANK_GROUP: ["1CB", "2CB", "3CB"],
+  LEDGER_GROUP: ["4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB"],
+
   // 💡 Page order used for the Previous / Next navigation at the bottom of
   // every ledger / inventory page (Home, Report, System are excluded).
   NAV_ORDER: ["1CB", "2CB", "3CB", "4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB", "11Inv"],

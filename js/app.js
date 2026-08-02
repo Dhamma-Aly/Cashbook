@@ -20,50 +20,6 @@ function formatNum(v) {
   return n.toLocaleString();
 }
 
-// 💡 Top-right badge: "Date: Sat 1 Aug 26 | Admin" — date always today,
-// role reflects whoever is actually logged in (Admin / Account / Viewer).
-function updateHeaderBadge() {
-  const auth = getAuthUser();
-  const el = document.getElementById("current-user-display");
-  if (!el) return;
-
-  const d = new Date();
-  const weekday = d.toLocaleDateString('en-US', { weekday: 'short' });
-  const month = d.toLocaleDateString('en-US', { month: 'short' });
-  const dateStr = `${weekday} ${d.getDate()} ${month} ${String(d.getFullYear()).slice(-2)}`;
-
-  el.innerText = `Date: ${dateStr}  |  ${auth ? auth.role : ""}`;
-}
-
-// 💡 PREVIOUS / NEXT page navigation (every ledger + inventory page,
-// i.e. everything except Home / Report / System).
-function renderPrevNextBar() {
-  const order = CONFIG.NAV_ORDER;
-  const idx = order.indexOf(currentSheet);
-  if (idx === -1) return "";
-
-  const prev = idx > 0 ? order[idx - 1] : null;
-  const next = idx < order.length - 1 ? order[idx + 1] : null;
-
-  const prevLabel = prev ? (CONFIG.SHEETS[prev] || prev) : "";
-  const nextLabel = next ? (CONFIG.SHEETS[next] || next) : "";
-
-  return `
-    <div class="flex justify-between items-center gap-3 pt-1">
-      <button ${prev ? `onclick="switchTab('${prev}')"` : 'disabled'}
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${prev ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
-        <i class="fa-solid fa-chevron-left text-[10px]"></i>
-        <span class="truncate max-w-[220px]">${prev ? `${prev} - ${prevLabel}` : 'Previous'}</span>
-      </button>
-      <button ${next ? `onclick="switchTab('${next}')"` : 'disabled'}
-        class="flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-bold border border-amber-900/30 transition-all ${next ? 'bg-[#1f1913] hover:bg-[#2a2118] text-amber-200 cursor-pointer' : 'bg-[#14110d] text-amber-800/40 cursor-not-allowed'}">
-        <span class="truncate max-w-[220px]">${next ? `${next} - ${nextLabel}` : 'Next'}</span>
-        <i class="fa-solid fa-chevron-right text-[10px]"></i>
-      </button>
-    </div>
-  `;
-}
-
 function initApp() {
   const auth = getAuthUser();
   if (!auth) {
@@ -74,7 +30,7 @@ function initApp() {
 
   document.getElementById("login-overlay").classList.add("hidden");
   document.getElementById("erp-workspace").classList.remove("hidden");
-  updateHeaderBadge();
+  document.getElementById("current-user-display").innerText = `${auth.user} (${auth.role})`;
 
   // 💡 Open Home Dashboard by Default
   switchTab("Home");
@@ -89,10 +45,8 @@ function switchTab(sheetName) {
   if (activeBtn) activeBtn.classList.add("active");
 
   const titleText = CONFIG.SHEETS[sheetName] ? `${sheetName} - ${CONFIG.SHEETS[sheetName]}` : sheetName;
-  const specialTitles = { Home: "Home Dashboard", Report: "Reporting Center", System: "System Settings" };
-  document.getElementById("page-title").innerText = specialTitles[sheetName] || titleText;
+  document.getElementById("page-title").innerText = sheetName === "Home" ? "Home Dashboard" : titleText;
 
-  updateHeaderBadge();
   loadSheetView();
 }
 
@@ -101,8 +55,7 @@ async function loadSheetView() {
   if (!container) return;
 
   if (currentSheet === "Home") { await renderHomeDashboard(container); return; }
-  if (currentSheet === "Report") { await renderReportView(container); return; }
-  if (currentSheet === "System") { renderPlaceholderView(container); return; }
+  if (currentSheet === "Report" || currentSheet === "System") { renderPlaceholderView(container); return; }
   if (currentSheet === "11Inv") { await renderInventoryView(container); return; }
   await renderLedgerView(container);
 }
@@ -111,9 +64,19 @@ async function loadSheetView() {
 // PLACEHOLDER VIEW (Report / System)
 // ============================================================
 function renderPlaceholderView(container) {
-  const title = "System Settings";
-  const subtitle = "စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ";
-  const icon = "fa-gears";
+  let title = "Home Dashboard";
+  let subtitle = "ဓမ္မအလင်းရောင် တောရရိပ်သာ ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ် မှ ကြိုဆိုပါသည်";
+  let icon = "fa-gauge-high";
+
+  if (currentSheet === "Report") {
+    title = "Reporting Center";
+    subtitle = "ဘဏ္ဍာရေး အစီရင်ခံစာများ စင်တာ";
+    icon = "fa-chart-pie";
+  } else if (currentSheet === "System") {
+    title = "System Settings";
+    subtitle = "စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ";
+    icon = "fa-gears";
+  }
 
   container.innerHTML = `
     <div class="p-10 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl shadow-2xl my-6 max-w-2xl mx-auto space-y-4">
@@ -130,135 +93,78 @@ function renderPlaceholderView(container) {
 }
 
 // ============================================================
-// REPORT VIEW — "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်" (12Rep!A1:P15)
-// ============================================================
-async function renderReportView(container) {
-  const requestedSheet = currentSheet;
-
-  container.innerHTML = `
-    <div class="space-y-5">
-      <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
-        <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
-          <i class="fa-solid fa-chart-pie text-amber-400"></i> ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
-        </h3>
-        <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
-      </div>
-
-      <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
-        <table class="table-lg w-full text-left border-collapse min-w-[1200px] text-sm">
-          <tbody id="report-table-body">
-            <tr><td class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
-
-  try {
-    const rows = await fetchReportData();
-    if (currentSheet === requestedSheet) renderReportTable(rows);
-  } catch (err) {
-    console.error("Report load error:", err);
-    const tbody = document.getElementById("report-table-body");
-    if (tbody) tbody.innerHTML = `<tr><td class="text-center py-6 text-rose-400 font-bold">ဒေတာ ချိတ်ဆက်မှု မအောင်မြင်ပါ။</td></tr>`;
-  }
-}
-
-function renderReportTable(rows) {
-  const tbody = document.getElementById("report-table-body");
-  if (!tbody) return;
-  if (!rows || !rows.length) {
-    tbody.innerHTML = `<tr><td class="text-center py-6 text-amber-500/50">ဒေတာ မရှိသေးပါ။</td></tr>`;
-    return;
-  }
-
-  // Row indices (0-based) with special meaning per spreadsheet layout:
-  //   row 0        -> header
-  //   row 4 (R5)   -> ဝင်ငွေ စုစုပေါင်း (income total)
-  //   row 11 (R12) -> ထွက်ငွေ စုစုပေါင်း (expense total)
-  //   row 12 (R13) -> လက်ကျန်ငွေ စုစုပေါင်း (balance total)
-  const INCOME_TOTAL = 4, EXPENSE_TOTAL = 11, BALANCE_TOTAL = 12;
-
-  let html = "";
-  rows.forEach((row, ri) => {
-    let rowClass, cellClass, borderClass = "border-b border-amber-900/10";
-
-    if (ri === 0) {
-      rowClass = "bg-[#1a1410] sticky top-0";
-      cellClass = "px-4 py-3 font-black text-amber-400 uppercase text-xs tracking-wide";
-    } else if (ri === INCOME_TOTAL) {
-      rowClass = "bg-emerald-500/10 font-black text-emerald-300";
-      cellClass = "px-4 py-3 font-mono";
-      borderClass = "border-t-2 border-emerald-600/50 border-b border-amber-900/10";
-    } else if (ri === EXPENSE_TOTAL) {
-      rowClass = "bg-rose-500/10 font-black text-rose-300";
-      cellClass = "px-4 py-3 font-mono";
-      borderClass = "border-t-2 border-rose-600/50 border-b border-amber-900/10";
-    } else if (ri === BALANCE_TOTAL) {
-      rowClass = "bg-amber-500/10 font-black text-amber-300 text-base";
-      cellClass = "px-4 py-3 font-mono";
-      borderClass = "border-t-2 border-amber-600/60 border-b-2 border-amber-600/60";
-    } else if (ri < INCOME_TOTAL) {
-      rowClass = "bg-emerald-500/[0.03] text-emerald-100/90 hover:bg-emerald-500/5";
-      cellClass = "px-4 py-2.5 font-mono";
-    } else if (ri < EXPENSE_TOTAL) {
-      rowClass = "bg-rose-500/[0.03] text-rose-100/90 hover:bg-rose-500/5";
-      cellClass = "px-4 py-2.5 font-mono";
-    } else {
-      rowClass = "text-amber-100/90 hover:bg-amber-500/5";
-      cellClass = "px-4 py-2.5 font-mono";
-    }
-
-    html += `<tr class="${rowClass} ${borderClass}">`;
-    row.forEach((cell) => {
-      const display = cell !== "" && cell !== null && !isNaN(cell) && cell !== "" ? (typeof cell === "number" ? cell.toLocaleString() : cell) : (cell || "");
-      html += `<td class="${cellClass}">${display}</td>`;
-    });
-    html += `</tr>`;
-  });
-
-  tbody.innerHTML = html;
-}
-
-// ============================================================
 // HOME DASHBOARD
 // ============================================================
 async function renderHomeDashboard(container) {
   const requestedSheet = currentSheet;
 
   container.innerHTML = `
-    <div class="h-full flex flex-col space-y-5">
-      <!-- "Be Mindful" hero banner -->
-      <div class="shrink-0 bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl px-8 py-6 relative overflow-hidden">
-        <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <i class="fa-solid fa-dharmachakra text-amber-500/10 text-8xl absolute -bottom-3 right-6"></i>
-        <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-          <div>
-            <h2 class="text-3xl md:text-4xl font-black text-gold-gradient tracking-wide">Be Mindful</h2>
-            <p class="text-sm text-amber-200/70 italic mt-1">အမြဲသတိ ထားပါလေ ... — stay mindful —</p>
-          </div>
-          <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-amber-700/20 pt-3 md:pt-0 md:pl-6">
-            <p class="text-sm text-amber-400/80 italic">"Appamādena sampādetha"</p>
-            <p class="text-[11px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
-          </div>
+    <div class="space-y-5">
+      <!-- Top 4 KPI Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-vault text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ရန်ပုံငွေစုစုပေါင်း</p><h3 id="kpi-home-fund" class="text-base font-extrabold text-amber-300 mt-1">...</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-building-columns text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဘဏ်ရှိငွေစုစုပေါင်း</p><h3 id="kpi-home-bank" class="text-base font-extrabold text-sky-300 mt-1">...</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-sack-dollar text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ငွေသားစုစုပေါင်း</p><h3 id="kpi-home-cash" class="text-base font-extrabold text-emerald-300 mt-1">...</h3></div>
+        </div>
+        <div class="stats-card">
+          <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-list-check text-xl"></i></div>
+          <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စာကြောင်းရေ စုစုပေါင်း</p><h3 id="kpi-home-count" class="text-base font-extrabold text-amber-100 mt-1">...</h3></div>
         </div>
       </div>
 
-      <!-- Fund Summary Table -->
-      <div class="flex-1 flex flex-col bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
-        <div class="px-6 py-4 border-b border-amber-900/30 bg-[#1a1410] shrink-0">
-          <h3 class="text-base font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
-            <i class="fa-solid fa-building-columns text-amber-400"></i> ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
-          </h3>
+      <!-- Two Equal-Height Boxes -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch">
+        <!-- Mindfulness Quote Box -->
+        <div class="h-full flex flex-col justify-center bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl p-8 relative overflow-hidden">
+          <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+          <i class="fa-solid fa-dharmachakra text-amber-500/20 text-6xl absolute bottom-4 right-5"></i>
+          <div class="relative space-y-2.5 text-center">
+            <p class="text-[13px] leading-relaxed text-amber-100/90 font-medium">
+              In every sight, <span class="text-amber-400/70 text-[11px]">ဘာပဲမြင်မြင်</span> ...<br>
+              In every sound, <span class="text-amber-400/70 text-[11px]">ဘာပဲကြားကြား</span> ...<br>
+              In every smell, <span class="text-amber-400/70 text-[11px]">ဘယ်လို အနံ့ပဲရရ</span> ...<br>
+              In every taste, <span class="text-amber-400/70 text-[11px]">ဘာပဲစားစား</span> ...<br>
+              In every touch, <span class="text-amber-400/70 text-[11px]">ဘာနဲ့ပဲ ထိတွေ့ရပါစေ</span> ...<br>
+              In every thought, <span class="text-amber-400/70 text-[11px]">တွေးတွေး</span> ...
+            </p>
+            <p class="text-gold-gradient text-lg font-black tracking-wide pt-2">— stay mindful —</p>
+            <p class="text-[12px] text-amber-200/60 italic">အမြဲသတိ ထားပါလေ ...</p>
+            <div class="pt-3 mt-3 border-t border-amber-700/20">
+              <p class="text-[11px] text-amber-400/80 italic">"Appamādena sampādetha"</p>
+              <p class="text-[10px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
+            </div>
+          </div>
         </div>
-        <div id="home-bank-table" class="flex-1 overflow-auto">
-          <div class="p-8 text-center text-amber-500/50 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</div>
+
+        <!-- Bank Summary Table Box -->
+        <div class="h-full flex flex-col bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
+          <div class="px-5 py-3.5 border-b border-amber-900/30 bg-[#1a1410] shrink-0">
+            <h3 class="text-xs font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
+              <i class="fa-solid fa-building-columns text-amber-400"></i> ဘဏ်စာရင်းများ အကျဉ်းချုပ်
+            </h3>
+          </div>
+          <div id="home-bank-table" class="flex-1 overflow-auto">
+            <div class="p-8 text-center text-amber-500/50 text-xs"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</div>
+          </div>
         </div>
       </div>
     </div>
   `;
 
   const applyData = (data) => {
+    const cards = data.cards || [];
+    setText("kpi-home-fund", formatNum(cards[0]) + " MMK");
+    setText("kpi-home-bank", formatNum(cards[1]) + " MMK");
+    setText("kpi-home-cash", formatNum(cards[2]) + " MMK");
+    setText("kpi-home-count", formatNum(cards[3]));
     renderHomeBankTable(data.table || []);
   };
 
@@ -287,19 +193,19 @@ function renderHomeBankTable(rows) {
   const header = rows[0];
   const body = rows.slice(1);
 
-  let html = `<table class="table-lg w-full text-left border-collapse text-sm"><thead><tr>`;
+  let html = `<table class="w-full text-left border-collapse text-[11px]"><thead><tr>`;
   header.forEach((h, i) => {
-    html += `<th class="px-4 py-3.5 sticky top-0 bg-[#1a1410] text-amber-400/90 font-bold uppercase text-xs tracking-wide ${i >= 2 ? 'text-right' : ''}">${h}</th>`;
+    html += `<th class="px-3 py-2.5 sticky top-0 bg-[#1a1410] text-amber-400/90 font-bold uppercase text-[9.5px] tracking-wide ${i >= 2 ? 'text-right' : ''}">${h}</th>`;
   });
   html += `</tr></thead><tbody>`;
 
   body.forEach((row, ri) => {
     const isTotal = ri === body.length - 1;
-    html += `<tr class="${isTotal ? 'font-black text-amber-300 bg-amber-500/5 border-t-2 border-amber-600/40 text-base' : 'border-b border-amber-900/10 hover:bg-amber-500/5'}">`;
+    html += `<tr class="${isTotal ? 'font-black text-amber-300 bg-amber-500/5 border-t-2 border-amber-600/40' : 'border-b border-amber-900/10 hover:bg-amber-500/5'}">`;
     row.forEach((cell, ci) => {
       const isNumeric = ci >= 2;
       const display = isNumeric && cell !== "" && !isNaN(cell) ? Number(cell).toLocaleString() : cell;
-      html += `<td class="px-4 py-3 font-mono ${isNumeric ? 'text-right' : ''} ${!isNumeric ? 'font-sans' : ''}">${display}</td>`;
+      html += `<td class="px-3 py-2 font-mono ${isNumeric ? 'text-right' : ''} ${!isNumeric ? 'font-sans' : ''}">${display}</td>`;
     });
     html += `</tr>`;
   });
@@ -373,8 +279,6 @@ async function renderLedgerView(container) {
           </tbody>
         </table>
       </div>
-
-      ${renderPrevNextBar()}
     </div>
   `;
 
@@ -690,8 +594,6 @@ async function renderInventoryView(container) {
           </tbody>
         </table>
       </div>
-
-      ${renderPrevNextBar()}
     </div>
   `;
 
