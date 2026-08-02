@@ -41,10 +41,15 @@ async function renderInventoryView() {
 }
 
 // 💡 Search input calls this (not renderInventoryTable directly) so a
-// new search term always jumps back to page 1.
+// new search term always jumps back to page 1. Debounced ~200ms so fast
+// typing doesn't trigger a full re-render on every single keystroke.
+let invSearchDebounce = null;
 function onInvSearchInput() {
-  invPage = 1;
-  renderInventoryTable();
+  clearTimeout(invSearchDebounce);
+  invSearchDebounce = setTimeout(() => {
+    invPage = 1;
+    renderInventoryTable();
+  }, 200);
 }
 
 function renderInventoryTable() {
