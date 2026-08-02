@@ -1,4 +1,4 @@
-// js/config.js
+// js/config.js 
 
 const CONFIG = {
   // Google Apps Script Web App Deployment URL
