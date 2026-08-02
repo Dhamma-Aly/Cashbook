@@ -1,0 +1,30 @@
+<!-- view/dashboard.html - Home Dashboard fragment (loaded by js/dashboard.js) -->
+<div class="h-full flex flex-col space-y-5">
+  <!-- "Be Mindful" hero banner -->
+  <div class="shrink-0 bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl px-8 py-6 relative overflow-hidden">
+    <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+    <i class="fa-solid fa-dharmachakra text-amber-500/10 text-8xl absolute -bottom-3 right-6"></i>
+    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div>
+        <h2 class="text-3xl md:text-4xl font-black text-gold-gradient tracking-wide">Be Mindful</h2>
+        <p class="text-sm text-amber-200/70 italic mt-1">အမြဲသတိ ထားပါလေ ... — stay mindful —</p>
+      </div>
+      <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-amber-700/20 pt-3 md:pt-0 md:pl-6">
+        <p class="text-sm text-amber-400/80 italic">"Appamādena sampādetha"</p>
+        <p class="text-[11px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fund Summary Table -->
+  <div class="flex-1 flex flex-col bg-[#14110d] border border-amber-900/30 rounded-2xl shadow-2xl overflow-hidden">
+    <div class="px-6 py-4 border-b border-amber-900/30 bg-[#1a1410] shrink-0">
+      <h3 class="text-base font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
+        <i class="fa-solid fa-building-columns text-amber-400"></i> ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
+      </h3>
+    </div>
+    <div id="home-bank-table" class="flex-1 overflow-auto">
+      <div class="p-8 text-center text-amber-500/50 text-sm"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</div>
+    </div>
+  </div>
+</div>

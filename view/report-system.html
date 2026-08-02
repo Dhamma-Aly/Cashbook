@@ -1,0 +1,37 @@
+<!-- view/report-system.html - Report + System Settings fragment
+     (loaded by js/report-system.js). Both live in one file/module since
+     they're grouped under "System Controls" in the sidebar; only one of
+     the two sections below is shown at a time, toggled by js/report-system.js
+     based on which tab is active. -->
+
+<!-- ===== Report: "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်" (12Rep!A1:P15) ===== -->
+<div id="report-section" class="space-y-5 hidden">
+  <div class="flex flex-col sm:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
+    <h3 class="text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
+      <i class="fa-solid fa-chart-pie text-amber-400"></i> ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်
+    </h3>
+    <button onclick="loadSheetView()" class="p-2 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+  </div>
+
+  <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
+    <table class="table-lg w-full text-left border-collapse min-w-[1200px] text-sm">
+      <tbody id="report-table-body">
+        <tr><td class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===== System Settings ===== -->
+<div id="system-section" class="hidden">
+  <div class="p-10 text-center border border-amber-900/30 bg-[#14110d] rounded-2xl shadow-2xl my-6 max-w-2xl mx-auto space-y-4">
+    <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+      <i class="fa-solid fa-gears text-4xl"></i>
+    </div>
+    <h2 class="text-xl font-black text-gold-gradient">System Settings</h2>
+    <p class="text-xs text-amber-200/70">စနစ်ထိန်းချုပ်မှု ပြင်ဆင်ချက်များ</p>
+    <p class="text-[11px] text-amber-500/50 italic pt-3 border-t border-amber-900/20">
+      (ဤအပိုင်းအတွက် သီးသန့် အချက်အလက်များကို အနီးကပ် ထပ်မံဖြည့်သွင်းပေးပါမည်)
+    </p>
+  </div>
+</div>
