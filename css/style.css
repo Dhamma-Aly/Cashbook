@@ -4,6 +4,14 @@
   color-scheme: dark;
 }
 
+/* 🇲🇲 Site-wide Myanmar webfont (Noto Sans Myanmar, loaded in index.html).
+   !important is needed because Tailwind's CDN build injects its own
+   `.font-sans` utility, and the two have equal selector specificity --
+   this guarantees our font always wins regardless of injection order. */
+body.font-myanmar {
+  font-family: 'Noto Sans Myanmar', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+}
+
 .text-gold-gradient {
   color: #fbbf24 !important;
   background: linear-gradient(135deg, #fef08a 0%, #facc15 50%, #d97706 100%) !important;
@@ -91,4 +99,27 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
   background-color: #14100c !important;
   z-index: 25 !important;
   border-left: 1px solid rgba(245, 158, 11, 0.2) !important;
+}
+
+/* 🔧 Report summary table (12Rep!A1:P15, rendered as plain <tr>/<td> rows
+   with no <thead>). table.table-lg forces white-space:normal on every
+   cell so long content can wrap -- but that also wraps the header row
+   (row 0) onto 2 lines. Target the header row specifically (ID selector
+   beats the class-based rule above) so it always stays on one line, and
+   give Column B ("ခေါင်းစဉ်ခွဲ/Category") a bit more breathing room since
+   it holds the longest labels in the table. */
+#report-table-body tr:first-child td {
+  white-space: nowrap !important;
+}
+#report-table-body td:nth-child(2) {
+  min-width: 190px;
+}
+
+/* 🙏 Mindfulness reflection card typography */
+.mindful-card p {
+  line-height: 2.1;
+  letter-spacing: 0.01em;
+}
+.mindful-card h2.mindful-title {
+  letter-spacing: 0.03em;
 }
