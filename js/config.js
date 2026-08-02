@@ -2,7 +2,7 @@
 
 const CONFIG = {
   // Google Apps Script Web App Deployment URL
-  API_BASE_URL: "https://script.google.com/macros/s/AKfycbzOZAbC32kmSJ4UA23tNMl6kDEeJsIGor3odvOm0DLPNta8hKAHWNtTgpX7QTlHf4Sk/exec",
+  API_BASE_URL: "https://script.google.com/macros/s/AKfycbzbumPbAPfL5vDAK0Z9JmZXbxdPzQQHzyf0NkaVAPIL4QRtitb0AoEUzeGs1wQwmVfu/exec",
 
   // 💡 Which sheets belong to which module (used by js/app.js's router to
   // dispatch to js/banks.js vs js/books.js — both share the same engine
