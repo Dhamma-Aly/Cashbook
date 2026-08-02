@@ -1,18 +1,22 @@
 <!-- view/dashboard.html - Home Dashboard fragment (loaded by js/dashboard.js) -->
 <div class="h-full flex flex-col space-y-5">
-  <!-- "Be Mindful" hero banner -->
-  <div class="shrink-0 bg-gradient-to-br from-[#1c1510] to-[#100c09] border border-amber-600/25 rounded-2xl shadow-2xl px-8 py-6 relative overflow-hidden">
-    <div class="absolute -top-10 -right-10 w-40 h-40 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
-    <i class="fa-solid fa-dharmachakra text-amber-500/10 text-8xl absolute -bottom-3 right-6"></i>
-    <div class="relative flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-      <div>
-        <h2 class="text-3xl md:text-4xl font-black text-gold-gradient tracking-wide">Be Mindful</h2>
-        <p class="text-sm text-amber-200/70 italic mt-1">အမြဲသတိ ထားပါလေ ... — stay mindful —</p>
-      </div>
-      <div class="text-left md:text-right border-t md:border-t-0 md:border-l border-amber-700/20 pt-3 md:pt-0 md:pl-6">
-        <p class="text-sm text-amber-400/80 italic">"Appamādena sampādetha"</p>
-        <p class="text-[11px] text-amber-500/50 uppercase tracking-widest mt-1">— The Buddha</p>
-      </div>
+  <!-- Top 4 KPI Cards (Home!B2:E2) -->
+  <div class="shrink-0 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-vault text-xl"></i></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်းရန်ပုံငွေ</p><h3 id="kpi-home-fund" class="text-base font-extrabold text-amber-300 mt-1">0 MMK</h3></div>
+    </div>
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-building-columns text-xl"></i></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်းဘဏ်ရှိငွေ</p><h3 id="kpi-home-bank" class="text-base font-extrabold text-sky-400 mt-1">0 MMK</h3></div>
+    </div>
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-sack-dollar text-xl"></i></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်းလက်ရှိငွေ</p><h3 id="kpi-home-cash" class="text-base font-extrabold text-emerald-400 mt-1">0 MMK</h3></div>
+    </div>
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-list-check text-xl"></i></div>
+      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း စာကြောင်းရေ</p><h3 id="kpi-home-count" class="text-base font-extrabold text-amber-100 mt-1">0</h3></div>
     </div>
   </div>
 
