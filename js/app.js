@@ -1,33 +1,61 @@
 // js/app.js - Main Application Orchestrator
 document.addEventListener("DOMContentLoaded", async () => {
-  await window.cacheEngine.init();
-  if (window.initAuth()) {
-    window.switchTab("Home");
+  // Cache Engine အလုပ်မလုပ်ရင်တောင် Script မရပ်သွားစေရန် try...catch ဖြင့် အကာအကွယ်ယူထားသည်
+  try {
+    if (window.cacheEngine && window.cacheEngine.init) {
+      await window.cacheEngine.init();
+    }
+  } catch (cacheErr) {
+    console.warn("Cache engine initialization failed, proceeding without cache:", cacheErr);
+  }
+
+  // Auth စစ်ဆေးခြင်း သို့မဟုတ် ပုံမှန် Home Tab ပွင့်စေခြင်း
+  try {
+    const isAuthenticated = window.initAuth ? window.initAuth() : true;
+    if (isAuthenticated) {
+      await window.switchTab("Home");
+    } else {
+      console.warn("User is not authenticated.");
+      // Login မဝင်ထားပါကလည်း Home သို့မဟုတ် Default Tab ကို ပွင့်စေချင်ပါက အောက်ပါလိုင်းကို ဖွင့်ပေးပါ
+      await window.switchTab("Home");
+    }
+  } catch (authErr) {
+    console.error("Tab Initialization Error:", authErr);
+    // Error တက်ခဲ့လျှင်ပင် Home View ကို မဖြစ်မနေ render လုပ်ခိုင်းမည်
+    if (window.renderDashboardView) {
+      await window.renderDashboardView();
+    }
   }
 });
 
 window.switchTab = async function (tabKey) {
+  window.currentSheetKey = tabKey; // Current sheet key ကို အမြဲတမ်း မှတ်ထားပေးမည်
+
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
   const activeBtn = document.getElementById(`btn-${tabKey}`);
   if (activeBtn) activeBtn.classList.add("active");
 
   const pageTitle = document.getElementById("page-title");
   if (pageTitle) {
-    pageTitle.textContent = window.APP_CONFIG.BOOKS[tabKey] || tabKey;
+    pageTitle.textContent = (window.APP_CONFIG && window.APP_CONFIG.BOOKS && window.APP_CONFIG.BOOKS[tabKey]) || tabKey;
   }
 
-  if (tabKey === "Home") {
-    await window.renderDashboardView();
-  } else if (["1CB", "2CB", "3CB"].includes(tabKey)) {
-    await window.renderBankView(tabKey);
-  } else if (["4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB"].includes(tabKey)) {
-    await window.renderBookView(tabKey);
-  } else if (tabKey === "11Inv") {
-    await window.renderInventoryView();
-  } else if (tabKey === "Report") {
-    await window.renderReportView("Report");
-  } else if (tabKey === "System") {
-    await window.renderReportView("System");
+  try {
+    if (tabKey === "Home") {
+      if (window.renderDashboardView) await window.renderDashboardView();
+    } else if (["1CB", "2CB", "3CB"].includes(tabKey)) {
+      if (window.renderBankView) await window.renderBankView(tabKey);
+    } else if (["4GB", "5FB", "6HB", "7PB", "8EB", "9MB", "10GB"].includes(tabKey)) {
+      if (window.renderBookView) await window.renderBookView(tabKey);
+    } else if (tabKey === "11Inv") {
+      if (window.renderInventoryView) await window.renderInventoryView();
+    } else if (tabKey === "Report") {
+      if (window.renderReportView) await window.renderReportView("Report");
+    } else if (tabKey === "System") {
+      if (window.renderReportView) await window.renderReportView("System");
+    }
+  } catch (err) {
+    console.error(`Error rendering tab ${tabKey}:`, err);
   }
 };
 
@@ -39,23 +67,39 @@ window.loadSheetView = async function () {
 
 window.openAddModal = function () {
   const modal = document.getElementById("entry-modal");
-  document.getElementById("entry-form").reset();
-  document.getElementById("entry-uniqueId").value = "";
-  document.getElementById("entry-date").valueAsDate = new Date();
-  window.onTypeChange();
+  if (!modal) return;
+  
+  const form = document.getElementById("entry-form");
+  if (form) form.reset();
+  
+  const uidInput = document.getElementById("entry-uniqueId");
+  if (uidInput) uidInput.value = "";
+  
+  const dateInput = document.getElementById("entry-date");
+  if (dateInput) {
+    // Safari/Mobile Safe Date Assignment
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+  }
+  
+  if (window.onTypeChange) window.onTypeChange();
   modal.classList.remove("hidden");
 };
 
 window.closeEntryModal = function () {
-  document.getElementById("entry-modal").classList.add("hidden");
+  const modal = document.getElementById("entry-modal");
+  if (modal) modal.classList.add("hidden");
 };
 
 window.onTypeChange = function () {
-  const type = document.getElementById("entry-type").value;
+  const typeEl = document.getElementById("entry-type");
   const subSelect = document.getElementById("entry-subcategory");
+  if (!typeEl || !subSelect) return;
+
+  const type = typeEl.value;
   subSelect.innerHTML = "";
 
-  const list = window.APP_CONFIG.SUBCATEGORIES[type] || [];
+  const list = (window.APP_CONFIG && window.APP_CONFIG.SUBCATEGORIES && window.APP_CONFIG.SUBCATEGORIES[type]) || [];
   list.forEach(item => {
     const opt = document.createElement("option");
     opt.value = item;
@@ -67,7 +111,7 @@ window.onTypeChange = function () {
 window.saveEntryForm = async function (event) {
   event.preventDefault();
   const sheet = window.currentSheetKey;
-  const uniqueId = document.getElementById("entry-uniqueId").value; // "" = new entry, else editing this row
+  const uniqueId = document.getElementById("entry-uniqueId").value;
   const date = document.getElementById("entry-date").value;
   const type = document.getElementById("entry-type").value;
   const subcat = document.getElementById("entry-subcategory").value;
@@ -77,15 +121,11 @@ window.saveEntryForm = async function (event) {
   const desc = document.getElementById("entry-description").value;
 
   const monthYear = date ? date.substring(0, 7) : "";
-  const bookName = window.APP_CONFIG.BOOKS[sheet] || sheet;
+  const bookName = (window.APP_CONFIG && window.APP_CONFIG.BOOKS && window.APP_CONFIG.BOOKS[sheet]) || sheet;
 
   const income = type === "ဝင်ငွေ" ? amount : 0;
   const expense = type === "ထွက်ငွေ" ? amount : 0;
 
-  // Column A (စဉ်) is left blank here on purpose: the server auto-assigns
-  // it on create, and preserves the existing value on update regardless
-  // of what's sent. Column M keeps the row's real Unique-ID: the existing
-  // one when editing, or a freshly generated one for a brand new row.
   const finalUniqueId = uniqueId || `ID-${Date.now()}`;
   const rowData = [
     "", date, type, subcat, voucher, desc, receiver,
@@ -93,21 +133,21 @@ window.saveEntryForm = async function (event) {
   ];
 
   window.closeEntryModal();
-  document.getElementById("loading-overlay").classList.remove("hidden");
+  const loader = document.getElementById("loading-overlay");
+  if (loader) loader.classList.remove("hidden");
 
   try {
-    await window.saveSheetEntry(sheet, rowData, uniqueId || null);
+    if (window.saveSheetEntry) {
+      await window.saveSheetEntry(sheet, rowData, uniqueId || null);
+    }
     await window.switchTab(sheet);
   } catch (err) {
     alert("အချက်အလက် သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
   } finally {
-    document.getElementById("loading-overlay").classList.add("hidden");
+    if (loader) loader.classList.add("hidden");
   }
 };
 
-// 💡 Looks up a currently-rendered row by its real Unique-ID (last column)
-// instead of a physical sheet row number, which used to drift out of sync
-// the moment any row above it was added or removed.
 function findRowByUid(uid) {
   const uidCol = window.currentSheetKey === "11Inv" ? 10 : 12;
   return (window.currentSheetData || []).find(r => String(r[uidCol]) === String(uid));
@@ -118,11 +158,13 @@ window.editEntry = function (uid) {
   if (!r) return;
 
   window.openAddModal();
-  document.getElementById("modal-form-title").textContent = "စာရင်း ပြင်ဆင်ရန်";
+  const titleEl = document.getElementById("modal-form-title");
+  if (titleEl) titleEl.textContent = "စာရင်း ပြင်ဆင်ရန်";
+  
   document.getElementById("entry-uniqueId").value = uid;
   document.getElementById("entry-date").value = r[1] || "";
   document.getElementById("entry-type").value = r[2] || "ဝင်ငွေ";
-  window.onTypeChange();
+  if (window.onTypeChange) window.onTypeChange();
   document.getElementById("entry-subcategory").value = r[3] || "";
   document.getElementById("entry-voucher").value = r[4] || "";
   document.getElementById("entry-description").value = r[5] || "";
@@ -135,14 +177,17 @@ window.editEntry = function (uid) {
 
 window.deleteEntry = async function (uid) {
   if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
-  document.getElementById("loading-overlay").classList.remove("hidden");
+  const loader = document.getElementById("loading-overlay");
+  if (loader) loader.classList.remove("hidden");
   try {
-    await window.deleteSheetEntry(window.currentSheetKey, uid);
+    if (window.deleteSheetEntry) {
+      await window.deleteSheetEntry(window.currentSheetKey, uid);
+    }
     await window.switchTab(window.currentSheetKey);
   } catch (err) {
     alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + err.message);
   } finally {
-    document.getElementById("loading-overlay").classList.add("hidden");
+    if (loader) loader.classList.add("hidden");
   }
 };
 
