@@ -60,5 +60,18 @@
     </table>
   </div>
 
-  <div id="ledger-pagination-bar"></div>
+  <!-- Pagination Bar -->
+  <div id="ledger-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#14110d] border border-amber-900/30 px-5 py-3 rounded-xl gap-4 text-xs">
+    <div class="text-amber-200/80 font-medium">
+      Showing <span id="page-start" class="font-bold text-amber-400">0</span> to <span id="page-end" class="font-bold text-amber-400">0</span> of <span id="total-entries" class="font-bold text-amber-400">0</span> entries
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-prev-page" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+      </button>
+      <button id="btn-next-page" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all">
+        Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
+  </div>
 </div>
