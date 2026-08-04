@@ -69,6 +69,14 @@ window.renderBankView = async function(sheetKey) {
     document.getElementById("kpi-expense").textContent = `${exp.toLocaleString()} MMK`;
     document.getElementById("kpi-balance").textContent = `${bal.toLocaleString()} MMK`;
     document.getElementById("kpi-count").textContent = count;
+
+    // Pagination numbers update
+    const pageStartEl = document.getElementById("page-start");
+    const pageEndEl = document.getElementById("page-end");
+    const totalEntriesEl = document.getElementById("total-entries");
+    if (pageStartEl) pageStartEl.textContent = count > 0 ? 1 : 0;
+    if (pageEndEl) pageEndEl.textContent = count;
+    if (totalEntriesEl) totalEntriesEl.textContent = count;
   };
 
   await window.fetchSheetData(sheetKey, renderData).then(data => renderData(data));
