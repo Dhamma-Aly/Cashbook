@@ -63,6 +63,15 @@ window.renderInventoryView = async function() {
     document.getElementById("kpi-inv-dhammahall").textContent = hallCount;
     document.getElementById("kpi-inv-sim").textContent = simCount;
     document.getElementById("kpi-inv-store").textContent = storeCount;
+
+    // Inventory Pagination numbers update
+    const totalInv = dataRows.length;
+    const invStartEl = document.getElementById("inv-page-start");
+    const invEndEl = document.getElementById("inv-page-end");
+    const invTotalEl = document.getElementById("inv-total-entries");
+    if (invStartEl) invStartEl.textContent = totalInv > 0 ? 1 : 0;
+    if (invEndEl) invEndEl.textContent = totalInv;
+    if (invTotalEl) invTotalEl.textContent = totalInv;
   };
 
   await window.fetchSheetData("11Inv", renderData).then(data => renderData(data));
