@@ -75,7 +75,8 @@ window.renderDashboardView = async function() {
           // 💡 စုစုပေါင်း Summary Row Accent
           tableHtml += `
           <tr class="bg-gradient-to-r from-amber-950/90 via-[#211810] to-amber-950/90 border-t-2 border-b-2 border-amber-500/60 font-black text-amber-200 text-sm shadow-xl">
-            <td class="text-center py-4 px-3 font-mono text-amber-400 font-bold">${srNo}</td>
+            <!-- ဤနေရာရှိ $ {srNo} ကို ဖြုတ်လိုက်ပါပြီ (နံပါတ် ၉ ပေါ်နေခြင်းကို ဖြေရှင်းရန်) -->
+            <td class="text-center py-4 px-3 font-mono text-amber-400 font-bold"></td>
             <td class="py-4 px-4 font-black text-gold-gradient text-base filter drop-shadow">${name}</td>
             <!-- ဘဏ်ရှိငွေပေါင်း Total (Sky) -->
             <td class="text-right font-mono text-sky-300 font-bold py-4 px-4 bg-sky-950/50 border-x border-sky-500/30 text-base">${bankVal ? bankVal.toLocaleString() : "0"}</td>
@@ -127,5 +128,12 @@ window.renderDashboardView = async function() {
     document.getElementById("kpi-home-count").textContent = kpiCount;
   };
 
-  await window.fetchSheetData("Home", renderHomeData).then(data => renderHomeData(data));
+  // Performance မြန်ဆန်စေရန်နှင့် Double-call bug ကို ဖြေရှင်းထားသော အပိုင်း
+  try {
+    const data = await window.fetchSheetData("Home");
+    renderHomeData(data);
+  } catch (error) {
+    console.error("Error fetching home dashboard data:", error);
+    renderHomeData([]);
+  }
 };
