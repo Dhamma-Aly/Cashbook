@@ -166,6 +166,29 @@ window.deleteInvEntry = async function(uid) {
   }
 };
 
+// 💡 Referenced by view/Inventory.html's Export button ("exportInventoryCSV()")
+// but was never actually defined anywhere - clicking Export on the
+// Inventory tab threw "exportInventoryCSV is not defined" and did
+// nothing. Mirrors window.exportCSV in app.js (same CSV-building logic),
+// just scoped to the currently loaded Inventory rows/filename.
+window.exportInventoryCSV = function() {
+  const rows = window.currentSheetData;
+  if (!rows || rows.length === 0) return alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+
+  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
+  rows.forEach(r => {
+    csvContent += r.map(c => `"${(c || '').toString().replace(/"/g, '""')}"`).join(",") + "\n";
+  });
+
+  const encodedUri = encodeURI(csvContent);
+  const link = document.createElement("a");
+  link.setAttribute("href", encodedUri);
+  link.setAttribute("download", `11Inv_Export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 window.onInvSearchInput = function() {
   const query = document.getElementById("inv-search-input").value.toLowerCase();
   const tbody = document.getElementById("inv-table-body");
