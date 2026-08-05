@@ -13,15 +13,19 @@ window.renderBankView = async function(sheetKey) {
     window.currentSheetData = dataRows;
 
     let inc = 0, exp = 0, bal = 0, count = 0;
+    let runningBalance = 0;
     const tbody = document.getElementById("table-body");
-    tbody.innerHTML = "";
+    
+    // Performance အတွက် HTML တွေကို String အနေနဲ့ စုပါမည်
+    let tableHTML = ""; 
 
     if (dataRows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
+      tableHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
       dataRows.forEach((r, idx) => {
-        if (!r[0] && !r[1]) return;
-        const uid = r[12] || ""; // Column M: real Unique-ID, used to identify this row for edit/delete
+        if (!r[0] && !r[1]) return; // အလွတ်ဖြစ်နေလျှင် ကျော်မည်
+        
+        const uid = r[12] || ""; // Column M
         const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const type = r[2] || "-";
@@ -29,42 +33,51 @@ window.renderBankView = async function(sheetKey) {
         const voucher = r[4] || "-";
         const desc = r[5] || "-";
         const receiver = r[6] || "-";
+        
         const incomeVal = parseFloat((r[7] || "0").toString().replace(/,/g, "")) || 0;
         const expenseVal = parseFloat((r[8] || "0").toString().replace(/,/g, "")) || 0;
-        const balanceVal = parseFloat((r[9] || "0").toString().replace(/,/g, "")) || 0;
+        
         const monthYear = r[10] || "-";
-        const bookName = r[11] || window.APP_CONFIG.BOOKS[sheetKey] || sheetKey;
+        const bookName = r[11] || (window.APP_CONFIG?.BOOKS?.[sheetKey]) || sheetKey;
 
         inc += incomeVal;
         exp += expenseVal;
-        bal = balanceVal || (inc - exp);
+
+        runningBalance += incomeVal;
+        runningBalance -= expenseVal;
+
+        bal = runningBalance;
         count++;
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td class="text-center font-bold text-amber-500/70">${srNo}</td>
-          <td class="font-mono text-xs">${date}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${type === 'ဝင်ငွေ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${type}</span></td>
-          <td class="font-semibold text-amber-200">${subcat}</td>
-          <td class="font-mono text-xs">${voucher}</td>
-          <td class="whitespace-normal max-w-xs">${desc}</td>
-          <td>${receiver}</td>
-          <td class="text-right font-mono text-emerald-400 font-semibold">${incomeVal ? incomeVal.toLocaleString() : '-'}</td>
-          <td class="text-right font-mono text-rose-400 font-semibold">${expenseVal ? expenseVal.toLocaleString() : '-'}</td>
-          <td class="text-right font-mono font-bold text-amber-300">${balanceVal ? balanceVal.toLocaleString() : '-'}</td>
-          <td class="font-mono text-xs">${monthYear}</td>
-          <td class="text-xs text-amber-500/70">${bookName}</td>
-          <td class="text-center right-0 sticky px-3">
-  <div class="flex items-center justify-center gap-2.5">
-    <button onclick="editEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-    <button onclick="deleteEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
-  </div>
-</td>
+        tableHTML += `
+          <tr>
+            <td class="text-center font-bold text-amber-500/70">${srNo}</td>
+            <td class="font-mono text-xs">${date}</td>
+            <td><span class="px-2 py-0.5 rounded text-[10px] font-bold ${type === 'ဝင်ငွေ' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}">${type}</span></td>
+            <td class="font-semibold text-amber-200">${subcat}</td>
+            <td class="font-mono text-xs">${voucher}</td>
+            <td class="whitespace-normal max-w-xs">${desc}</td>
+            <td>${receiver}</td>
+            <td class="text-right font-mono text-emerald-400 font-semibold">${incomeVal ? incomeVal.toLocaleString() : '-'}</td>
+            <td class="text-right font-mono text-rose-400 font-semibold">${expenseVal ? expenseVal.toLocaleString() : '-'}</td>
+            <td class="text-right font-mono font-bold text-amber-300">${runningBalance.toLocaleString()}</td>
+            <td class="font-mono text-xs">${monthYear}</td>
+            <td class="text-xs text-amber-500/70">${bookName}</td>
+            <td class="text-center right-0 sticky px-3">
+              <div class="flex items-center justify-center gap-2.5">
+                <button onclick="editEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button onclick="deleteEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              </div>
+            </td>
+          </tr>
         `;
-        tbody.appendChild(tr);
       });
     }
 
+    // Loop ပြီးမှ DOM ထဲကို တစ်ခါတည်း ထည့်ပါမည် (Performance ပိုကောင်းစေသည်)
+    tbody.innerHTML = tableHTML;
+
+    // KPI အချက်အလက်များ Update လုပ်ခြင်း
     document.getElementById("kpi-income").textContent = `${inc.toLocaleString()} MMK`;
     document.getElementById("kpi-expense").textContent = `${exp.toLocaleString()} MMK`;
     document.getElementById("kpi-balance").textContent = `${bal.toLocaleString()} MMK`;
@@ -79,7 +92,16 @@ window.renderBankView = async function(sheetKey) {
     if (totalEntriesEl) totalEntriesEl.textContent = count;
   };
 
-  await window.fetchSheetData(sheetKey, renderData).then(data => renderData(data));
+  // မှားနေသော Promise ကို ပြင်ဆင်ထားသည် 
+  // သင့်ရဲ့ fetchSheetData ဟာ Promise Return ပြန်တယ်ဆိုရင် အောက်ပါအတိုင်း သုံးပါ
+  try {
+    const data = await window.fetchSheetData(sheetKey);
+    renderData(data);
+  } catch (error) {
+    console.error("Error fetching data:", error);
+    // ယူလို့မရရင် အလွတ်ပြပေးရန်
+    renderData([]); 
+  }
 };
 
 window.onLedgerSearchInput = function() {
@@ -89,6 +111,7 @@ window.onLedgerSearchInput = function() {
 
   const trs = tbody.getElementsByTagName("tr");
   Array.from(trs).forEach(tr => {
+    // သတိပြုရန် - ဤနေရာတွင် Row များကိုသာ ဖျောက်ထားခြင်းဖြစ်ပြီး KPI Data များ ပြောင်းလဲသွားမည် မဟုတ်ပါ
     const text = tr.innerText.toLowerCase();
     tr.style.display = text.includes(query) ? "" : "none";
   });
