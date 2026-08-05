@@ -1,13 +1,22 @@
 // js/config.js - System Configuration & Constants
+//
+// ⚠️ ACTION REQUIRED BEFORE THIS APP WILL SAVE/LOAD ANY REAL DATA ⚠️
+// worker.js uses Google Apps Script APIs (SpreadsheetApp, ContentService,
+// CacheService, LockService) and can ONLY run when deployed as a Google
+// Apps Script Web App - it cannot run on Cloudflare Workers, Vercel, etc.
+// The API_BASE_URL below is still the OLD Cloudflare Workers address and
+// does NOT point at any running worker.js, so every read/save/delete
+// will silently fail (falls back to empty/cached data, see js/api.js).
+//
+// To fix, 3 steps:
+//   1. Go to https://script.google.com -> New project.
+//   2. Paste the entire contents of worker.js in as Code.gs (or `clasp
+//      push` if you manage it locally) -> Deploy -> New deployment ->
+//      type "Web app" -> Execute as "Me" -> Who has access "Anyone" ->
+//      Deploy. Copy the resulting URL (ends in /exec).
+//   3. Paste that URL below, replacing the placeholder.
 window.APP_CONFIG = {
-  // 👉 Point this at whichever backend actually runs worker.js:
-  //   - Google Apps Script Web App exec URL, e.g.
-  //     "https://script.google.com/macros/s/AKfycb.../exec"
-  //   - OR your own domain if you deploy cloudflare-proxy-worker.js in
-  //     front of it (e.g. keep using "https://cashbook-api.dhammaaly.workers.dev")
-  // The current value below is the OLD backend's URL and will not work
-  // with the corrected worker.js / api.js pairing - replace it.
-  API_BASE_URL: "https://cashbook-api.dhammaaly.workers.dev",
+  API_BASE_URL: "PASTE_YOUR_APPS_SCRIPT_/exec_URL_HERE",
 
   BOOKS: {
     "Home": "Home Dashboard",
