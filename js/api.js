@@ -1,4 +1,4 @@
-// js/api.js - IndexedDB Local Cache & SWR Network Fetcher
+// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher
 const DB_NAME = "CashbookLocalDB";
 const DB_VERSION = 1;
 
@@ -48,10 +48,9 @@ class LocalCacheEngine {
 
 window.cacheEngine = new LocalCacheEngine();
 
-// 💡 Every request talks to worker.js's single action-based endpoint:
+// 💡 Every request talks to Cloudflare Worker's action-based API endpoint:
 //    GET  ?action=read&sheet=NAME
 //    POST { action: "create" | "update" | "delete", sheet, data, uniqueId }
-// worker.js responds with { status: "success"|"error", data / message }.
 window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   const localData = await window.cacheEngine.getSheet(sheetName);
   if (localData && typeof onLocalLoaded === "function") {
@@ -73,20 +72,11 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   return localData || [];
 };
 
-// 💡 uniqueId: pass null/empty to create a new row, or the row's real
-// Unique-ID text (last column of the row) to update that existing row.
-// 💡 Content-Type "text/plain" is intentional, NOT a bug: Google Apps
-// Script Web Apps have no doOptions() handler, so any request that
-// triggers a CORS preflight (e.g. Content-Type "application/json") gets
-// silently blocked by the browser before it ever reaches the server.
-// "text/plain" is a CORS-safelisted content type, so no preflight is
-// sent - worker.js still parses the body as JSON regardless of the
-// header (it reads e.postData.contents directly), so nothing is lost.
 window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
   const action = uniqueId ? "update" : "create";
   const res = await fetch(window.APP_CONFIG.API_BASE_URL, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, sheet, data: rowData, uniqueId })
   });
   return await res.json();
@@ -95,7 +85,7 @@ window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
 window.deleteSheetEntry = async function(sheet, uniqueId) {
   const res = await fetch(window.APP_CONFIG.API_BASE_URL, {
     method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "delete", sheet, uniqueId })
   });
   return await res.json();
