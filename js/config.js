@@ -1,14 +1,10 @@
 // js/config.js - System Configuration & Constants
-//
-// ⚠️ ACTION REQUIRED BEFORE THIS APP WILL SAVE/LOAD ANY REAL DATA ⚠️
-// The backend is worker.js, deployed as a Cloudflare Worker (no Google
-// Apps Script / script.google.com involved anywhere). See DEPLOY.md for
-// the full walkthrough. Short version:
-//   1. `wrangler secret put GOOGLE_SERVICE_ACCOUNT_EMAIL / GOOGLE_PRIVATE_KEY
-//      / SPREADSHEET_ID`, then `wrangler deploy`.
-//   2. Copy the printed workers.dev URL below, replacing the placeholder.
+// Cloudflare D1 Backend Configuration for ဓမ္မအလင်းရောင်တောရရိပ်သာ ERP
+
+const API_BASE_URL = "https://cashbook.dhammaaly.workers.dev";
+
 window.APP_CONFIG = {
-  const API_BASE_URL = "https://cashbook.dhammaaly.workers.dev";
+  API_BASE_URL: API_BASE_URL,
 
   BOOKS: {
     "Home": "Home Dashboard",
@@ -41,7 +37,6 @@ window.APP_CONFIG = {
       "ဆေးပဒေသာပင် လှူဒါန်းငွေ",
       "အထွေထွေ လှူဒါန်းငွေ",
       "ဘဏ်တိုးရရှိငွေ"
-      
     ],
     "ထွက်ငွေ": [
       "ဘဏ်ထည့်ငွေ", // Auto-Transfer to 2CB
