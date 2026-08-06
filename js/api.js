@@ -1,4 +1,4 @@
-// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher  
+// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher   
 const DB_NAME = "CashbookLocalDB";
 const DB_VERSION = 1;
 
