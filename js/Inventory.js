@@ -1,4 +1,6 @@
 // js/Inventory.js - Inventory (11Inv) Logic
+let currentInvPage = 1; // 📌 Pagination အတွက် Page ကို မှတ်ရန်
+
 window.renderInventoryView = async function() {
   const container = document.getElementById("view-container");
   const res = await fetch("view/Inventory.html");
@@ -11,9 +13,13 @@ window.renderInventoryView = async function() {
     window.currentSheetData = dataRows;
 
     const ROWS_PER_PAGE = 30;
-    const currentPage = 1; // Note: Pagination လိုအပ်ရင် ဒါကို Global variable အဖြစ်ပြောင်းရပါမယ်
+    const maxPage = Math.ceil(dataRows.length / ROWS_PER_PAGE) || 1;
+    
+    // Page နံပါတ် အလွန်အမင်း မသွားစေရန် ထိန်းချုပ်ခြင်း
+    if (currentInvPage > maxPage) currentInvPage = maxPage;
+    if (currentInvPage < 1) currentInvPage = 1;
 
-    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    const start = (currentInvPage - 1) * ROWS_PER_PAGE;
     const end = start + ROWS_PER_PAGE;
 
     const pageRows = dataRows.slice(start, end);
@@ -28,7 +34,7 @@ window.renderInventoryView = async function() {
       pageRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
         const uid = r[10] || ""; // Column K: real Unique-ID
-        const srNo = r[0] || (idx + 1);
+        const srNo = r[0] || (start + idx + 1);
         const date = r[1] || "-";
         const loc = r[2] || "-";
         const cat = r[3] || "-";
@@ -58,7 +64,6 @@ window.renderInventoryView = async function() {
           <td class="text-xs text-amber-500/70">${bookName}</td>
           <td class="text-center right-0 sticky px-3">
             <div class="flex items-center justify-center gap-2.5">
-              <!-- 🔴 ဤနေရာတွင် Function နာမည်များ ပြင်ဆင်ထားသည် -->
               <button onclick="editInvEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
               <button onclick="deleteInvEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
@@ -73,7 +78,7 @@ window.renderInventoryView = async function() {
     document.getElementById("kpi-inv-sim").textContent = simCount;
     document.getElementById("kpi-inv-store").textContent = storeCount;
 
-    // Inventory Pagination numbers update
+    // Inventory Pagination numbers update & Button States
     const totalInv = dataRows.length;
     const invStartEl = document.getElementById("inv-page-start");
     const invEndEl = document.getElementById("inv-page-end");
@@ -82,11 +87,35 @@ window.renderInventoryView = async function() {
     if (invStartEl) invStartEl.textContent = totalInv ? start + 1 : 0;
     if (invEndEl) invEndEl.textContent = Math.min(end, totalInv);
     if (invTotalEl) invTotalEl.textContent = totalInv;
+
+    // Previous / Next Button များကို Enable/Disable လုပ်ပေးခြင်း
+    const btnPrev = document.getElementById("btn-inv-prev-page");
+    const btnNext = document.getElementById("btn-inv-next-page");
+    if (btnPrev) btnPrev.disabled = currentInvPage <= 1;
+    if (btnNext) btnNext.disabled = currentInvPage >= maxPage;
   };
 
-  // 🔴 နှစ်ခါခေါ်နေခြင်းကို တစ်ခါတည်းခေါ်ရန် ပြင်ဆင်ထားသည်
   const data = await window.fetchSheetData("11Inv");
   if(data) renderData(data);
+};
+
+// ⏭️ Next Page Function
+window.nextInvPage = function() {
+  const ROWS_PER_PAGE = 30;
+  const totalRows = window.currentSheetData ? window.currentSheetData.length : 0;
+  const maxPage = Math.ceil(totalRows / ROWS_PER_PAGE) || 1;
+  if (currentInvPage < maxPage) {
+    currentInvPage++;
+    window.renderInventoryView();
+  }
+};
+
+// ◀️ Previous Page Function
+window.prevInvPage = function() {
+  if (currentInvPage > 1) {
+    currentInvPage--;
+    window.renderInventoryView();
+  }
 };
 
 window.openAddInvModal = function() {
