@@ -1,4 +1,5 @@
 // js/config.js - System Configuration & Constants 
+
 // Cloudflare D1 Backend Configuration for ဓမ္မအလင်းရောင်တောရရိပ်သာ ERP 
 
 const API_BASE_URL = "https://cashbook.dhammaaly.workers.dev";
