@@ -9,9 +9,30 @@ window.renderInventoryView = async function() {
   window.currentSheetKey = "11Inv";
 
   const renderData = (rows) => {
-    const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
+    // Header ၅ ကြောင်းကို ဖြတ်ထုတ်မည်
+    let dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
+    
+    // အလွတ် (Empty rows) များကို ဖယ်ရှားမည်
+    dataRows = dataRows.filter(r => r[0] || r[1]);
+
+    // ၁။ 🌟 KPI (စုစုပေါင်း) များကို Data အားလုံးပေါ်မူတည်၍ အရင်တွက်ပါမည် 🌟
+    let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
+    dataRows.forEach(r => {
+      const loc = r[2] || "-";
+      const qty = parseInt(r[6]) || 0;
+      if (loc.includes("မီးဖို")) kitCount += qty;
+      else if (loc.includes("ဓမ္မာရုံ")) hallCount += qty;
+      else if (loc.includes("သိမ်")) simCount += qty;
+      else storeCount += qty;
+    });
+
+    // ၂။ 🌟 နောက်ဆုံးစာကြောင်း (အသစ်ဆုံး) ကို အပေါ်ဆုံးပို့ရန် Reverse လုပ်ပါမည် 🌟
+    dataRows.reverse();
+    
+    // Reverse လုပ်ပြီးသား Data ကို Search နှင့် Export အတွက် သိမ်းပါမည်
     window.currentSheetData = dataRows;
 
+    // ၃။ Pagination ဖြတ်ခြင်း
     const ROWS_PER_PAGE = 30;
     const maxPage = Math.ceil(dataRows.length / ROWS_PER_PAGE) || 1;
     
@@ -21,20 +42,21 @@ window.renderInventoryView = async function() {
 
     const start = (currentInvPage - 1) * ROWS_PER_PAGE;
     const end = start + ROWS_PER_PAGE;
-
+    
+    // Page အတွက် အကြောင်း ၃၀ ကို ဖြတ်ယူမည်
     const pageRows = dataRows.slice(start, end);
 
-    let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
     const tbody = document.getElementById("inv-table-body");
     tbody.innerHTML = "";
 
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
+      // ၄။ Table ဆွဲခြင်း
       pageRows.forEach((r, idx) => {
-        if (!r[0] && !r[1]) return;
         const uid = r[10] || ""; // Column K: real Unique-ID
-        const srNo = r[0] || (start + idx + 1);
+        // မူလစဉ်နံပါတ် ရှိလျှင်ပြမည်။ မရှိလျှင် လက်ရှိစာမျက်နှာအလိုက် တွက်ချက်ပြမည်။
+        const srNo = r[0] || (start + idx + 1); 
         const date = r[1] || "-";
         const loc = r[2] || "-";
         const cat = r[3] || "-";
@@ -44,11 +66,6 @@ window.renderInventoryView = async function() {
         const note = r[7] || "-";
         const monthYear = r[8] || "-";
         const bookName = r[9] || "11Inv - ပစ္စည်းစာရင်း";
-
-        if (loc.includes("မီးဖို")) kitCount += qty;
-        else if (loc.includes("ဓမ္မာရုံ")) hallCount += qty;
-        else if (loc.includes("သိမ်")) simCount += qty;
-        else storeCount += qty;
 
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -73,10 +90,18 @@ window.renderInventoryView = async function() {
       });
     }
 
-    document.getElementById("kpi-inv-kitchen").textContent = kitCount;
-    document.getElementById("kpi-inv-dhammahall").textContent = hallCount;
-    document.getElementById("kpi-inv-sim").textContent = simCount;
-    document.getElementById("kpi-inv-store").textContent = storeCount;
+    // ၅။ အပေါ်ဆုံးတွင်တွက်ထားသော စုစုပေါင်း KPI များကို ထည့်သွင်းခြင်း
+    const kitEl = document.getElementById("kpi-inv-kitchen");
+    if(kitEl) kitEl.textContent = kitCount.toLocaleString();
+    
+    const hallEl = document.getElementById("kpi-inv-dhammahall");
+    if(hallEl) hallEl.textContent = hallCount.toLocaleString();
+    
+    const simEl = document.getElementById("kpi-inv-sim");
+    if(simEl) simEl.textContent = simCount.toLocaleString();
+    
+    const storeEl = document.getElementById("kpi-inv-store");
+    if(storeEl) storeEl.textContent = storeCount.toLocaleString();
 
     // Inventory Pagination numbers update & Button States
     const totalInv = dataRows.length;
@@ -127,16 +152,22 @@ window.openAddInvModal = function() {
   if (titleEl) titleEl.textContent = "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
 
   const locSelect = document.getElementById("inv-location");
-  locSelect.innerHTML = "";
-  window.APP_CONFIG.INVENTORY_LOCATIONS.forEach(l => locSelect.add(new Option(l, l)));
+  if (locSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_LOCATIONS) {
+    locSelect.innerHTML = "";
+    window.APP_CONFIG.INVENTORY_LOCATIONS.forEach(l => locSelect.add(new Option(l, l)));
+  }
 
   const catSelect = document.getElementById("inv-category");
-  catSelect.innerHTML = "";
-  window.APP_CONFIG.INVENTORY_CATEGORIES.forEach(c => catSelect.add(new Option(c, c)));
+  if (catSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_CATEGORIES) {
+    catSelect.innerHTML = "";
+    window.APP_CONFIG.INVENTORY_CATEGORIES.forEach(c => catSelect.add(new Option(c, c)));
+  }
 
   const unitSelect = document.getElementById("inv-unit");
-  unitSelect.innerHTML = "";
-  window.APP_CONFIG.INVENTORY_UNITS.forEach(u => unitSelect.add(new Option(u, u)));
+  if (unitSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_UNITS) {
+    unitSelect.innerHTML = "";
+    window.APP_CONFIG.INVENTORY_UNITS.forEach(u => unitSelect.add(new Option(u, u)));
+  }
 
   modal.classList.remove("hidden");
 };
@@ -182,10 +213,18 @@ window.editInvEntry = function(uid) {
   if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
   document.getElementById("inv-uniqueId").value = uid;
   document.getElementById("inv-date").value = r[1] || "";
-  document.getElementById("inv-location").value = r[2] || "";
-  document.getElementById("inv-category").value = r[3] || "";
+  
+  const locSelect = document.getElementById("inv-location");
+  if (locSelect) locSelect.value = r[2] || "";
+  
+  const catSelect = document.getElementById("inv-category");
+  if (catSelect) catSelect.value = r[3] || "";
+  
   document.getElementById("inv-desc").value = r[4] || "";
-  document.getElementById("inv-unit").value = r[5] || "";
+  
+  const unitSelect = document.getElementById("inv-unit");
+  if (unitSelect) unitSelect.value = r[5] || "";
+  
   document.getElementById("inv-qty").value = parseInt(r[6]) || 0;
   document.getElementById("inv-note").value = r[7] || "";
 };
@@ -228,6 +267,7 @@ window.onInvSearchInput = function() {
 
   const trs = tbody.getElementsByTagName("tr");
   Array.from(trs).forEach(tr => {
+    // သတိပြုရန် - လက်ရှိ Page (အကြောင်း ၃၀) အတွင်း၌သာ ရှာပေးပါမည်။
     const text = tr.innerText.toLowerCase();
     tr.style.display = text.includes(query) ? "" : "none";
   });
