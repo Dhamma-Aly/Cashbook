@@ -8,7 +8,7 @@
 //      / SPREADSHEET_ID`, then `wrangler deploy`.
 //   2. Copy the printed workers.dev URL below, replacing the placeholder.
 window.APP_CONFIG = {
-  API_BASE_URL: "https://cashbook-api.dhammaaly.workers.dev",
+  const API_BASE_URL = "https://cashbook.dhammaaly.workers.dev";
 
   BOOKS: {
     "Home": "Home Dashboard",
