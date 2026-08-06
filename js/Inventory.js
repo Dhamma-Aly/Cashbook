@@ -10,6 +10,14 @@ window.renderInventoryView = async function() {
     const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
     window.currentSheetData = dataRows;
 
+    const ROWS_PER_PAGE = 30;
+    const currentPage = 1; // Note: Pagination လိုအပ်ရင် ဒါကို Global variable အဖြစ်ပြောင်းရပါမယ်
+
+    const start = (currentPage - 1) * ROWS_PER_PAGE;
+    const end = start + ROWS_PER_PAGE;
+
+    const pageRows = dataRows.slice(start, end);
+
     let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
     const tbody = document.getElementById("inv-table-body");
     tbody.innerHTML = "";
@@ -17,9 +25,9 @@ window.renderInventoryView = async function() {
     if (dataRows.length === 0) {
       tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
-      dataRows.forEach((r, idx) => {
+      pageRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return;
-        const uid = r[10] || ""; // Column K: real Unique-ID, used to identify this row for edit/delete
+        const uid = r[10] || ""; // Column K: real Unique-ID
         const srNo = r[0] || (idx + 1);
         const date = r[1] || "-";
         const loc = r[2] || "-";
@@ -49,11 +57,12 @@ window.renderInventoryView = async function() {
           <td class="font-mono text-xs">${monthYear}</td>
           <td class="text-xs text-amber-500/70">${bookName}</td>
           <td class="text-center right-0 sticky px-3">
-  <div class="flex items-center justify-center gap-2.5">
-    <button onclick="editEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-    <button onclick="deleteEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
-  </div>
-</td>
+            <div class="flex items-center justify-center gap-2.5">
+              <!-- 🔴 ဤနေရာတွင် Function နာမည်များ ပြင်ဆင်ထားသည် -->
+              <button onclick="editInvEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteInvEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </td>
         `;
         tbody.appendChild(tr);
       });
@@ -69,12 +78,15 @@ window.renderInventoryView = async function() {
     const invStartEl = document.getElementById("inv-page-start");
     const invEndEl = document.getElementById("inv-page-end");
     const invTotalEl = document.getElementById("inv-total-entries");
-    if (invStartEl) invStartEl.textContent = totalInv > 0 ? 1 : 0;
-    if (invEndEl) invEndEl.textContent = totalInv;
+
+    if (invStartEl) invStartEl.textContent = totalInv ? start + 1 : 0;
+    if (invEndEl) invEndEl.textContent = Math.min(end, totalInv);
     if (invTotalEl) invTotalEl.textContent = totalInv;
   };
 
-  await window.fetchSheetData("11Inv", renderData).then(data => renderData(data));
+  // 🔴 နှစ်ခါခေါ်နေခြင်းကို တစ်ခါတည်းခေါ်ရန် ပြင်ဆင်ထားသည်
+  const data = await window.fetchSheetData("11Inv");
+  if(data) renderData(data);
 };
 
 window.openAddInvModal = function() {
@@ -85,7 +97,6 @@ window.openAddInvModal = function() {
   const titleEl = document.getElementById("inv-modal-title");
   if (titleEl) titleEl.textContent = "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
 
-  // Populate Select Options
   const locSelect = document.getElementById("inv-location");
   locSelect.innerHTML = "";
   window.APP_CONFIG.INVENTORY_LOCATIONS.forEach(l => locSelect.add(new Option(l, l)));
@@ -107,7 +118,7 @@ window.closeInvModal = function() {
 
 window.saveInvEntryForm = async function(event) {
   event.preventDefault();
-  const uniqueId = document.getElementById("inv-uniqueId").value; // "" = new item, else editing this row
+  const uniqueId = document.getElementById("inv-uniqueId").value;
   const date = document.getElementById("inv-date").value;
   const loc = document.getElementById("inv-location").value;
   const cat = document.getElementById("inv-category").value;
@@ -133,9 +144,6 @@ window.saveInvEntryForm = async function(event) {
   }
 };
 
-// 💡 These two were referenced by the table's action buttons but were
-// never actually defined anywhere - inventory edit/delete has never
-// worked. Added here, mirroring how app.js does it for ledger entries.
 window.editInvEntry = function(uid) {
   const r = (window.currentSheetData || []).find(row => String(row[10]) === String(uid));
   if (!r) return;
@@ -166,11 +174,6 @@ window.deleteInvEntry = async function(uid) {
   }
 };
 
-// 💡 Referenced by view/Inventory.html's Export button ("exportInventoryCSV()")
-// but was never actually defined anywhere - clicking Export on the
-// Inventory tab threw "exportInventoryCSV is not defined" and did
-// nothing. Mirrors window.exportCSV in app.js (same CSV-building logic),
-// just scoped to the currently loaded Inventory rows/filename.
 window.exportInventoryCSV = function() {
   const rows = window.currentSheetData;
   if (!rows || rows.length === 0) return alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
