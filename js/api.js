@@ -1,5 +1,4 @@
 // js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher
-
 const DB_NAME = "CashbookLocalDB";
 const DB_VERSION = 1;
 
@@ -49,9 +48,10 @@ class LocalCacheEngine {
 
 window.cacheEngine = new LocalCacheEngine();
 
-// 💡 Every request talks to Cloudflare Worker's action-based API endpoint:
-//    GET  ?action=read&sheet=NAME
-//    POST { action: "create" | "update" | "delete", sheet, data, uniqueId }
+// 💡 Every request talks to Cloudflare Worker's API endpoints:
+//    Home: ?action=home
+//    Report: ?action=report
+//    Ledgers: ?action=read&sheet=NAME
 window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   const localData = await window.cacheEngine.getSheet(sheetName);
   if (localData && typeof onLocalLoaded === "function") {
@@ -59,14 +59,30 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   }
 
   try {
-    const url = `${window.APP_CONFIG.API_BASE_URL}?action=read&sheet=${encodeURIComponent(sheetName)}`;
+    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
+    let url;
+
+    // Home နှင့် Report တို့အတွက် သီးသန့် action သို့ ခွဲခေါ်ပေးရန်
+    if (sheetName === "Home") {
+      url = `${baseUrl}?action=home`;
+    } else if (sheetName === "12Rep" || sheetName === "Report") {
+      url = `${baseUrl}?action=report`;
+    } else {
+      url = `${baseUrl}?action=read&sheet=${encodeURIComponent(sheetName)}`;
+    }
+
     const res = await fetch(url);
     const json = await res.json();
-    if (json.status === "success" && json.data) {
-      await window.cacheEngine.setSheet(sheetName, json.data);
-      return json.data;
+
+    if (json.status === "success") {
+      // Home အတွက် json တစ်ခုလုံး (cards + table) ကို သိမ်းရန်၊ စာအုပ်များအတွက် json.data ကို သိမ်းရန်
+      const resultData = (sheetName === "Home") ? json : json.data;
+      if (resultData) {
+        await window.cacheEngine.setSheet(sheetName, resultData);
+        return resultData;
+      }
     }
-    console.warn("Read failed:", json.message);
+    console.warn("Read failed:", json.message || "No data returned");
   } catch (err) {
     console.warn("Network fetch failed, using local cache", err);
   }
@@ -74,8 +90,9 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
 };
 
 window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
+  const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
   const action = uniqueId ? "update" : "create";
-  const res = await fetch(window.APP_CONFIG.API_BASE_URL, {
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action, sheet, data: rowData, uniqueId })
@@ -84,7 +101,8 @@ window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
 };
 
 window.deleteSheetEntry = async function(sheet, uniqueId) {
-  const res = await fetch(window.APP_CONFIG.API_BASE_URL, {
+  const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
+  const res = await fetch(baseUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "delete", sheet, uniqueId })
