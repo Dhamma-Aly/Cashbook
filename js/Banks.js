@@ -36,6 +36,11 @@ window.renderBankView = async function(sheetKey) {
       });
     });
 
+    // 🌟 ဤနေရာတွင် REVERSE လုပ်ပါမည် 🌟
+    // နောက်ဆုံး Transaction ကို အပေါ်ဆုံး (ပထမဆုံး) သို့ ပို့ရန်
+    processedData.reverse();
+    // 🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟🌟
+
     // ၂။ Pagination ဖြတ်ပါမည်
     const ROWS_PER_PAGE = 30;
     const currentPage = 1; // နောက်မှ Next/Prev ထည့်ရင် ပြောင်းမည်
@@ -83,7 +88,6 @@ window.renderBankView = async function(sheetKey) {
             <td class="text-xs text-amber-500/70">${bookName}</td>
             <td class="text-center right-0 sticky px-3">
               <div class="flex items-center justify-center gap-2.5">
-                <!-- ဒီမှာ editEntry နဲ့ deleteEntry function တွေက Global မှာ ကြေညာထားဖို့ လိုပါမယ် -->
                 <button onclick="editEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
                 <button onclick="deleteEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
               </div>
