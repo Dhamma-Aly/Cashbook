@@ -1,6 +1,6 @@
 // js/app.js - Main Application Orchestrator
 document.addEventListener("DOMContentLoaded", async () => {
-  // Cache Engine အလုပ်မလုပ်ရင်တောင် Script မရပ်သွားစေရန် try...catch ဖြင့် အကာအကွယ်ယူထားသည်
+  // Cache Engine အလုပ်မလုပ်ရင်တောင် Script မရပ်သွားစေရန်
   try {
     if (window.cacheEngine && window.cacheEngine.init) {
       await window.cacheEngine.init();
@@ -9,19 +9,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("Cache engine initialization failed, proceeding without cache:", cacheErr);
   }
 
-  // Auth စစ်ဆေးခြင်း သို့မဟုတ် ပုံမှန် Home Tab ပွင့်စေခြင်း
+  // Auth စစ်ဆေးခြင်း
   try {
     const isAuthenticated = window.initAuth ? window.initAuth() : true;
     if (isAuthenticated) {
       await window.switchTab("Home");
     } else {
       console.warn("User is not authenticated.");
-      // Login မဝင်ထားပါကလည်း Home သို့မဟုတ် Default Tab ကို ပွင့်စေချင်ပါက အောက်ပါလိုင်းကို ဖွင့်ပေးပါ
-      await window.switchTab("Home");
+      // မှတ်ချက် - တကယ်လို့ Login မဝင်ထားရင် Login Page ကို Redirect လုပ်ချင်ရင် 
+      // window.location.href = "login.html"; လို့ ပြောင်းသုံးနိုင်ပါတယ်။ 
+      // အခုကတော့ Public Dashboard အနေနဲ့ ပွင့်နေပါမယ်။
+      await window.switchTab("Home"); 
     }
   } catch (authErr) {
     console.error("Tab Initialization Error:", authErr);
-    // Error တက်ခဲ့လျှင်ပင် Home View ကို မဖြစ်မနေ render လုပ်ခိုင်းမည်
     if (window.renderDashboardView) {
       await window.renderDashboardView();
     }
@@ -29,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 window.switchTab = async function (tabKey) {
-  window.currentSheetKey = tabKey; // Current sheet key ကို အမြဲတမ်း မှတ်ထားပေးမည်
+  window.currentSheetKey = tabKey; 
 
   document.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
   const activeBtn = document.getElementById(`btn-${tabKey}`);
@@ -77,7 +78,6 @@ window.openAddModal = function () {
   
   const dateInput = document.getElementById("entry-date");
   if (dateInput) {
-    // Safari/Mobile Safe Date Assignment
     const today = new Date().toISOString().split('T')[0];
     dateInput.value = today;
   }
@@ -148,9 +148,9 @@ window.saveEntryForm = async function (event) {
   }
 };
 
+// 🔴 Inventory (11Inv) ပါ ရှုပ်မနေစေရန် ပြင်ဆင်ထားသည်
 function findRowByUid(uid) {
-  const uidCol = window.currentSheetKey === "11Inv" ? 10 : 12;
-  return (window.currentSheetData || []).find(r => String(r[uidCol]) === String(uid));
+  return (window.currentSheetData || []).find(r => String(r[12]) === String(uid));
 }
 
 window.editEntry = function (uid) {
@@ -170,8 +170,12 @@ window.editEntry = function (uid) {
   document.getElementById("entry-description").value = r[5] || "";
   document.getElementById("entry-receiver").value = r[6] || "None";
 
-  const inc = parseFloat(r[7]) || 0;
-  const exp = parseFloat(r[8]) || 0;
+  // 🔴 Comma ပါလာလျှင် အရင်ဖယ်ရှားပြီးမှ Float သို့ ပြောင်းရန် ပြင်ဆင်ထားသည်
+  const incStr = (r[7] || "0").toString().replace(/,/g, "");
+  const expStr = (r[8] || "0").toString().replace(/,/g, "");
+  const inc = parseFloat(incStr) || 0;
+  const exp = parseFloat(expStr) || 0;
+  
   document.getElementById("entry-amount").value = inc || exp || 0;
 };
 
