@@ -10,7 +10,13 @@ window.renderBankView = async function(sheetKey) {
   const renderData = (rows) => {
     // Header rows in Google Sheet are rows 1..5. Actual transactions start at index 5 (Row 6)
     const dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
-    window.currentSheetData = dataRows;
+    const ROWS_PER_PAGE = 30;
+const currentPage = 1; // နောက်မှ Next/Prev ထည့်ရင် ပြောင်းမယ်
+
+const start = (currentPage - 1) * ROWS_PER_PAGE;
+const end = start + ROWS_PER_PAGE;
+
+const pageRows = dataRows.slice(start, end);
 
     let inc = 0, exp = 0, bal = 0, count = 0;
     let runningBalance = 0;
@@ -22,7 +28,7 @@ window.renderBankView = async function(sheetKey) {
     if (dataRows.length === 0) {
       tableHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50">စာရင်း မရှိသေးပါ။</td></tr>`;
     } else {
-      dataRows.forEach((r, idx) => {
+      pageRows.forEach((r, idx) => {
         if (!r[0] && !r[1]) return; // အလွတ်ဖြစ်နေလျှင် ကျော်မည်
         
         const uid = r[12] || ""; // Column M
@@ -87,9 +93,9 @@ window.renderBankView = async function(sheetKey) {
     const pageStartEl = document.getElementById("page-start");
     const pageEndEl = document.getElementById("page-end");
     const totalEntriesEl = document.getElementById("total-entries");
-    if (pageStartEl) pageStartEl.textContent = count > 0 ? 1 : 0;
-    if (pageEndEl) pageEndEl.textContent = count;
-    if (totalEntriesEl) totalEntriesEl.textContent = count;
+    if (pageStartEl) pageStartEl.textContent = dataRows.length ? start + 1 : 0;
+    if (pageEndEl) pageEndEl.textContent = Math.min(end, dataRows.length);
+    if (totalEntriesEl) totalEntriesEl.textContent = dataRows.length;
   };
 
   // မှားနေသော Promise ကို ပြင်ဆင်ထားသည် 
