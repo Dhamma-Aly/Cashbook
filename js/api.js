@@ -1,4 +1,4 @@
-// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher 
+// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher
 const DB_NAME = "CashbookLocalDB";
 const DB_VERSION = 1;
 
@@ -48,13 +48,12 @@ class LocalCacheEngine {
 
 window.cacheEngine = new LocalCacheEngine();
 
-// 💡 Every request talks to Cloudflare Worker's API endpoints:
-//    Home: ?action=home
-//    Report: ?action=report
-//    Ledgers: ?action=read&sheet=NAME
+// 💡 Every request talks to Cloudflare Worker's API endpoints
 window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   const localData = await window.cacheEngine.getSheet(sheetName);
-  if (localData && typeof onLocalLoaded === "function") {
+  
+  // 💡 Array ဇယား ဟုတ်မဟုတ် စစ်ဆေးပြီးမှ ပြသရန် (Cache အဟောင်း Object မပြအောင်)
+  if (localData && Array.isArray(localData) && typeof onLocalLoaded === "function") {
     onLocalLoaded(localData);
   }
 
@@ -62,7 +61,6 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
     const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
     let url;
 
-    // Home နှင့် Report တို့အတွက် သီးသန့် action သို့ ခွဲခေါ်ပေးရန်
     if (sheetName === "Home") {
       url = `${baseUrl}?action=home`;
     } else if (sheetName === "12Rep" || sheetName === "Report") {
@@ -75,8 +73,8 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
     const json = await res.json();
 
     if (json.status === "success") {
-      // Home အတွက် json တစ်ခုလုံး (cards + table) ကို သိမ်းရန်၊ စာအုပ်များအတွက် json.data ကို သိမ်းရန်
-      const resultData = (sheetName === "Home") ? json : json.data;
+      // 💡 Home အပါအဝင် စာအုပ်အားလုံးအတွက် json.data (Array ဇယား) ကိုသာ ယူရန် ပြင်ထားသည်
+      const resultData = json.data;
       if (resultData) {
         await window.cacheEngine.setSheet(sheetName, resultData);
         return resultData;
@@ -86,7 +84,7 @@ window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
   } catch (err) {
     console.warn("Network fetch failed, using local cache", err);
   }
-  return localData || [];
+  return (localData && Array.isArray(localData)) ? localData : [];
 };
 
 window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
