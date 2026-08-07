@@ -1,4 +1,4 @@
-// js/auth.js - Authentication & User Session Manager (Pipe '|' Separator Version)
+// js/auth.js - Authentication & User Session Manager (Cloudflare D1 Server Sync)
 window.currentUser = null;
 let clockInterval = null;
 
@@ -19,28 +19,56 @@ window.initAuth = function() {
   return false;
 };
 
-window.handleLoginSubmit = function(event) {
+// 💡 Cloudflare Worker /api/login မှတစ်ဆင့် D1 Database တွင် လျှို့ဝှက် စစ်ဆေးခြင်း
+window.handleLoginSubmit = async function(event) {
   event.preventDefault();
   const username = document.getElementById("login-username").value;
   const pass = document.getElementById("login-password").value;
   const errDiv = document.getElementById("login-error");
+  const submitBtn = event.target.querySelector("button[type='submit']");
 
-  if (pass === "123456" || pass === "admin") {
-    window.currentUser = {
-      username: username,
-      role: username === "Admin" ? "ADMIN" : (username === "Account" ? "ACCOUNT" : "VIEWER"),
-      loginTime: new Date().toLocaleString()
-    };
-    localStorage.setItem("cashbook_user", JSON.stringify(window.currentUser));
-    errDiv.classList.add("hidden");
-    document.getElementById("login-overlay").classList.add("hidden");
-    document.getElementById("erp-workspace").classList.remove("hidden");
-    updateUserBadge();
-    startLiveClock();
-    window.switchTab("Home");
-  } else {
-    errDiv.textContent = "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ (Default: 123456)";
+  if (!username || !pass) {
+    errDiv.textContent = "အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်ပါခင်ဗျာ။";
     errDiv.classList.remove("hidden");
+    return;
+  }
+
+  if (submitBtn) submitBtn.disabled = true;
+
+  try {
+    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
+    
+    // Server (D1 Database) ဆီသို့ လျှို့ဝှက် စစ်ဆေးခိုင်းခြင်း
+    const res = await fetch(`${baseUrl}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password: pass })
+    });
+
+    const json = await res.json();
+
+    if (json.success && json.user) {
+      window.currentUser = {
+        username: json.user.username,
+        role: json.user.role,
+        loginTime: new Date().toLocaleString()
+      };
+      localStorage.setItem("cashbook_user", JSON.stringify(window.currentUser));
+      errDiv.classList.add("hidden");
+      document.getElementById("login-overlay").classList.add("hidden");
+      document.getElementById("erp-workspace").classList.remove("hidden");
+      updateUserBadge();
+      startLiveClock();
+      if (window.switchTab) window.switchTab("Home");
+    } else {
+      errDiv.textContent = json.message || "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+      errDiv.classList.remove("hidden");
+    }
+  } catch (err) {
+    errDiv.textContent = "ချိတ်ဆက်မှု မအောင်မြင်ပါ: " + err.message;
+    errDiv.classList.remove("hidden");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
   }
 };
 
