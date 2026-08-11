@@ -1,4 +1,4 @@
-// js/Inventory.js - Inventory (11Inv) Logic
+// js/Inventory.js - Inventory (11Inv) Logic 
 let currentInvPage = 1; // 📌 Pagination အတွက် Page ကို မှတ်ရန်
 
 window.renderInventoryView = async function() {
