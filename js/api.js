@@ -1,109 +1,121 @@
-// js/api.js - IndexedDB Local Cache & Cloudflare D1 API Fetcher
-const DB_NAME = "CashbookLocalDB";
-const DB_VERSION = 1;
+// ===================================================================
+// js/api.js - Frontend API Client for Sāsana ERP
+// Handles all HTTP requests (GET, POST, PUT, DELETE) to Cloudflare Worker
+// ===================================================================
 
-class LocalCacheEngine {
-  constructor() {
-    this.db = null;
-  }
+// Generic Request Helper
+async function apiRequest(endpoint, options = {}) {
+  const url = `${CONFIG.API_BASE_URL}${endpoint}`;
+  const defaultHeaders = {
+    'Content-Type': 'application/json'
+  };
 
-  async init() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
-      request.onupgradeneeded = (e) => {
-        const db = e.target.result;
-        if (!db.objectStoreNames.contains("sheets")) {
-          db.createObjectStore("sheets", { keyPath: "name" });
-        }
-      };
-      request.onsuccess = (e) => {
-        this.db = e.target.result;
-        resolve(this.db);
-      };
-      request.onerror = (e) => reject(e);
-    });
-  }
+  const config = {
+    ...options,
+    headers: {
+      ...defaultHeaders,
+      ...options.headers
+    }
+  };
 
-  async getSheet(name) {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const tx = this.db.transaction("sheets", "readonly");
-      const store = tx.objectStore("sheets");
-      const req = store.get(name);
-      req.onsuccess = () => resolve(req.result ? req.result.data : null);
-      req.onerror = () => resolve(null);
-    });
-  }
-
-  async setSheet(name, data) {
-    if (!this.db) await this.init();
-    return new Promise((resolve) => {
-      const tx = this.db.transaction("sheets", "readwrite");
-      const store = tx.objectStore("sheets");
-      store.put({ name, data, updatedAt: Date.now() });
-      tx.oncomplete = () => resolve(true);
-    });
+  try {
+    const response = await fetch(url, config);
+    const data = await response.json();
+    return data;
+  } catch (err) {
+    console.error(`API Error on ${endpoint}:`, err);
+    return { success: false, error: err.message || 'ကွန်ရက် သို့မဟုတ် ပရိုဂရမ် အမှားရှိပါသည်' };
   }
 }
 
-window.cacheEngine = new LocalCacheEngine();
+// ==========================================
+// 1. Yogi Management API Functions (12Yogi & 13Yogi)
+// ==========================================
 
-// 💡 Every request talks to Cloudflare Worker's API endpoints
-window.fetchSheetData = async function(sheetName, onLocalLoaded = null) {
-  const localData = await window.cacheEngine.getSheet(sheetName);
-  
-  // 💡 Array ဇယား ဟုတ်မဟုတ် စစ်ဆေးပြီးမှ ပြသရန် (Cache အဟောင်း Object မပြအောင်)
-  if (localData && Array.isArray(localData) && typeof onLocalLoaded === "function") {
-    onLocalLoaded(localData);
+async function fetchYogiDataAPI(sheetType = '12Yogi', statusFilter = null) {
+  let endpoint = `/api/yogi?sheet=${encodeURIComponent(sheetType)}`;
+  if (statusFilter) {
+    endpoint += `&status=${encodeURIComponent(statusFilter)}`;
   }
+  return await apiRequest(endpoint, { method: 'GET' });
+}
 
-  try {
-    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
-    let url;
-
-    if (sheetName === "Home") {
-      url = `${baseUrl}?action=home`;
-    } else if (sheetName === "12Rep" || sheetName === "Report") {
-      url = `${baseUrl}?action=report`;
-    } else {
-      url = `${baseUrl}?action=read&sheet=${encodeURIComponent(sheetName)}`;
-    }
-
-    const res = await fetch(url);
-    const json = await res.json();
-
-    if (json.status === "success") {
-      // 💡 Home အပါအဝင် စာအုပ်အားလုံးအတွက် json.data (Array ဇယား) ကိုသာ ယူရန် ပြင်ထားသည်
-      const resultData = json.data;
-      if (resultData) {
-        await window.cacheEngine.setSheet(sheetName, resultData);
-        return resultData;
-      }
-    }
-    console.warn("Read failed:", json.message || "No data returned");
-  } catch (err) {
-    console.warn("Network fetch failed, using local cache", err);
-  }
-  return (localData && Array.isArray(localData)) ? localData : [];
-};
-
-window.saveSheetEntry = async function(sheet, rowData, uniqueId = null) {
-  const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
-  const action = uniqueId ? "update" : "create";
-  const res = await fetch(baseUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, sheet, data: rowData, uniqueId })
+async function saveYogiAPI(data, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  return await apiRequest('/api/yogi', {
+    method,
+    body: JSON.stringify(data)
   });
-  return await res.json();
-};
+}
 
-window.deleteSheetEntry = async function(sheet, uniqueId) {
-  const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
-  const res = await fetch(baseUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "delete", sheet, uniqueId })
+async function checkoutYogiAPI(payload) {
+  // payload: { uniqueId, end_date }
+  return await apiRequest('/api/yogi/checkout', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
   });
-  return await res.json();
-};
+}
+
+async function deleteYogiAPI(uniqueId) {
+  return await apiRequest(`/api/yogi?uniqueId=${encodeURIComponent(uniqueId)}`, {
+    method: 'DELETE'
+  });
+}
+
+// ==========================================
+// 2. Cashbook & Bank Ledgers API Functions (1CB ~ 10GB)
+// ==========================================
+
+async function fetchSheetDataAPI(sheetName = '1CB') {
+  return await apiRequest(`/api/entries?sheet=${encodeURIComponent(sheetName)}`, {
+    method: 'GET'
+  });
+}
+
+async function saveCashbookEntryAPI(entryData, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  return await apiRequest('/api/entries', {
+    method,
+    body: JSON.stringify(entryData)
+  });
+}
+
+async function deleteCashbookEntryAPI(uniqueId) {
+  return await apiRequest(`/api/entries?uniqueId=${encodeURIComponent(uniqueId)}`, {
+    method: 'DELETE'
+  });
+}
+
+// ==========================================
+// 3. Inventory API Functions (11Inv)
+// ==========================================
+
+async function fetchInventoryDataAPI() {
+  return await apiRequest('/api/inventory', { method: 'GET' });
+}
+
+async function saveInventoryEntryAPI(entryData, isEdit = false) {
+  const method = isEdit ? 'PUT' : 'POST';
+  return await apiRequest('/api/inventory', {
+    method,
+    body: JSON.stringify(entryData)
+  });
+}
+
+async function deleteInventoryEntryAPI(uniqueId) {
+  return await apiRequest(`/api/inventory?uniqueId=${encodeURIComponent(uniqueId)}`, {
+    method: 'DELETE'
+  });
+}
+
+// ==========================================
+// 4. Home Dashboard & Report Summary API Functions
+// ==========================================
+
+async function fetchHomeSummaryAPI() {
+  return await apiRequest('/api/home-summary', { method: 'GET' });
+}
+
+async function fetchReportDataAPI() {
+  return await apiRequest('/api/report', { method: 'GET' });
+}
