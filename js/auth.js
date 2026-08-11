@@ -1,12 +1,11 @@
 // ===================================================================
 // js/auth.js - Authentication & User Session Manager (Cloudflare D1 Server Sync)
-// Supports D1 Server Login, Role Management, and Live Clock Display
 // ===================================================================
 
 window.currentUser = null;
 let clockInterval = null;
 
-// 1. Get Current User Helper (Fixes ReferenceError in app.js)
+// 1. Get Current User Helper
 window.getCurrentUser = function() {
   if (window.currentUser) return window.currentUser;
   const saved = localStorage.getItem("cashbook_user");
@@ -40,7 +39,7 @@ window.initAuth = function() {
   return false;
 };
 
-// 3. UI Visibility Controls
+// 3. UI Helpers
 window.showLoginOverlay = function() {
   const loginOverlay = document.getElementById("login-overlay");
   const workspace = document.getElementById("erp-workspace");
@@ -80,12 +79,11 @@ window.handleLoginSubmit = async function(event) {
   if (submitBtn) submitBtn.disabled = true;
 
   try {
-    // Detect API Base URL (Checks APP_CONFIG, CONFIG or Fallback)
-    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
-                    (window.CONFIG && window.CONFIG.API_BASE_URL) ||
-                    "https://cashbook.dhammaaly.workers.dev";
+    const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+                    (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
+                    "https://cashbook-api.dhamma-aly.workers.dev";
     
-    // Server (D1 Database) ဆီသို့ လျှို့ဝှက် စစ်ဆေးခိုင်းခြင်း
+    // Cloudflare Worker (D1 Database) ဆီသို့ လျှို့ဝှက် တိုက်စစ်ခိုင်းခြင်း
     const res = await fetch(`${baseUrl}/api/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -117,7 +115,7 @@ window.handleLoginSubmit = async function(event) {
   } catch (err) {
     console.error("Login Fetch Error:", err);
     if (errDiv) {
-      errDiv.textContent = "ချိတ်ဆက်မှု မအောင်မြင်ပါ: " + (err.message || "Server Error");
+      errDiv.textContent = "Cloudflare Worker ချိတ်ဆက်၍ မရပါ။ js/config.js တွင် Worker URL အမှန် စစ်ဆေးပေးပါ။";
       errDiv.classList.remove("hidden");
     }
   } finally {
@@ -135,7 +133,7 @@ window.handleLogout = function() {
   }
 };
 
-// 6. Custom Date Formatter: Mon 12 Aug 26 | 12:57 PM
+// 6. Custom Date Formatter
 function formatCustomDate() {
   const now = new Date();
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -152,7 +150,6 @@ function formatCustomDate() {
   hours = hours % 12;
   hours = hours ? hours : 12;
 
-  // Pipe symbol '|' with subtle amber color styling
   return `${dayName} ${dayNum} ${monthName} ${yearTwoDigits} <span class="text-amber-500/40 font-normal px-1">|</span> ${hours}:${minutes} ${ampm}`;
 }
 
@@ -163,7 +160,6 @@ function updateUserBadge() {
   const badgeStr = formatCustomDate();
   const badge = document.getElementById("current-user-display");
   if (badge) {
-    // Result: DATE: Mon 12 Aug 26 | 12:57 PM | Admin
     badge.innerHTML = `DATE: ${badgeStr} <span class="text-amber-500/40 font-normal px-1">|</span> ${user.username}`;
   }
 }
@@ -171,5 +167,5 @@ function updateUserBadge() {
 // 8. Start Live Clock Interval
 function startLiveClock() {
   if (clockInterval) clearInterval(clockInterval);
-  clockInterval = setInterval(updateUserBadge, 10000); // 10 စက္ကန့်တစ်ခါ အချိန်စစ်ပေးမည်
+  clockInterval = setInterval(updateUserBadge, 10000);
 }
