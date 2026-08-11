@@ -267,3 +267,4 @@ function showLoading(show) {
   if (show) overlay.classList.remove('hidden');
   else overlay.classList.add('hidden');
 }
+
