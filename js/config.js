@@ -8,7 +8,7 @@ const CONFIG = {
   // ⚠️ ဤနေရာတွင် မိမိ၏ Cloudflare Worker Dashboard မှ URL အမှန်ကို ထည့်သွင်းပါ
   API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
-    : 'https://cashbook-api.dhamma-aly.workers.dev',
+    : 'https://cashbook-api.dhammaly.workers.dev',
 
   // Sheet Names & Page Titles Mapping
   SHEET_TITLES: {
