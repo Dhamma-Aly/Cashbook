@@ -9,7 +9,7 @@ body.font-myanmar {
   font-family: 'Noto Sans Myanmar', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
 }
 
-/* 📱 Dynamic Viewport Height Fix for Mobile Browsers (iOS Safari / Android Chrome) */
+/* 📱 Dynamic Viewport Height Fix for Mobile Browsers */
 html, body {
   height: 100%;
   height: 100dvh;
@@ -29,12 +29,12 @@ html, body {
   background-clip: text !important;
 }
 
-/* 🖐️ Fast Touch Action for Mobile Buttons (Prevents 300ms double-tap delay on phones) */
+/* 🖐️ Fast Touch Action for Mobile Buttons */
 button, a, select, input, textarea {
   touch-action: manipulation;
 }
 
-/* 📜 Custom Scrollbar for Laptop & Desktop */
+/* 📜 Custom Scrollbar */
 ::-webkit-scrollbar { 
   width: 6px; 
   height: 6px; 
@@ -50,7 +50,7 @@ button, a, select, input, textarea {
   background: #3d3025; 
 }
 
-/* 👆 Smooth Momentum Scrolling for Touch Screens (Android / iOS) */
+/* 👆 Smooth Momentum Scrolling */
 .overflow-x-auto, .overflow-y-auto, main {
   -webkit-overflow-scrolling: touch;
 }
@@ -122,13 +122,42 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
   border-left: 1px solid rgba(176, 148, 102, 0.2) !important;
 }
 
-/* 📱 Mobile Specific Media Queries */
-@media (max-width: 768px) {
+/* ===================================================================
+   💻 Desktop & Laptop Sidebar Guarantee (Screen Width >= 768px)
+   Guarantees the Left Sidebar Menu is ALWAYS visible on Laptops/Desktops
+   =================================================================== */
+@media (min-width: 768px) {
+  #main-sidebar {
+    position: static !important;
+    transform: none !important;
+    display: flex !important;
+    visibility: visible !important;
+    width: 16rem !important;
+    flex-shrink: 0 !important;
+  }
+  #mobile-menu-btn, #sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* 📱 Mobile Phone Sidebar (Screen Width < 768px) */
+@media (max-width: 767px) {
+  #main-sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+  }
+  #main-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
   table tbody td {
     padding: 8px 12px;
     font-size: 0.75rem !important;
   }
-  
   .stats-card {
     padding: 0.75rem 0.9rem !important;
   }
