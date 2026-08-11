@@ -1,13 +1,42 @@
 // js/Dashboard.js - Home Dashboard View Renderer (Enhanced Aesthetic Styling)
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
-  const res = await fetch("view/Dashboard.html");
-  container.innerHTML = await res.text();
+  
+  // If view template is not yet loaded into container, fetch and inject it safely
+  if (container && !document.getElementById("home-bank-table")) {
+    try {
+      const res = await fetch("view/Dashboard.html");
+      if (res.ok) {
+        container.innerHTML = await res.text();
+      }
+    } catch(e) {
+      console.warn("Could not fetch view/Dashboard.html:", e);
+    }
+  }
 
-  const renderHomeData = (rows) => {
+  const renderHomeData = (rawInput) => {
+    // 💡 Defensive Check: Extract array safely to prevent "rows.slice is not a function"
+    let rows = [];
+    if (Array.isArray(rawInput)) {
+      rows = rawInput;
+    } else if (rawInput && Array.isArray(rawInput.data)) {
+      rows = rawInput.data;
+    } else if (rawInput && Array.isArray(rawInput.rows)) {
+      rows = rawInput.rows;
+    }
+
+    const tableElem = document.getElementById("home-bank-table");
+    if (!tableElem) return;
+
     if (!rows || rows.length < 3) {
-      document.getElementById("home-bank-table").innerHTML = 
+      tableElem.innerHTML = 
         `<div class="p-8 text-center text-amber-500/50 text-sm">ဒေတာ မရှိသေးပါ။</div>`;
+      
+      // Reset KPI Cards to 0
+      if (document.getElementById("kpi-home-fund")) document.getElementById("kpi-home-fund").textContent = "0 MMK";
+      if (document.getElementById("kpi-home-bank")) document.getElementById("kpi-home-bank").textContent = "0 MMK";
+      if (document.getElementById("kpi-home-cash")) document.getElementById("kpi-home-cash").textContent = "0 MMK";
+      if (document.getElementById("kpi-home-count")) document.getElementById("kpi-home-count").textContent = "0";
       return;
     }
 
@@ -50,7 +79,7 @@ window.renderDashboardView = async function() {
 
     if (dataRows.length > 0) {
       dataRows.forEach((r, idx) => {
-        if (!r[0] && !r[1] && !r[2] && !r[3] && !r[6]) return;
+        if (!r || (!r[0] && !r[1] && !r[2] && !r[3] && !r[6])) return;
 
         const srNo = r[0] || (idx + 1);
         const name = r[1] || "-";
@@ -75,7 +104,6 @@ window.renderDashboardView = async function() {
           // 💡 စုစုပေါင်း Summary Row Accent
           tableHtml += `
           <tr class="bg-gradient-to-r from-amber-950/90 via-[#211810] to-amber-950/90 border-t-2 border-b-2 border-amber-500/60 font-black text-amber-200 text-sm shadow-xl">
-            <!-- ဤနေရာရှိ $ {srNo} ကို ဖြုတ်လိုက်ပါပြီ (နံပါတ် ၉ ပေါ်နေခြင်းကို ဖြေရှင်းရန်) -->
             <td class="text-center py-4 px-3 font-mono text-amber-400 font-bold"></td>
             <td class="py-4 px-4 font-black text-gold-gradient text-base filter drop-shadow">${name}</td>
             <!-- ဘဏ်ရှိငွေပေါင်း Total (Sky) -->
@@ -113,7 +141,7 @@ window.renderDashboardView = async function() {
     }
 
     tableHtml += `</tbody></table></div>`;
-    document.getElementById("home-bank-table").innerHTML = tableHtml;
+    tableElem.innerHTML = tableHtml;
 
     // Top KPI Cards Calculation
     const kpiRow = rows[1] || [];
@@ -122,16 +150,21 @@ window.renderDashboardView = async function() {
     const kpiCash = parseFloat((kpiRow[3] || totalCash).toString().replace(/,/g, "")) || totalCash;
     const kpiCount = parseInt(kpiRow[4]) || totalCount;
 
-    document.getElementById("kpi-home-fund").textContent = `${kpiFund.toLocaleString()} MMK`;
-    document.getElementById("kpi-home-bank").textContent = `${kpiBank.toLocaleString()} MMK`;
-    document.getElementById("kpi-home-cash").textContent = `${kpiCash.toLocaleString()} MMK`;
-    document.getElementById("kpi-home-count").textContent = kpiCount;
+    if (document.getElementById("kpi-home-fund")) document.getElementById("kpi-home-fund").textContent = `${kpiFund.toLocaleString()} MMK`;
+    if (document.getElementById("kpi-home-bank")) document.getElementById("kpi-home-bank").textContent = `${kpiBank.toLocaleString()} MMK`;
+    if (document.getElementById("kpi-home-cash")) document.getElementById("kpi-home-cash").textContent = `${kpiCash.toLocaleString()} MMK`;
+    if (document.getElementById("kpi-home-count")) document.getElementById("kpi-home-count").textContent = kpiCount;
   };
 
-  // Performance မြန်ဆန်စေရန်နှင့် Double-call bug ကို ဖြေရှင်းထားသော အပိုင်း
+  // Safe Data Fetching
   try {
-    const data = await window.fetchSheetData("Home");
-    renderHomeData(data);
+    const fetchFunc = window.fetchSheetData || window.fetchSheetDataAPI || window.fetchHomeSummary;
+    if (typeof fetchFunc === 'function') {
+      const data = await fetchFunc("Home");
+      renderHomeData(data);
+    } else {
+      renderHomeData([]);
+    }
   } catch (error) {
     console.error("Error fetching home dashboard data:", error);
     renderHomeData([]);
