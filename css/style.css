@@ -1,4 +1,4 @@
-/* css/style.css - Sāsana ERP Responsive & Cross-Device Custom CSS */
+/* css/style.css - Sāsana ERP Custom Responsive CSS & Yogi KPI Grid Fix */
 
 :root {
   color-scheme: dark;
@@ -75,7 +75,7 @@ button, a, select, input, textarea {
   border-left: 4px solid #b09466;
 }
 
-/* 📊 KPI Cards Layout */
+/* 📊 KPI Cards Styling (Exact match for Bank/Ledger cards) */
 .stats-card {
   background: linear-gradient(135deg, #1c1510 0%, #120e0b 100%) !important;
   border: 1.5px solid rgba(176, 148, 102, 0.25) !important;
@@ -85,6 +85,29 @@ button, a, select, input, textarea {
   display: flex !important;
   align-items: center !important;
   gap: 0.85rem !important;
+}
+
+/* ===================================================================
+   🎯 YOGI KPI 5-COLUMN GRID FIX (Aligns all 5 cards in 1 row on laptop/desktop)
+   =================================================================== */
+.yogi-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+/* Small Screens (Tablets / Mobile Landscape) */
+@media (min-width: 640px) {
+  .yogi-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Laptops & Desktops (1024px and up): All 5 cards sit side-by-side in 1 row! */
+@media (min-width: 1024px) {
+  .yogi-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
 }
 
 /* 📋 Table Responsiveness & Sticky Headers */
@@ -124,7 +147,6 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
 
 /* ===================================================================
    💻 Desktop & Laptop Sidebar Guarantee (Screen Width >= 768px)
-   Guarantees the Left Sidebar Menu is ALWAYS visible on Laptops/Desktops
    =================================================================== */
 @media (min-width: 768px) {
   #main-sidebar {
