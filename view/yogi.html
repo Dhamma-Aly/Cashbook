@@ -1,52 +1,64 @@
 <!-- view/yogi.html - Reusable Yogi Management Fragment for 12Yogi & 13Yogi -->
 <div class="space-y-5">
 
-  <!-- Top 5 Active KPI Cards -->
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+  <!-- Top 5 Active KPI Cards (Horizontal 5-Column Grid) -->
+  <div class="yogi-kpi-grid">
+    
     <!-- 1. Monks Card -->
     <div class="stats-card">
-      <div class="p-3 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-person-walking text-xl"></i></div>
+      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+        <i class="fa-solid fa-person-walking text-xl"></i>
+      </div>
       <div>
         <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း ရဟန်း</p>
-        <h3 id="kpi-yogi-monks" class="text-base font-extrabold text-amber-300 mt-0.5">0</h3>
+        <h3 id="kpi-yogi-monks" class="text-base font-extrabold text-amber-300 mt-1">0</h3>
       </div>
     </div>
 
     <!-- 2. Nuns Card -->
     <div class="stats-card">
-      <div class="p-3 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0"><i class="fa-solid fa-user-nurse text-xl"></i></div>
+      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+        <i class="fa-solid fa-user-nurse text-xl"></i>
+      </div>
       <div>
         <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း သီလရှင်</p>
-        <h3 id="kpi-yogi-nuns" class="text-base font-extrabold text-emerald-400 mt-0.5">0</h3>
+        <h3 id="kpi-yogi-nuns" class="text-base font-extrabold text-emerald-400 mt-1">0</h3>
       </div>
     </div>
 
     <!-- 3. Males Card -->
     <div class="stats-card">
-      <div class="p-3 rounded-lg bg-sky-500/10 text-sky-400 shrink-0"><i class="fa-solid fa-mars text-xl"></i></div>
+      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
+        <i class="fa-solid fa-mars text-xl"></i>
+      </div>
       <div>
         <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း ကျား</p>
-        <h3 id="kpi-yogi-males" class="text-base font-extrabold text-sky-400 mt-0.5">0</h3>
+        <h3 id="kpi-yogi-males" class="text-base font-extrabold text-sky-400 mt-1">0</h3>
       </div>
     </div>
 
     <!-- 4. Females Card -->
     <div class="stats-card">
-      <div class="p-3 rounded-lg bg-rose-500/10 text-rose-400 shrink-0"><i class="fa-solid fa-venus text-xl"></i></div>
+      <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400 shrink-0">
+        <i class="fa-solid fa-venus text-xl"></i>
+      </div>
       <div>
         <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း မ</p>
-        <h3 id="kpi-yogi-females" class="text-base font-extrabold text-rose-400 mt-0.5">0</h3>
+        <h3 id="kpi-yogi-females" class="text-base font-extrabold text-rose-400 mt-1">0</h3>
       </div>
     </div>
 
     <!-- 5. Grand Total Active Card -->
     <div class="stats-card">
-      <div class="p-3 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-users text-xl"></i></div>
+      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+        <i class="fa-solid fa-users text-xl"></i>
+      </div>
       <div>
         <p class="text-[10px] uppercase font-bold text-amber-500/70">ယောဂီ စုစုပေါင်း</p>
-        <h3 id="kpi-yogi-total" class="text-base font-extrabold text-amber-100 mt-0.5">0</h3>
+        <h3 id="kpi-yogi-total" class="text-base font-extrabold text-amber-100 mt-1">0</h3>
       </div>
     </div>
+
   </div>
 
   <!-- Action Bar (Status Tab Switcher + Search + Buttons) -->
