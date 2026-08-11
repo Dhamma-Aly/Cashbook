@@ -1,5 +1,5 @@
 // ===================================================================
-// js/app.js - Main Application Controller & View Router
+// js/app.js - Main Application Controller & View Router 
 // Drives Navigation, Tab Switching, Real-Time Live Sync (Auto-polling 10s),
 // and Modal Controls for Cashbooks, Inventory, and Yogi Management
 // ===================================================================
