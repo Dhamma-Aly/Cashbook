@@ -1,14 +1,12 @@
 // ===================================================================
-// js/config.js - Sāsana ERP System Configuration & Sheet Mappings
-// Defines API Base URL, Sheet Titles, Categories, Subcategories
+// js/config.js - Sāsana ERP System Configuration & API Endpoint Setup
 // ===================================================================
 
-const CONFIG = {
-  // Cloudflare Worker API Base URL
-  // ⚠️ ဤနေရာတွင် မိမိ၏ Cloudflare Worker Dashboard မှ URL အမှန်ကို ထည့်သွင်းပါ
-  API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-    ? 'http://localhost:8787'
-    : 'https://cashbook-api.dhammaly.workers.dev',
+// 🎯 စကရင်ရှော့အရ အတည်ပြုရရှိထားသော Cloudflare Worker URL အမှန်
+const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
+
+window.CONFIG = {
+  API_BASE_URL: WORKER_API_URL,
 
   // Sheet Names & Page Titles Mapping
   SHEET_TITLES: {
@@ -61,6 +59,4 @@ const CONFIG = {
   }
 };
 
-// 💡 Window Global Scope Binding (အခြား JS ဖိုင်များ အဆင်ပြေစွာ ခေါ်ယူနိုင်ရန်)
-window.CONFIG = CONFIG;
-window.APP_CONFIG = CONFIG;
+window.APP_CONFIG = window.CONFIG;
