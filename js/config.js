@@ -19,9 +19,9 @@ window.APP_CONFIG = {
     "9MB": "ဆေးပဒေသာပင် စာအုပ်",
     "10GB": "အထွေထွေရန်ပုံငွေစာအုပ်",
     "11Inv": "ပစ္စည်းစာရင်း",
-    "12Rep": "Reporting Center",
-    "Report": "Reporting Center",
-    "System": "System Settings"
+    "12Yogi": "အမြဲနေ ယောဂီစာရင်း",
+    "13Yogi": "စခန်းဝင် ယောဂီစာရင်း",
+    "14Rep": "အသုံးစရိတ် အစီရင်ခံစာ",
   },
 
   SUBCATEGORIES: {
