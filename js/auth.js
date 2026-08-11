@@ -1,5 +1,5 @@
 // ===================================================================
-// js/auth.js - Authentication & User Session Manager (Cloudflare D1 Server Sync) 
+// js/auth.js -  Authentication & User Session Manager (Cloudflare D1 Server Sync) 
 // ===================================================================
 
 window.currentUser = null;
