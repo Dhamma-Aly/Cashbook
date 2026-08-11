@@ -1,42 +1,89 @@
+// ===================================================================
 // js/auth.js - Authentication & User Session Manager (Cloudflare D1 Server Sync)
+// Supports D1 Server Login, Role Management, and Live Clock Display
+// ===================================================================
+
 window.currentUser = null;
 let clockInterval = null;
 
-window.initAuth = function() {
+// 1. Get Current User Helper (Fixes ReferenceError in app.js)
+window.getCurrentUser = function() {
+  if (window.currentUser) return window.currentUser;
   const saved = localStorage.getItem("cashbook_user");
   if (saved) {
     try {
       window.currentUser = JSON.parse(saved);
-      document.getElementById("login-overlay").classList.add("hidden");
-      document.getElementById("erp-workspace").classList.remove("hidden");
-      updateUserBadge();
-      startLiveClock();
-      return true;
-    } catch(e) {}
+      return window.currentUser;
+    } catch(e) {
+      localStorage.removeItem("cashbook_user");
+    }
   }
-  document.getElementById("login-overlay").classList.remove("hidden");
-  document.getElementById("erp-workspace").classList.add("hidden");
+  return null;
+};
+
+// 2. Initialize Auth State
+window.initAuth = function() {
+  const user = window.getCurrentUser();
+  const loginOverlay = document.getElementById("login-overlay");
+  const workspace = document.getElementById("erp-workspace");
+
+  if (user) {
+    if (loginOverlay) loginOverlay.classList.add("hidden");
+    if (workspace) workspace.classList.remove("hidden");
+    updateUserBadge();
+    startLiveClock();
+    return true;
+  }
+
+  if (loginOverlay) loginOverlay.classList.remove("hidden");
+  if (workspace) workspace.classList.add("hidden");
   return false;
 };
 
-// 💡 Cloudflare Worker /api/login မှတစ်ဆင့် D1 Database တွင် လျှို့ဝှက် စစ်ဆေးခြင်း
+// 3. UI Visibility Controls
+window.showLoginOverlay = function() {
+  const loginOverlay = document.getElementById("login-overlay");
+  const workspace = document.getElementById("erp-workspace");
+  if (loginOverlay) loginOverlay.classList.remove("hidden");
+  if (workspace) workspace.classList.add("hidden");
+};
+
+window.showWorkspace = function() {
+  const loginOverlay = document.getElementById("login-overlay");
+  const workspace = document.getElementById("erp-workspace");
+  if (loginOverlay) loginOverlay.classList.add("hidden");
+  if (workspace) workspace.classList.remove("hidden");
+  updateUserBadge();
+  startLiveClock();
+};
+
+// 4. Cloudflare Worker /api/login မှတစ်ဆင့် D1 Database တွင် လျှို့ဝှက် စစ်ဆေးခြင်း
 window.handleLoginSubmit = async function(event) {
   event.preventDefault();
-  const username = document.getElementById("login-username").value;
-  const pass = document.getElementById("login-password").value;
+
+  const usernameInput = document.getElementById("login-username");
+  const passwordInput = document.getElementById("login-password");
   const errDiv = document.getElementById("login-error");
-  const submitBtn = event.target.querySelector("button[type='submit']");
+  const submitBtn = event.target ? event.target.querySelector("button[type='submit']") : null;
+
+  const username = usernameInput ? usernameInput.value.trim() : "";
+  const pass = passwordInput ? passwordInput.value.trim() : "";
 
   if (!username || !pass) {
-    errDiv.textContent = "အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်ပါခင်ဗျာ။";
-    errDiv.classList.remove("hidden");
+    if (errDiv) {
+      errDiv.textContent = "အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်ပါခင်ဗျာ။";
+      errDiv.classList.remove("hidden");
+    }
     return;
   }
 
   if (submitBtn) submitBtn.disabled = true;
 
   try {
-    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) || "https://cashbook.dhammaaly.workers.dev";
+    // Detect API Base URL (Checks APP_CONFIG, CONFIG or Fallback)
+    const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
+                    (window.CONFIG && window.CONFIG.API_BASE_URL) ||
+                    "https://cashbook.dhammaaly.workers.dev";
     
     // Server (D1 Database) ဆီသို့ လျှို့ဝှက် စစ်ဆေးခိုင်းခြင်း
     const res = await fetch(`${baseUrl}/api/login`, {
@@ -47,39 +94,48 @@ window.handleLoginSubmit = async function(event) {
 
     const json = await res.json();
 
-    if (json.success && json.user) {
+    if (res.ok && json.success && json.user) {
       window.currentUser = {
         username: json.user.username,
-        role: json.user.role,
-        loginTime: new Date().toLocaleString()
+        role: json.user.role || json.user.username,
+        loginTime: new Date().toISOString()
       };
       localStorage.setItem("cashbook_user", JSON.stringify(window.currentUser));
-      errDiv.classList.add("hidden");
-      document.getElementById("login-overlay").classList.add("hidden");
-      document.getElementById("erp-workspace").classList.remove("hidden");
-      updateUserBadge();
-      startLiveClock();
-      if (window.switchTab) window.switchTab("Home");
+      
+      if (errDiv) errDiv.classList.add("hidden");
+      window.showWorkspace();
+
+      if (window.switchTab) {
+        window.switchTab("Home");
+      }
     } else {
-      errDiv.textContent = json.message || "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
-      errDiv.classList.remove("hidden");
+      if (errDiv) {
+        errDiv.textContent = json.error || json.message || "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+        errDiv.classList.remove("hidden");
+      }
     }
   } catch (err) {
-    errDiv.textContent = "ချိတ်ဆက်မှု မအောင်မြင်ပါ: " + err.message;
-    errDiv.classList.remove("hidden");
+    console.error("Login Fetch Error:", err);
+    if (errDiv) {
+      errDiv.textContent = "ချိတ်ဆက်မှု မအောင်မြင်ပါ: " + (err.message || "Server Error");
+      errDiv.classList.remove("hidden");
+    }
   } finally {
     if (submitBtn) submitBtn.disabled = false;
   }
 };
 
+// 5. Logout Handler
 window.handleLogout = function() {
-  if (clockInterval) clearInterval(clockInterval);
-  localStorage.removeItem("cashbook_user");
-  window.currentUser = null;
-  location.reload();
+  if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
+    if (clockInterval) clearInterval(clockInterval);
+    localStorage.removeItem("cashbook_user");
+    window.currentUser = null;
+    location.reload();
+  }
 };
 
-// 💡 Format: Mon 3 Aug 26 | 1:05 PM
+// 6. Custom Date Formatter: Mon 12 Aug 26 | 12:57 PM
 function formatCustomDate() {
   const now = new Date();
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -96,20 +152,23 @@ function formatCustomDate() {
   hours = hours % 12;
   hours = hours ? hours : 12;
 
-  // Pipe symbol '|' with subtle amber color
+  // Pipe symbol '|' with subtle amber color styling
   return `${dayName} ${dayNum} ${monthName} ${yearTwoDigits} <span class="text-amber-500/40 font-normal px-1">|</span> ${hours}:${minutes} ${ampm}`;
 }
 
+// 7. Update User Badge Header
 function updateUserBadge() {
-  if (!window.currentUser) return;
+  const user = window.getCurrentUser();
+  if (!user) return;
   const badgeStr = formatCustomDate();
   const badge = document.getElementById("current-user-display");
   if (badge) {
-    // Result: DATE: Mon 3 Aug 26 | 1:05 PM | Admin
-    badge.innerHTML = `DATE: ${badgeStr} <span class="text-amber-500/40 font-normal px-1">|</span> ${window.currentUser.username}`;
+    // Result: DATE: Mon 12 Aug 26 | 12:57 PM | Admin
+    badge.innerHTML = `DATE: ${badgeStr} <span class="text-amber-500/40 font-normal px-1">|</span> ${user.username}`;
   }
 }
 
+// 8. Start Live Clock Interval
 function startLiveClock() {
   if (clockInterval) clearInterval(clockInterval);
   clockInterval = setInterval(updateUserBadge, 10000); // 10 စက္ကန့်တစ်ခါ အချိန်စစ်ပေးမည်
