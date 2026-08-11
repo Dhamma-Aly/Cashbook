@@ -1,7 +1,7 @@
 // ===================================================================
-// js/app.js - Main Application Controller & View Router 
+// js/app.js - Main Application Controller & View Router
 // Drives Navigation, Tab Switching, Real-Time Live Sync (Auto-polling 10s),
-// and Modal Controls for Cashbooks, Inventory, and Yogi Management
+// Mobile Sidebar Controls, and Modals for Cashbooks, Inventory & Yogis
 // ===================================================================
 
 let currentSheet = 'Home';
@@ -24,7 +24,31 @@ function initApp() {
 }
 
 // ===================================================================
-// 1. Real-Time Live Sync Engine (Silent Background Refetching)
+// 1. Mobile Sidebar Responsive Controls (Phones & Tablets)
+// ===================================================================
+function toggleMobileSidebar() {
+  const sidebar = document.getElementById('main-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (!sidebar) return;
+
+  const isHidden = sidebar.classList.contains('-translate-x-full');
+  if (isHidden) {
+    sidebar.classList.remove('-translate-x-full');
+    if (overlay) overlay.classList.remove('hidden');
+  } else {
+    closeMobileSidebar();
+  }
+}
+
+function closeMobileSidebar() {
+  const sidebar = document.getElementById('main-sidebar');
+  const overlay = document.getElementById('sidebar-overlay');
+  if (sidebar) sidebar.classList.add('-translate-x-full');
+  if (overlay) overlay.classList.add('hidden');
+}
+
+// ===================================================================
+// 2. Real-Time Live Sync Engine (Silent Background Refetching)
 // ===================================================================
 function startLiveSync() {
   if (autoRefreshTimer) clearInterval(autoRefreshTimer);
@@ -51,10 +75,13 @@ function refreshCurrentTabSilent() {
 }
 
 // ===================================================================
-// 2. View Router & Navigation
+// 3. View Router & Navigation
 // ===================================================================
 async function switchTab(sheetName) {
   currentSheet = sheetName;
+
+  // Auto close mobile sidebar when a menu item is tapped on mobile
+  closeMobileSidebar();
 
   // Update Page Title in Header
   const title = CONFIG.SHEET_TITLES[sheetName] || sheetName;
@@ -101,7 +128,7 @@ async function fetchTemplate(path) {
 }
 
 // ===================================================================
-// 3. Yogi Modal Dialog Controllers
+// 4. Yogi Modal Dialog Controllers
 // ===================================================================
 function openAddYogiModal() {
   const form = document.getElementById('yogi-entry-form');
