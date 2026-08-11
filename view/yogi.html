@@ -1,0 +1,132 @@
+<!-- view/yogi.html - Reusable Yogi Management Fragment for 12Yogi & 13Yogi -->
+<div class="space-y-5">
+
+  <!-- Top 5 Active KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+    <!-- 1. Monks Card -->
+    <div class="stats-card">
+      <div class="p-3 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-person-walking text-xl"></i></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း ရဟန်း</p>
+        <h3 id="kpi-yogi-monks" class="text-base font-extrabold text-amber-300 mt-0.5">0</h3>
+      </div>
+    </div>
+
+    <!-- 2. Nuns Card -->
+    <div class="stats-card">
+      <div class="p-3 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0"><i class="fa-solid fa-user-nurse text-xl"></i></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း သီလရှင်</p>
+        <h3 id="kpi-yogi-nuns" class="text-base font-extrabold text-emerald-400 mt-0.5">0</h3>
+      </div>
+    </div>
+
+    <!-- 3. Males Card -->
+    <div class="stats-card">
+      <div class="p-3 rounded-lg bg-sky-500/10 text-sky-400 shrink-0"><i class="fa-solid fa-mars text-xl"></i></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း ကျား</p>
+        <h3 id="kpi-yogi-males" class="text-base font-extrabold text-sky-400 mt-0.5">0</h3>
+      </div>
+    </div>
+
+    <!-- 4. Females Card -->
+    <div class="stats-card">
+      <div class="p-3 rounded-lg bg-rose-500/10 text-rose-400 shrink-0"><i class="fa-solid fa-venus text-xl"></i></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">စုစုပေါင်း မ</p>
+        <h3 id="kpi-yogi-females" class="text-base font-extrabold text-rose-400 mt-0.5">0</h3>
+      </div>
+    </div>
+
+    <!-- 5. Grand Total Active Card -->
+    <div class="stats-card">
+      <div class="p-3 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-users text-xl"></i></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">ယောဂီ စုစုပေါင်း</p>
+        <h3 id="kpi-yogi-total" class="text-base font-extrabold text-amber-100 mt-0.5">0</h3>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Bar (Status Tab Switcher + Search + Buttons) -->
+  <div class="flex flex-col md:flex-row justify-between items-center bg-[#14110d] border border-amber-900/30 p-4 rounded-xl gap-4">
+    
+    <!-- Left: Status Filter Tabs (Active vs Inactive) -->
+    <div class="flex items-center gap-3 w-full md:w-auto shrink-0">
+      <div class="inline-flex p-1 bg-[#0a0806] border border-amber-900/40 rounded-xl text-xs">
+        <button id="tab-yogi-active" onclick="switchYogiStatusTab('Active')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#211912] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> စခန်းတွင်း ယောဂီများ (Active)
+        </button>
+        <button id="tab-yogi-inactive" onclick="switchYogiStatusTab('Inactive')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
+          <span class="w-2 h-2 rounded-full bg-rose-500"></span> စခန်းထွက်ပြီးသူများ (Inactive)
+        </button>
+      </div>
+    </div>
+
+    <!-- Middle: Search Box -->
+    <div class="w-full md:w-1/3 relative">
+      <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="အမည်/မှတ်ပုံတင်/ဖုန်း ဖြင့် ရှာရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-lg bg-[#0a0806] border border-amber-900/40 text-amber-100 outline-none focus:border-amber-400">
+    </div>
+
+    <!-- Right: Action Buttons -->
+    <div class="flex items-center gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
+      <button onclick="renderYogiView()" class="p-2.5 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+        <i class="fa-solid fa-rotate text-xs"></i> Refresh
+      </button>
+      <button onclick="exportYogiCSV()" class="p-2.5 bg-[#1f1913] hover:bg-[#2a2118] border border-amber-900/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer">
+        <i class="fa-solid fa-file-export text-xs"></i> Export
+      </button>
+      <button id="btn-add-yogi" onclick="openAddYogiModal()" class="p-2.5 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer">
+        <i class="fa-solid fa-plus text-xs"></i> + ယောဂီအသစ်ထည့်ရန်
+      </button>
+    </div>
+  </div>
+
+  <!-- 14-Column Table Container -->
+  <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
+    <table class="w-full text-left border-collapse min-w-[1700px]">
+      <thead>
+        <tr>
+          <th class="w-12 text-center">စဉ်</th>
+          <th class="w-28">စတင်ရက်စွဲ</th>
+          <th class="w-28">စခန်းထွက်ရက်စွဲ</th>
+          <th class="w-28">အမျိုးအစား</th>
+          <th class="w-36">အမည်</th>
+          <th class="w-36">အဘအမည်</th>
+          <th class="w-40">မှတ်ပုံတင်အမှတ်</th>
+          <th class="w-28">မွေးသက္ကရာဇ်</th>
+          <th class="w-16 text-center">အသက်</th>
+          <th class="w-16 text-center">ကျား/မ</th>
+          <th class="w-32">ယောဂီဖုန်း</th>
+          <th class="w-32">အိမ်ဖုန်း</th>
+          <th class="min-w-[220px]">နေရပ်လိပ်စာ</th>
+          <th class="w-28 text-center right-0 sticky">လုပ်ဆောင်ချက်</th>
+        </tr>
+      </thead>
+      <tbody id="yogi-table-body">
+        <tr>
+          <td colspan="14" class="text-center py-8 text-amber-400 font-bold">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Bar -->
+  <div id="yogi-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#14110d] border border-amber-900/30 px-5 py-3 rounded-xl gap-4 text-xs">
+    <div class="text-amber-200/80 font-medium">
+      Showing <span id="yogi-page-start" class="font-bold text-amber-400">0</span> to <span id="yogi-page-end" class="font-bold text-amber-400">0</span> of <span id="yogi-total-entries" class="font-bold text-amber-400">0</span> entries
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="btn-yogi-prev-page" onclick="prevYogiPage()" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all cursor-pointer">
+        <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
+      </button>
+      <button id="btn-yogi-next-page" onclick="nextYogiPage()" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all cursor-pointer">
+        Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
+      </button>
+    </div>
+  </div>
+
+</div>
