@@ -3,37 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ်">
-  <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - ငွေစာရင်း စီမံခန့်ခွဲမှု</title>
+  <meta name="description" content="ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်">
+  <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP</title>
   <link rel="icon" type="image/svg+xml" href="avicon.svg">
 
-  <!-- 🚀 PERFORMANCE: preconnect to the remaining third-party origin (fonts)
-       up front so the browser can finish DNS + TLS negotiation while the
-       rest of the HTML is still parsing. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <!-- 💡 Tailwind: previously loaded from cdn.tailwindcss.com, which ships
-       the ENTIRE JIT compiler as JS and regenerates the stylesheet in the
-       browser on every load -- explicitly not recommended for production.
-       css/tailwind.build.css is a pre-built, minified, purged stylesheet
-       (built with `npx tailwindcss`, scanning index.html + view/*.html +
-       js/*.js for every class actually used) -- same visual result, ~22KB
-       of plain CSS instead of a multi-hundred-KB runtime compiler. -->
   <link rel="stylesheet" href="css/tailwind.build.css">
-
-  <!-- 💡 FontAwesome: Loaded from CDN for reliable icon rendering -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-
-  <!-- 🇲🇲 Proper Myanmar-script webfont so ခေါင်းစဉ်/စာသားများ render crisp &
-       readable on every OS (many devices fall back to a low-quality system
-       Myanmar font otherwise). display=swap keeps text visible immediately. -->
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <!-- 💡 Monastic custom CSS now lives in one cached, external file
-       (css/style.css) instead of being duplicated inline on every page
-       load -- smaller HTML payload + the browser only has to download and
-       parse it once. -->
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body class="bg-[#0f0e0c] font-myanmar flex h-screen overflow-hidden text-amber-100/90">
@@ -52,7 +31,7 @@
           ဓမ္မအလင်းရောင်တောရရိပ်သာ
         </h2>
         <p class="text-[11px] font-extrabold uppercase tracking-widest text-amber-200/80 pt-1 pb-3 border-b border-amber-500/20">
-          ငွေစာရင်း စီမံခန့်ခွဲမှုစနစ်
+          ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်
         </p>
       </div>
 
@@ -91,11 +70,6 @@
   </div>
 
   <!-- MAIN WORKSPACE -->
-  <!-- 🔧 FIX: added "flex" class below so the sidebar (<aside>) and the
-       main content column render SIDE-BY-SIDE instead of stacking vertically.
-       Without it, the content column was pushed below the sidebar and got
-       clipped by the body's overflow-hidden/h-screen, so only the sidebar
-       was ever visible. -->
   <div id="erp-workspace" class="hidden flex h-full w-full">
     <aside class="w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0">
       <div class="h-[64px] px-4 border-b border-amber-900/30 flex items-center justify-between text-amber-100 bg-[#18130f] shrink-0">
@@ -103,69 +77,77 @@
           <i class="fa-solid fa-dharmachakra text-amber-400 text-lg"></i>
           <span class="text-gold-gradient">ဓမ္မအလင်းရောင်</span>
         </div>
-        <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg" title="Logout">
+        <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
           <i class="fa-solid fa-power-off text-xs"></i>
         </button>
       </div>
 
       <!-- SIDEBAR NAV -->
       <nav class="flex-1 px-2.5 py-3.5 space-y-1.5 overflow-y-auto" id="sidebar-nav">
-        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold" title="Home Dashboard">
+        <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold cursor-pointer" title="Home Dashboard">
           <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
         </button>
 
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
-        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
+        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
           <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေ ရန်ပုံငွေ (Bank)</span> 
         </button>
-        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ဆွမ်းပဒေသာပင် (Bank)">
+        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် (Bank)">
           <i class="fa-solid fa-bowl-rice text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">ဆွမ်းပဒေသာပင် (Bank)</span> 
         </button>
-        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="တစ်ဦးတည်းစာရင်း (Bank)">
+        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="တစ်ဦးတည်းစာရင်း (Bank)">
           <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">တစ်ဦးတည်းစာရင်း (Bank)</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
-        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
+        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
           <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ကျောင်းရန်ပုံငွေ စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ဆွမ်းပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-utensils text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဆွမ်းပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ဓမ္မာရုံငွေစာရင်း စာအုပ်">
-          <i class="fa-solid fa-om text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဓမ္မာရုံငွေစာရင်း စာအုပ်</span> 
+        
+        <!-- ဓမ္မာရုံငွေစာရင်း - fa-place-of-worship (တရားထိုင်ခန်းမ Icon) -->
+        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဓမ္မာရုံငွေစာရင်း စာအုပ်">
+          <i class="fa-solid fa-place-of-worship text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဓမ္မာရုံငွေစာရင်း စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="စေတီငွေစာရင်း စာအုပ်">
+        
+        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စေတီငွေစာရင်း စာအုပ်">
           <i class="fa-solid fa-gopuram text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စေတီငွေစာရင်း စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="လျှပ်စစ်ပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="လျှပ်စစ်ပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-bolt text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">လျှပ်စစ်ပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="9ေးပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆေးပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-notes-medical text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဆေးပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="အထွေထွေရန်ပုံငွေစာအုပ်">
+        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေရန်ပုံငွေစာအုပ်">
           <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေရန်ပုံငွေစာအုပ်</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
-        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ပစ္စည်းစာရင်း">
+        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ပစ္စည်းစာရင်း">
           <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ပစ္စည်းစာရင်း</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
-        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ပစ္စည်းစာရင်း">
-          <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အမြဲနေ ယောဂီ</span> 
+        
+        <!-- အမြဲနေယောဂီ - fa-person-praying Icon -->
+        <button onclick="switchTab('12Yogi')" id="btn-12Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အမြဲနေ ယောဂီစာရင်း">
+          <i class="fa-solid fa-person-praying text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အမြဲနေ ယောဂီ</span> 
         </button>
-        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="ပစ္စည်းစာရင်း">
-          <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စခန်းဝင် ယောဂီ</span> 
+        
+        <!-- စခန်းဝင်ယောဂီ - fa-people-roof Icon -->
+        <button onclick="switchTab('13Yogi')" id="btn-13Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စခန်းဝင် ယောဂီစာရင်း">
+          <i class="fa-solid fa-people-roof text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စခန်းဝင် ယောဂီ</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
-        <button onclick="switchTab('Report')" id="btn-Report" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold" title="Reporting Center">
+        
+        <!-- အသုံးစရိတ် အစီရင်ခံစာ - 14Rep -->
+        <button onclick="switchTab('14Rep')" id="btn-14Rep" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အသုံးစရိတ် အစီရင်ခံစာ">
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အသုံးစရိတ် အစီရင်ခံစာ</span>
         </button>
-      
       </nav>
     </aside>
 
@@ -189,12 +171,12 @@
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
 
-  <!-- Entry Add/Edit Modal -->
+  <!-- Cashbook Entry Add/Edit Modal -->
   <div id="entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
       <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
         <h3 id="modal-form-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">စာရင်းအသစ် ထည့်သွင်းရန်</h3>
-        <button onclick="closeEntryModal()" class="text-amber-500/60 hover:text-white transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+        <button onclick="closeEntryModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
       </div>
 
       <form id="entry-form" onsubmit="saveEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
@@ -248,8 +230,8 @@
         </div>
 
         <div class="flex justify-end items-center gap-3 pt-4 border-t border-amber-900/30">
-          <button type="button" onclick="closeEntryModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition">မလုပ်တော့ပါ</button>
-          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all">အတည်ပြုသည်</button>
+          <button type="button" onclick="closeEntryModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition cursor-pointer">မလုပ်တော့ပါ</button>
+          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all cursor-pointer">အတည်ပြုသည်</button>
         </div>
       </form>
     </div>
@@ -260,7 +242,7 @@
     <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
       <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
         <h3 id="inv-modal-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">ပစ္စည်း အသစ် ထည့်သွင်းရန်</h3>
-        <button onclick="closeInvModal()" class="text-amber-500/60 hover:text-white transition"><i class="fa-solid fa-xmark text-sm"></i></button>
+        <button onclick="closeInvModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
       </div>
 
       <form id="inv-entry-form" onsubmit="saveInvEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
@@ -305,8 +287,108 @@
         </div>
 
         <div class="flex justify-end items-center gap-3 pt-4 border-t border-amber-900/30">
-          <button type="button" onclick="closeInvModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition">မလုပ်တော့ပါ</button>
-          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all">အတည်ပြုသည်</button>
+          <button type="button" onclick="closeInvModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition cursor-pointer">မလုပ်တော့ပါ</button>
+          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all cursor-pointer">အတည်ပြုသည်</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- NEW: Yogi (12Yogi & 13Yogi) Add/Edit Modal -->
+  <div id="yogi-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
+        <h3 id="yogi-modal-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">ယောဂီ အသစ် ထည့်သွင်းရန်</h3>
+        <button onclick="closeYogiModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
+      </div>
+
+      <form id="yogi-entry-form" onsubmit="saveYogiEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+        <input type="hidden" id="yogi-uniqueId">
+        <input type="hidden" id="yogi-sheet-type">
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">စတင်ရက်စွဲ (Start Date)</label>
+            <input type="date" id="yogi-start-date" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အမျိုးအစား (Category)</label>
+            <select id="yogi-category" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold">
+              <option value="လူပုဂ္ဂိုလ်">လူပုဂ္ဂိုလ်</option>
+              <option value="ရဟန်း">ရဟန်း</option>
+              <option value="သီလရှင်">သီလရှင်</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">ယောဂီ အမည်</label>
+            <input type="text" id="yogi-name" required oninput="onYogiNameChange(this.value)" placeholder="ဥပမာ- ဦးလှမောင်" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အဘအမည်</label>
+            <input type="text" id="yogi-father-name" placeholder="ဥပမာ- ဦးဘမောင်" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
+          </div>
+        </div>
+
+        <!-- NRC Structured Fields -->
+        <div>
+          <label class="block font-bold text-amber-400/80 mb-1">မှတ်ပုံတင်အမှတ် (NRC)</label>
+          <div class="grid grid-cols-4 gap-2">
+            <select id="yogi-nrc-state" class="p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 font-bold outline-none">
+              <option value="12">12/</option>
+              <option value="1">1/</option><option value="2">2/</option><option value="3">3/</option>
+              <option value="4">4/</option><option value="5">5/</option><option value="6">6/</option>
+              <option value="7">7/</option><option value="8">8/</option><option value="9">9/</option>
+              <option value="10">10/</option><option value="11">11/</option><option value="13">13/</option><option value="14">14/</option>
+            </select>
+
+            <input type="text" id="yogi-nrc-township" placeholder="ရကန" class="p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none font-bold">
+
+            <input type="text" id="yogi-nrc-type" value="(နိုင်)" readonly class="p-2.5 bg-[#120e0b] border border-amber-900/30 rounded-lg text-amber-400 font-bold text-center outline-none">
+
+            <input type="text" id="yogi-nrc-number" maxlength="6" placeholder="123456" class="p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none font-mono">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">မွေးသက္ကရာဇ် (DOB)</label>
+            <input type="date" id="yogi-dob" onchange="onYogiDoBChange(this.value)" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အသက် (Age)</label>
+            <input type="number" min="1" max="120" id="yogi-age" placeholder="45" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-200 font-bold font-mono outline-none focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">ကျား / မ (Gender)</label>
+            <select id="yogi-gender" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold">
+              <option value="ကျား">ကျား</option>
+              <option value="မ">မ</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">ယောဂီ ဖုန်းနံပါတ်</label>
+            <input type="text" id="yogi-phone" placeholder="09-123456789" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none font-mono focus:border-amber-400">
+          </div>
+          <div>
+            <label class="block font-bold text-amber-400/80 mb-1">အိမ်ဖုန်းနံပါတ်</label>
+            <input type="text" id="yogi-home-phone" placeholder="09-987654321" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none font-mono focus:border-amber-400">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-bold text-amber-400/80 mb-1">နေရပ်လိပ်စာ</label>
+          <textarea id="yogi-address" rows="2" placeholder="မြို့နယ်၊ တိုင်း/ပြည်နယ်..." class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400"></textarea>
+        </div>
+
+        <div class="flex justify-end items-center gap-3 pt-4 border-t border-amber-900/30">
+          <button type="button" onclick="closeYogiModal()" class="px-4 py-2 rounded-lg text-xs font-bold text-amber-500/70 hover:text-white transition cursor-pointer">မလုပ်တော့ပါ</button>
+          <button type="submit" class="px-5 py-2 rounded-lg text-xs font-black bg-amber-600 hover:bg-amber-500 text-amber-950 shadow-lg transition-all cursor-pointer">အတည်ပြုသည်</button>
         </div>
       </form>
     </div>
@@ -319,6 +401,7 @@
   <script src="js/Banks.js" defer></script>
   <script src="js/Books.js" defer></script>
   <script src="js/Inventory.js" defer></script>
+  <script src="js/yogi.js" defer></script>
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
