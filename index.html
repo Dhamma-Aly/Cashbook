@@ -2,11 +2,11 @@
 <html lang="my" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
   <meta name="description" content="ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်">
-  <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP</title> 
+  <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP</title>
 
-  <!-- PWA & Mobile Web App Meta Tags --> 
+  <!-- PWA & Mobile Web App Meta Tags -->
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#120e0b">
   <meta name="mobile-web-app-capable" content="yes">
@@ -29,7 +29,7 @@
 
   <!-- LOGIN OVERLAY -->
   <div id="login-overlay" class="fixed inset-0 bg-[#080705] z-[100] flex items-center justify-center p-4">
-    <div class="relative w-full max-w-md bg-[#14110d]/95 border border-amber-600/30 backdrop-blur-xl rounded-3xl p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
+    <div class="relative w-full max-w-md bg-[#14110d]/95 border border-amber-600/30 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
       
       <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -37,7 +37,7 @@
         <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-amber-500/20 to-amber-700/5 border border-amber-500/40 shadow-inner mb-3">
           <i class="fa-solid fa-dharmachakra text-4xl text-amber-400"></i>
         </div>
-        <h2 class="text-xl font-black text-gold-gradient filter drop-shadow">
+        <h2 class="text-lg sm:text-xl font-black text-gold-gradient filter drop-shadow">
           ဓမ္မအလင်းရောင်တောရရိပ်သာ
         </h2>
         <p class="text-[11px] font-extrabold uppercase tracking-widest text-amber-200/80 pt-1 pb-3 border-b border-amber-500/20">
@@ -80,16 +80,26 @@
   </div>
 
   <!-- MAIN WORKSPACE -->
-  <div id="erp-workspace" class="hidden flex h-full w-full">
-    <aside class="w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0">
+  <div id="erp-workspace" class="hidden flex h-full w-full relative">
+    
+    <!-- Mobile Sidebar Backdrop Overlay -->
+    <div id="sidebar-overlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
+
+    <!-- Responsive Sidebar Navigation -->
+    <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
       <div class="h-[64px] px-4 border-b border-amber-900/30 flex items-center justify-between text-amber-100 bg-[#18130f] shrink-0">
         <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide">
           <i class="fa-solid fa-dharmachakra text-amber-400 text-lg"></i>
           <span class="text-gold-gradient">ဓမ္မအလင်းရောင်</span>
         </div>
-        <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
-          <i class="fa-solid fa-power-off text-xs"></i>
-        </button>
+        <div class="flex items-center gap-1">
+          <button onclick="closeMobileSidebar()" class="md:hidden text-amber-500/60 hover:text-white p-1.5 rounded-lg cursor-pointer">
+            <i class="fa-solid fa-xmark text-sm"></i>
+          </button>
+          <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
+            <i class="fa-solid fa-power-off text-xs"></i>
+          </button>
+        </div>
       </div>
 
       <!-- SIDEBAR NAV -->
@@ -152,15 +162,23 @@
       </nav>
     </aside>
 
-    <div class="flex-1 flex flex-col overflow-hidden">
-      <header class="bg-[#120e0b] border-b border-amber-900/30 h-[64px] px-6 flex justify-between items-center z-10 shrink-0">
-        <h1 id="page-title" class="text-base md:text-lg font-extrabold text-amber-100 tracking-wide">Home Dashboard</h1>
-        <div id="user-badge" class="text-xs font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30 px-3.5 py-1.5 rounded-lg flex items-center gap-2">
-          <i class="fa-solid fa-calendar-day text-amber-400"></i> <span id="current-user-display">Date: -- | Admin</span>
+    <!-- Main Content Work Area -->
+    <div class="flex-1 flex flex-col overflow-hidden w-full">
+      <header class="bg-[#120e0b] border-b border-amber-900/30 h-[64px] px-4 md:px-6 flex justify-between items-center z-10 shrink-0 gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <!-- Mobile Menu Hamburger Button -->
+          <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#1a1410] border border-amber-900/40 cursor-pointer shrink-0" title="Open Menu">
+            <i class="fa-solid fa-bars text-base"></i>
+          </button>
+          <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-amber-100 tracking-wide truncate">Home Dashboard</h1>
+        </div>
+
+        <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+          <i class="fa-solid fa-calendar-day text-amber-400"></i> <span id="current-user-display" class="truncate max-w-[150px] sm:max-w-none">Date: -- | Admin</span>
         </div>
       </header>
 
-      <main id="main-content" class="p-6 overflow-y-auto flex-1 bg-[#0f0e0c] relative">
+      <main id="main-content" class="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#0f0e0c] relative">
         <div id="view-container"></div>
       </main>
     </div>
@@ -172,18 +190,18 @@
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
 
-  <!-- Cashbook Entry Add/Edit Modal -->
-  <div id="entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-      <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
-        <h3 id="modal-form-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">စာရင်းအသစ် ထည့်သွင်းရန်</h3>
+  <!-- Cashbook Entry Modal -->
+  <div id="entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 sm:px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
+        <h3 id="modal-form-title" class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">စာရင်းအသစ် ထည့်သွင်းရန်</h3>
         <button onclick="closeEntryModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
       </div>
 
-      <form id="entry-form" onsubmit="saveEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+      <form id="entry-form" onsubmit="saveEntryForm(event)" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
         <input type="hidden" id="entry-uniqueId">
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ရက်စွဲ (Date)</label>
             <input type="date" id="entry-date" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
@@ -197,7 +215,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
             <select id="entry-subcategory" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold">
@@ -209,7 +227,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ငွေပမာဏ (Amount - MMK)</label>
             <input type="number" step="0.01" id="entry-amount" required placeholder="0.00" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-200 font-bold font-mono outline-none focus:border-amber-400">
@@ -238,18 +256,18 @@
     </div>
   </div>
 
-  <!-- Inventory (11Inv) Add/Edit Modal -->
-  <div id="inv-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
-    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-      <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
-        <h3 id="inv-modal-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">ပစ္စည်း အသစ် ထည့်သွင်းရန်</h3>
+  <!-- Inventory Modal -->
+  <div id="inv-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
+    <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <div class="px-5 sm:px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
+        <h3 id="inv-modal-title" class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">ပစ္စည်း အသစ် ထည့်သွင်းရန်</h3>
         <button onclick="closeInvModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
       </div>
 
-      <form id="inv-entry-form" onsubmit="saveInvEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+      <form id="inv-entry-form" onsubmit="saveInvEntryForm(event)" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
         <input type="hidden" id="inv-uniqueId">
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ရက်စွဲ (Date)</label>
             <input type="date" id="inv-date" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
@@ -260,7 +278,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">အမျိုးအစား (Category)</label>
             <select id="inv-category" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold"></select>
@@ -271,7 +289,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">အရေအတွက် (Quantity)</label>
             <input type="number" step="1" min="0" id="inv-qty" required placeholder="0" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-200 font-bold font-mono outline-none focus:border-amber-400">
@@ -296,18 +314,18 @@
   </div>
 
   <!-- Yogi Add/Edit Modal -->
-  <div id="yogi-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+  <div id="yogi-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-3 sm:p-4">
     <div class="bg-[#14110d] border border-amber-800/40 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
-      <div class="px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
-        <h3 id="yogi-modal-title" class="text-sm font-black text-amber-300 uppercase tracking-wider">ယောဂီ အသစ် ထည့်သွင်းရန်</h3>
+      <div class="px-5 sm:px-6 py-4 border-b border-amber-900/30 flex justify-between items-center bg-[#1c1510] shrink-0">
+        <h3 id="yogi-modal-title" class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider">ယောဂီ အသစ် ထည့်သွင်းရန်</h3>
         <button onclick="closeYogiModal()" class="text-amber-500/60 hover:text-white transition cursor-pointer"><i class="fa-solid fa-xmark text-sm"></i></button>
       </div>
 
-      <form id="yogi-entry-form" onsubmit="saveYogiEntryForm(event)" class="p-6 space-y-4 overflow-y-auto flex-1 text-xs">
+      <form id="yogi-entry-form" onsubmit="saveYogiEntryForm(event)" class="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1 text-xs">
         <input type="hidden" id="yogi-uniqueId">
         <input type="hidden" id="yogi-sheet-type">
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">စတင်ရက်စွဲ (Start Date)</label>
             <input type="date" id="yogi-start-date" required class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
@@ -322,7 +340,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ယောဂီ အမည်</label>
             <input type="text" id="yogi-name" required oninput="onYogiNameChange(this.value)" placeholder="ဥပမာ- ဦးလှမောင်" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400 font-bold">
@@ -336,7 +354,7 @@
         <!-- NRC Structured Fields -->
         <div>
           <label class="block font-bold text-amber-400/80 mb-1">မှတ်ပုံတင်အမှတ် (NRC)</label>
-          <div class="grid grid-cols-4 gap-2">
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <select id="yogi-nrc-state" class="p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 font-bold outline-none">
               <option value="12">12/</option>
               <option value="1">1/</option><option value="2">2/</option><option value="3">3/</option>
@@ -353,7 +371,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">မွေးသက္ကရာဇ် (DOB)</label>
             <input type="date" id="yogi-dob" onchange="onYogiDoBChange(this.value)" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none focus:border-amber-400">
@@ -371,7 +389,7 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block font-bold text-amber-400/80 mb-1">ယောဂီ ဖုန်းနံပါတ်</label>
             <input type="text" id="yogi-phone" placeholder="09-123456789" class="w-full p-2.5 bg-[#0a0806] border border-amber-900/40 rounded-lg text-amber-100 outline-none font-mono focus:border-amber-400">
@@ -406,7 +424,7 @@
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
-  <!-- Service Worker Registration for PWA & Fast Offline/App Loading -->
+  <!-- Service Worker Registration -->
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
