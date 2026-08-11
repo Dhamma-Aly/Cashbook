@@ -1,7 +1,7 @@
 // ===================================================================
 // js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi)
-// Handles Rendering, Filtering, Pagination, Auto DoB/Gender Logics,
-// and Post/Checkout (Status Active -> Inactive transition)
+// Features Flicker-Free Silent Background Sync, DoB Auto-Age,
+// Name Prefix Auto-Gender, and Post/Checkout (Active -> Inactive)
 // ===================================================================
 
 let currentYogiSheet = '12Yogi';
@@ -11,36 +11,45 @@ let filteredYogiEntries = [];
 let yogiCurrentPage = 1;
 const yogiRowsPerPage = 15;
 
-// 1. Core View Renderer
-async function renderYogiView() {
-  showLoading(true);
+// 1. Core View Renderer (Supports Silent Background Refresh to Prevent Flickering)
+async function renderYogiView(isSilent = false) {
+  if (!isSilent && typeof showLoading === 'function') {
+    showLoading(true);
+  }
+
   try {
     const response = await fetchYogiDataAPI(currentYogiSheet);
-    if (response.success) {
+    if (response && response.success) {
       allYogiEntries = response.data || [];
       updateYogiKPIs(response.kpis);
     } else {
       allYogiEntries = [];
-      alert('ဒေတာဆွဲယူရာတွင် အမှားအယွင်းရှိပါသည်: ' + (response.error || ''));
     }
   } catch (err) {
     console.error('Yogi Fetch Error:', err);
     allYogiEntries = [];
   } finally {
-    showLoading(false);
+    if (!isSilent && typeof showLoading === 'function') {
+      showLoading(false);
+    }
   }
 
   applyYogiFilters();
 }
 
-// 2. Update KPI Cards (Active counts returned from API)
+// 2. Update Active KPI Cards (Only active count displayed)
 function updateYogiKPIs(kpis) {
   if (!kpis) return;
-  document.getElementById('kpi-yogi-monks').textContent = (kpis.totalMonks || 0).toLocaleString();
-  document.getElementById('kpi-yogi-nuns').textContent = (kpis.totalNuns || 0).toLocaleString();
-  document.getElementById('kpi-yogi-males').textContent = (kpis.totalMales || 0).toLocaleString();
-  document.getElementById('kpi-yogi-females').textContent = (kpis.totalFemales || 0).toLocaleString();
-  document.getElementById('kpi-yogi-total').textContent = (kpis.totalActiveYogis || 0).toLocaleString();
+  const setElem = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (val || 0).toLocaleString();
+  };
+
+  setElem('kpi-yogi-monks', kpis.totalMonks);
+  setElem('kpi-yogi-nuns', kpis.totalNuns);
+  setElem('kpi-yogi-males', kpis.totalMales);
+  setElem('kpi-yogi-females', kpis.totalFemales);
+  setElem('kpi-yogi-total', kpis.totalActiveYogis);
 }
 
 // 3. Status Tab Switcher (Active vs Inactive)
@@ -52,11 +61,11 @@ function switchYogiStatusTab(status) {
   const inactiveBtn = document.getElementById('tab-yogi-inactive');
 
   if (status === 'Active') {
-    activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#211912] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#211912] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   } else {
-    inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-rose-300 bg-[#211912] border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-rose-300 bg-[#211912] border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   }
 
   applyYogiFilters();
@@ -69,7 +78,8 @@ function onYogiSearchInput() {
 }
 
 function applyYogiFilters() {
-  const searchTerm = (document.getElementById('yogi-search-input')?.value || '').toLowerCase().trim();
+  const searchInput = document.getElementById('yogi-search-input');
+  const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
   filteredYogiEntries = allYogiEntries.filter(entry => {
     // Status Filter (Active / Inactive)
@@ -90,7 +100,7 @@ function applyYogiFilters() {
   renderYogiTable();
 }
 
-// 5. Render Table Data with Dynamic Sr Re-indexing (1, 2, 3...)
+// 5. Render 14-Column Table Data with Dynamic Sr Re-indexing
 function renderYogiTable() {
   const tbody = document.getElementById('yogi-table-body');
   if (!tbody) return;
@@ -114,7 +124,7 @@ function renderYogiTable() {
 
   let html = '';
   pageEntries.forEach((entry, idx) => {
-    const srNo = startIndex + idx + 1; // Dynamic Sequential Index
+    const srNo = startIndex + idx + 1; // Dynamic Sequential Indexing
     const isCheckout = (entry.status === 'Inactive');
 
     html += `
@@ -139,7 +149,7 @@ function renderYogiTable() {
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
 
-            <!-- Post/Checkout Button (Only for Active) -->
+            <!-- Post/Checkout Button -->
             ${!isCheckout ? `
               <button onclick="checkoutYogiPrompt('${entry.uniqueId}', '${entry.name}')" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer" title="စခန်းထွက်ပေးမည် (Post/Checkout)">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -162,11 +172,15 @@ function renderYogiTable() {
   updateYogiPaginationInfo(startIndex + 1, endIndex, totalEntries);
 }
 
-// 6. Pagination Functions
+// 6. Pagination Controllers
 function updateYogiPaginationInfo(start, end, total) {
-  document.getElementById('yogi-page-start').textContent = start;
-  document.getElementById('yogi-page-end').textContent = end;
-  document.getElementById('yogi-total-entries').textContent = total;
+  const startEl = document.getElementById('yogi-page-start');
+  const endEl = document.getElementById('yogi-page-end');
+  const totalEl = document.getElementById('yogi-total-entries');
+
+  if (startEl) startEl.textContent = start;
+  if (endEl) endEl.textContent = end;
+  if (totalEl) totalEl.textContent = total;
 
   const prevBtn = document.getElementById('btn-yogi-prev-page');
   const nextBtn = document.getElementById('btn-yogi-next-page');
@@ -197,20 +211,20 @@ async function checkoutYogiPrompt(uniqueId, name) {
 
   if (!confirmCheckout) return;
 
-  showLoading(true);
+  if (typeof showLoading === 'function') showLoading(true);
   try {
     const response = await checkoutYogiAPI({ uniqueId, end_date: todayStr });
-    if (response.success) {
+    if (response && response.success) {
       alert('စခန်းထွက်စာရင်း အောင်မြင်စွာ ပြုလုပ်ပြီးပါပြီ။');
-      renderYogiView(); // Reloads data, updates KPIs and re-indexes Sr numbers
+      renderYogiView(false); // Reload and refresh active KPIs
     } else {
-      alert('စခန်းထွက်ရာတွင် အမှားရှိပါသည်: ' + response.error);
+      alert('စခန်းထွက်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
     }
   } catch (err) {
     console.error('Checkout Error:', err);
     alert('စခန်းထွက်ရာတွင် အမှားရှိပါသည်');
   } finally {
-    showLoading(false);
+    if (typeof showLoading === 'function') showLoading(false);
   }
 }
 
@@ -218,18 +232,18 @@ async function checkoutYogiPrompt(uniqueId, name) {
 async function deleteYogiPrompt(uniqueId) {
   if (!confirm('ဤယောဂီစာရင်းကို ပယ်ဖျက်ရန် သေချာပါသလား။')) return;
 
-  showLoading(true);
+  if (typeof showLoading === 'function') showLoading(true);
   try {
     const response = await deleteYogiAPI(uniqueId);
-    if (response.success) {
-      renderYogiView();
+    if (response && response.success) {
+      renderYogiView(false);
     } else {
-      alert('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + response.error);
+      alert('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
     }
   } catch (err) {
     console.error('Delete Yogi Error:', err);
   } finally {
-    showLoading(false);
+    if (typeof showLoading === 'function') showLoading(false);
   }
 }
 
@@ -271,7 +285,26 @@ function detectGenderFromName(name) {
     return 'မ';
   }
 
-  return 'ကျား'; // Default fallback
+  return 'ကျား';
 }
 
-// 11. Expo
+// 11. Export Yogi Data to CSV
+function exportYogiCSV() {
+  if (!filteredYogiEntries || filteredYogiEntries.length === 0) {
+    alert('ထုတ်ယူရန် ဒေတာ မရှိပါ');
+    return;
+  }
+
+  let csv = '\uFEFF'; // UTF-8 BOM
+  csv += 'စဉ်,စတင်ရက်စွဲ,စခန်းထွက်ရက်စွဲ,အမျိုးအစား,အမည်,အဘအမည်,မှတ်ပုံတင်,မွေးသက္ကရာဇ်,အသက်,ကျား/မ,ယောဂီဖုန်း,အိမ်ဖုန်း,နေရပ်လိပ်စာ,အခြေအနေ\n';
+
+  filteredYogiEntries.forEach((row, idx) => {
+    csv += `"${idx + 1}","${row.start_date || ''}","${row.end_date || ''}","${row.category || ''}","${row.name || ''}","${row.father_name || ''}","${row.nrc || ''}","${row.dob || ''}","${row.age || ''}","${row.gender || ''}","${row.yogi_phone || ''}","${row.home_phone || ''}","${(row.address || '').replace(/"/g, '""')}","${row.status || ''}"\n`;
+  });
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${currentYogiSheet}_Yogi_List_${currentYogiStatus}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+}
