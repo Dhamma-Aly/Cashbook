@@ -5,7 +5,7 @@
 
 const CONFIG = {
   // Cloudflare Worker API Base URL
-  // Adjust this endpoint URL if deployed to a custom domain
+  // ⚠️ ဤနေရာတွင် မိမိ၏ Cloudflare Worker Dashboard မှ URL အမှန်ကို ထည့်သွင်းပါ
   API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
     ? 'http://localhost:8787'
     : 'https://cashbook-api.dhamma-aly.workers.dev',
@@ -60,3 +60,7 @@ const CONFIG = {
     ]
   }
 };
+
+// 💡 Window Global Scope Binding (အခြား JS ဖိုင်များ အဆင်ပြေစွာ ခေါ်ယူနိုင်ရန်)
+window.CONFIG = CONFIG;
+window.APP_CONFIG = CONFIG;
