@@ -1,10 +1,9 @@
 // ===================================================================
 // js/Inventory.js - Inventory (11Inv) Logic
 // Backend returns { success, data: [ {entry objects} ], kpis } via
-// GET /api/inventory (see cashbook-api/handlers-books.js).
+// GET /api/inventory (see cashbook-api/handlers-inventory.js).
 // Each entry object has: id, uniqueId, entry_date, location, category,
-// unit, qty, item_desc, note, month_year, book_name.
-// Field IDs below match the actual markup in view/Inventory.html.
+// unit, qty, item_desc (or item_name), note (or remark), month_year, book_name.
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -54,7 +53,9 @@ function applyInventoryFilter() {
     invFilteredEntries = invAllEntries;
   } else {
     invFilteredEntries = invAllEntries.filter(e => {
-      return [e.entry_date, e.location, e.category, e.item_desc, e.unit, e.note, e.book_name]
+      const name = e.item_desc || e.item_name || "";
+      const remark = e.note || e.remark || "";
+      return [e.entry_date, e.location, e.category, name, e.unit, e.qty, remark, e.book_name]
         .some(v => (v || "").toString().toLowerCase().includes(query));
     });
   }
@@ -76,30 +77,32 @@ function renderInventoryTable() {
   const pageRows = invFilteredEntries.slice(start, end);
 
   if (total === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
   } else {
     let html = "";
     pageRows.forEach((entry, idx) => {
-      const uid = entry.uniqueId || "";
+      const uid = entry.uniqueId || entry.id || "";
       const srNo = start + idx + 1;
       const qty = parseInt(entry.qty) || 0;
+      const itemName = entry.item_desc || entry.item_name || "-";
+      const remark = entry.note || entry.remark || "-";
 
       html += `
-        <tr>
-          <td class="text-center font-bold text-amber-500/70">${srNo}</td>
+        <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
+          <td class="text-center font-bold text-amber-500/70 py-3">${srNo}</td>
           <td class="font-mono text-xs">${entry.entry_date || "-"}</td>
           <td class="font-bold text-amber-300">${entry.location || "-"}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${entry.category || "-"}</span></td>
-          <td class="font-semibold text-amber-100">${entry.item_desc || "-"}</td>
-          <td>${entry.unit || "-"}</td>
+          <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${entry.category || "-"}</span></td>
+          <td class="font-semibold text-amber-100">${itemName}</td>
+          <td class="text-slate-300">${entry.unit || "-"}</td>
           <td class="text-right font-mono font-bold text-emerald-400">${qty.toLocaleString()}</td>
-          <td class="text-xs text-amber-200/70">${entry.note || "-"}</td>
-          <td class="font-mono text-xs">${entry.month_year || "-"}</td>
-          <td class="text-xs text-amber-500/70">${entry.book_name || "11Inv - ပစ္စည်းစာရင်း"}</td>
-          <td class="text-center right-0 sticky px-3">
-            <div class="flex items-center justify-center gap-2.5">
-              <button onclick="editInvEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteInvEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          <td class="text-xs text-amber-200/70">${remark}</td>
+          <td class="font-mono text-xs text-amber-500/60">${entry.month_year || "-"}</td>
+          <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "11Inv - ပစ္စည်းစာရင်း"}</td>
+          <td class="text-center right-0 sticky bg-[#0a0806] px-3">
+            <div class="flex items-center justify-center gap-2">
+              <button onclick="editInvEntry('${uid}')" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteInvEntry('${uid}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -152,12 +155,14 @@ window.openAddInvModal = function() {
   const form = document.getElementById("inv-entry-form");
   if (form) form.reset();
 
-  document.getElementById("inv-id").value = "";
+  const idInput = document.getElementById("inv-id");
+  if (idInput) idInput.value = "";
+
   const dateInput = document.getElementById("inv-date");
-  if (dateInput) dateInput.valueAsDate = new Date();
+  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
   const titleEl = document.getElementById("inv-modal-title");
-  if (titleEl) titleEl.textContent = "ပစ္စည်းအသစ် သွင်းယူ / ပြင်ဆင်ရန်";
+  if (titleEl) titleEl.textContent = "ပစ္စည်းအသစ် သွင်းယူရန်";
 
   if (modal) modal.classList.remove("hidden");
 };
@@ -167,7 +172,7 @@ window.closeInvModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// The HTML form (view/Inventory.html) calls saveInventoryForm(event) on submit.
+// Save Inventory Submission
 window.saveInventoryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -191,9 +196,11 @@ window.saveInventoryForm = async function(event) {
     unit,
     qty,
     item_desc,
+    item_name: item_desc, // Dual naming support
     note,
+    remark: note,         // Dual naming support
     month_year,
-    book_name: "ပစ္စည်းစာရင်း"
+    book_name: "11Inv - ပစ္စည်းစာရင်း"
   };
 
   window.showLoading(true);
@@ -212,27 +219,32 @@ window.saveInventoryForm = async function(event) {
     window.showLoading(false);
   }
 };
-// Backward-compatible alias
+
 window.saveInvEntryForm = window.saveInventoryForm;
 
 window.editInvEntry = function(uid) {
-  const entry = invAllEntries.find(e => String(e.uniqueId) === String(uid));
+  const entry = invAllEntries.find(e => String(e.uniqueId || e.id) === String(uid));
   if (!entry) return;
 
-  window.openAddInvModal();
+  const modal = document.getElementById("inv-entry-modal");
+  if (modal) modal.classList.remove("hidden");
+
   const titleEl = document.getElementById("inv-modal-title");
   if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
 
   document.getElementById("inv-id").value = uid;
   document.getElementById("inv-date").value = entry.entry_date || "";
+  
   const locSelect = document.getElementById("inv-location");
   if (locSelect) locSelect.value = entry.location || "";
+  
   const catSelect = document.getElementById("inv-category");
   if (catSelect) catSelect.value = entry.category || "";
-  document.getElementById("inv-item-name").value = entry.item_desc || "";
+  
+  document.getElementById("inv-item-name").value = entry.item_desc || entry.item_name || "";
   document.getElementById("inv-unit").value = entry.unit || "";
   document.getElementById("inv-qty").value = parseInt(entry.qty) || 0;
-  document.getElementById("inv-remark").value = entry.note || "";
+  document.getElementById("inv-remark").value = entry.note || entry.remark || "";
 };
 
 window.deleteInvEntry = async function(uid) {
@@ -265,7 +277,13 @@ window.exportInventoryCSV = function() {
 
   invFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
-    csv += [idx + 1, esc(e.entry_date), esc(e.location), esc(e.category), esc(e.item_desc), esc(e.unit), e.qty || 0, esc(e.note), esc(e.month_year), esc(e.book_name)].join(",") + "\n";
+    const name = e.item_desc || e.item_name || "";
+    const remark = e.note || e.remark || "";
+    csv += [
+      idx + 1, esc(e.entry_date), esc(e.location), esc(e.category), 
+      esc(name), esc(e.unit), e.qty || 0, esc(remark), 
+      esc(e.month_year), esc(e.book_name)
+    ].join(",") + "\n";
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
