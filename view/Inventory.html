@@ -1,22 +1,35 @@
-<!-- view/inventory.html - Inventory (11Inv) table fragment (loaded by js/inventory.js) -->
+<!-- view/inventory.html - Inventory (11Inv) table fragment with 2-Column Responsive Entry Modal -->
 <div class="space-y-5">
+  
   <!-- Top 4 KPI Cards -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-kitchen-set text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">မီးဖိုဆောင်</p><h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-300 mt-1">0</h3></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">မီးဖိုဆောင်</p>
+        <h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-300 mt-1">0</h3>
+      </div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-om text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">ဓမ္မာရုံ</p><h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-400 mt-1">0</h3></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">ဓမ္မာရုံ</p>
+        <h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-400 mt-1">0</h3>
+      </div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-gopuram text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">သိမ်</p><h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-400 mt-1">0</h3></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">သိမ်</p>
+        <h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-400 mt-1">0</h3>
+      </div>
     </div>
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-warehouse text-xl"></i></div>
-      <div><p class="text-[10px] uppercase font-bold text-amber-500/70">စတို</p><h3 id="kpi-inv-store" class="text-base font-extrabold text-amber-100 mt-1">0</h3></div>
+      <div>
+        <p class="text-[10px] uppercase font-bold text-amber-500/70">စတို</p>
+        <h3 id="kpi-inv-store" class="text-base font-extrabold text-amber-100 mt-1">0</h3>
+      </div>
     </div>
   </div>
 
@@ -36,22 +49,26 @@
   <div class="bg-[#14110d] border border-amber-900/30 rounded-xl overflow-x-auto shadow-2xl">
     <table class="w-full text-left border-collapse min-w-[1300px]">
       <thead>
-        <tr>
-          <th class="w-12 text-center">စဉ်</th>
-          <th class="w-28">ရက်စွဲ</th>
-          <th class="w-32">နေရာ</th>
-          <th class="w-36">အမျိုးအစား</th>
-          <th class="min-w-[280px]">အကြောင်းအရာ</th>
-          <th class="w-24">ရေတွက်ပုံ</th>
-          <th class="w-28 text-right">အရေအတွက်</th>
-          <th class="min-w-[180px]">မှတ်ချက်</th>
-          <th class="w-24">လနှစ်</th>
-          <th class="w-36">စာအုပ်အမည်</th>
-          <th class="w-24 text-center right-0 sticky">လုပ်ဆောင်ချက်</th>
+        <tr class="bg-[#0a0806] border-b border-amber-900/40 text-amber-400 text-xs">
+          <th class="w-12 text-center py-3 px-2">စဉ်</th>
+          <th class="w-28 py-3 px-2">ရက်စွဲ</th>
+          <th class="w-32 py-3 px-2">နေရာ</th>
+          <th class="w-36 py-3 px-2">အမျိုးအစား</th>
+          <th class="min-w-[280px] py-3 px-2">အကြောင်းအရာ</th>
+          <th class="w-24 py-3 px-2">ရေတွက်ပုံ</th>
+          <th class="w-28 text-right py-3 px-2">အရေအတွက်</th>
+          <th class="min-w-[180px] py-3 px-2">မှတ်ချက်</th>
+          <th class="w-24 py-3 px-2">လနှစ်</th>
+          <th class="w-36 py-3 px-2">စာအုပ်အမည်</th>
+          <th class="w-24 text-center right-0 sticky bg-[#0a0806] py-3 px-2">လုပ်ဆောင်ချက်</th>
         </tr>
       </thead>
       <tbody id="inv-table-body">
-        <tr><td colspan="11" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>
+        <tr>
+          <td colspan="11" class="text-center py-8 text-amber-400 font-bold">
+            <i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...
+          </td>
+        </tr>
       </tbody>
     </table>
   </div>
@@ -62,16 +79,112 @@
       Showing <span id="inv-page-start" class="font-bold text-amber-400">0</span> to <span id="inv-page-end" class="font-bold text-amber-400">0</span> of <span id="inv-total-entries" class="font-bold text-amber-400">0</span> entries
     </div>
     <div class="flex items-center gap-2">
-      
-      <!-- 🔴 ဤနေရာတွင် onclick="prevInvPage()" ကို ထည့်ပါ -->
       <button id="btn-inv-prev-page" onclick="prevInvPage()" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all">
         <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
       </button>
 
-      <!-- 🔴 ဤနေရာတွင် onclick="nextInvPage()" ကို ထည့်ပါ -->
       <button id="btn-inv-next-page" onclick="nextInvPage()" class="px-3.5 py-2 rounded-lg border border-amber-900/40 bg-[#0a0806] hover:bg-[#1f1913] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all">
         Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
       </button>
     </div>
+  </div>
+
+</div>
+
+<!-- 💡 2-Column Responsive Inventory Entry Modal (ပစ္စည်း စာရင်း သွင်းယူ/ပြင်ဆင်ရန် Form) -->
+<div id="inv-entry-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-3 sm:p-4 hidden">
+  <div class="bg-[#0e172a] border border-amber-500/40 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    
+    <!-- Modal Header -->
+    <div class="px-5 py-3.5 bg-[#080d1a] border-b border-amber-500/30 flex items-center justify-between shrink-0">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-sm">
+          <i class="fa-solid fa-boxes-packing"></i>
+        </div>
+        <h3 id="inv-modal-title" class="text-sm sm:text-base font-black text-amber-300 tracking-wide">
+          ပစ္စည်းအသစ် သွင်းယူ / ပြင်ဆင်ရန်
+        </h3>
+      </div>
+      <button type="button" onclick="closeInvModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 transition flex items-center justify-center">
+        <i class="fa-solid fa-xmark text-sm"></i>
+      </button>
+    </div>
+
+    <!-- Modal Form Body (Scrollable 2-Column Grid) -->
+    <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+      
+      <!-- Hidden Inputs -->
+      <input type="hidden" id="inv-id" value="">
+
+      <!-- Row 1: ရက်စွဲ & နေရာ -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">ရက်စွဲ (Date) <span class="text-rose-400">*</span></label>
+          <input type="date" id="inv-date" required class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400">
+        </div>
+
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">နေရာ (Location)</label>
+          <select id="inv-location" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold">
+            <option value="မီးဖိုဆောင်">မီးဖိုဆောင်</option>
+            <option value="ဓမ္မာရုံ">ဓမ္မာရုံ</option>
+            <option value="သိမ်">သိမ်</option>
+            <option value="စတို">စတို</option>
+            <option value="အခြား">အခြား</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Row 2: အမျိုးအစား & ပစ္စည်းအမည်/အကြောင်းအရာ -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">အမျိုးအစား (Category)</label>
+          <select id="inv-category" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold">
+            <option value="ပရိဘောဂ">ပရိဘောဂ</option>
+            <option value="လျှပ်စစ်">လျှပ်စစ်ပစ္စည်း</option>
+            <option value="မီးဖိုချောင်သုံး">မီးဖိုချောင်သုံး</option>
+            <option value="အဝတ်အထည်">အဝတ်အထည် / အခင်း</option>
+            <option value="အထွေထွေ">အထွေထွေ</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">အကြောင်းအရာ / ပစ္စည်းအမည် <span class="text-rose-400">*</span></label>
+          <input type="text" id="inv-item-name" required placeholder="ဥပမာ- ပလတ်စတစ်ကုလားထိုင်" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 font-bold">
+        </div>
+      </div>
+
+      <!-- Row 3: ရေတွက်ပုံ & အရေအတွက် -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">ရေတွက်ပုံ (Unit)</label>
+          <input type="text" id="inv-unit" placeholder="ဥပမာ- ခု / စုံ / ထုပ် / ကတ်" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400">
+        </div>
+
+        <div>
+          <label class="block font-extrabold text-amber-200/90 mb-1">အရေအတွက် (Quantity) <span class="text-rose-400">*</span></label>
+          <input type="number" id="inv-qty" required min="1" placeholder="1" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 font-mono font-black text-sm">
+        </div>
+      </div>
+
+      <!-- Row 4: မှတ်ချက် -->
+      <div>
+        <label class="block font-extrabold text-amber-200/90 mb-1">မှတ်ချက် (Remark)</label>
+        <textarea id="inv-remark" rows="2" placeholder="ဖြည့်စွက် အချက်အလက်များ (ဥပမာ- အသစ်/ဟောင်း)..." class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 resize-none"></textarea>
+      </div>
+
+      <!-- Modal Footer Action Buttons (Always Visible) -->
+      <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
+        <button type="button" onclick="closeInvModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs transition">
+          မသိမ်းတော့ပါ (Cancel)
+        </button>
+
+        <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-2">
+          <i class="fa-solid fa-floppy-disk"></i>
+          <span>သိမ်းဆည်းမည် (Save)</span>
+        </button>
+      </div>
+
+    </form>
   </div>
 </div>
