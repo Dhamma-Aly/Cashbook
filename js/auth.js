@@ -5,11 +5,19 @@
  * ✅ Features:
  * - Direct D1 Cloudflare Worker Authentication
  * - No hardcoded passwords in frontend
+ * - Auto-clears legacy sessions on Version Update
  * - Handles workspace & login overlay toggling
  */
 
 (function () {
   "use strict";
+
+  // 🚨 Version Check: Version အသစ်တင်လိုက်ပါက Session အဟောင်းများကို Auto ရှင်းထုတ်မည်
+  const CURRENT_APP_VERSION = "v3.0_D1_AUTH";
+  if (localStorage.getItem("sasana_app_version") !== CURRENT_APP_VERSION) {
+    localStorage.clear(); // Session အဟောင်းများ အားလုံး ရှင်းလင်းမည်
+    localStorage.setItem("sasana_app_version", CURRENT_APP_VERSION);
+  }
 
   // 1. Get Current User Name
   window.getCurrentUser = function () {
