@@ -3,7 +3,7 @@
 // Safely handles global declarations to avoid duplicate identifier errors
 // ===================================================================
 
-// Safe Global Variable Assignments (Avoids SyntaxError: Identifier has already been declared)
+// Safe Global Variable Assignments (Avoids SyntaxError)
 window.currentSheet = window.currentSheet || 'Home';
 window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
@@ -55,7 +55,8 @@ window.closeMobileSidebar = function() {
 window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
-    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden)');
+    // Modal တစ်ခုခု ပွင့်နေပါက (သို့) Page Hidden ဖြစ်နေပါက Silent Refresh မလုပ်ပါ
+    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
     window.refreshCurrentTabSilent();
@@ -150,6 +151,8 @@ window.openAddModal = function() {
   const sheet = window.currentSheet || '';
   if (['12Yogi', '13Yogi'].includes(sheet) || sheet.includes('Yogi')) {
     window.openAddYogiModal();
+  } else if (sheet === '11Inv') {
+    if (typeof window.openAddInvModal === 'function') window.openAddInvModal();
   } else {
     window.openAddEntryModal();
   }
@@ -170,9 +173,11 @@ window.closeBookEntryModal = window.closeEntryModal;
 
 window.openAddYogiModal = function() {
   const form = document.getElementById('yogi-entry-form');
-  if (!form) return;
+  if (form) form.reset();
+  
+  const idInput = document.getElementById('yogi-uniqueId');
+  if (idInput) idInput.value = ''; // Reset ID for new entry
 
-  form.reset();
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.remove('hidden');
 };
