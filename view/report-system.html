@@ -1,29 +1,25 @@
-<!-- view/report-system.html - Report + System Settings fragment
-     (loaded by js/report-system.js). Both live in one file/module since
-     they're grouped under "System Controls" in the sidebar; only one of
-     the two sections below is shown at a time, toggled by js/report-system.js
-     based on which tab is active. -->
+<!-- view/report-system.html - Report + System Settings fragment (Deep Navy Slate Theme) -->
 
 <!-- ===== Report: "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်" (12Rep!A1:P15) ===== -->
 <div id="report-section" class="space-y-5 hidden">
   <div
-    class="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-[#1c1510] to-[#120e0b] border border-amber-500/30 p-4 rounded-xl gap-4 shadow-lg">
+    class="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-[#0f172a] to-[#080d1a] border border-amber-500/30 p-4 rounded-xl gap-4 shadow-lg">
     <h3 class="text-sm font-black text-amber-300 uppercase tracking-widest flex items-center gap-3">
       <i class="fa-solid fa-chart-pie text-amber-400 text-lg"></i> 
       <span>ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်</span>
     </h3>
     <button onclick="loadSheetView()"
-      class="px-4 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2">
+      class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
       <i class="fa-solid fa-rotate"></i> Refresh
     </button>
   </div>
 
-  <div class="bg-[#14110d] border border-amber-900/40 rounded-xl overflow-x-auto shadow-2xl relative">
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl relative">
     <table class="table-lg w-full text-left border-collapse min-w-[1700px] text-sm">
       <tbody id="report-table-body">
         <tr>
-          <td class="text-center py-16 text-amber-500/70 font-medium tracking-wide">
-            <i class="fa-solid fa-dharmachakra fa-spin text-xl mr-3 text-amber-500/50"></i>
+          <td class="text-center py-16 text-amber-400/80 font-medium tracking-wide">
+            <i class="fa-solid fa-dharmachakra fa-spin text-xl mr-3 text-amber-400/60"></i>
             ဒေတာများ ဆွဲယူနေပါသည်...
           </td>
         </tr>
@@ -37,15 +33,15 @@
 
   <!-- 🙏 "Be Mindful" reflection -->
   <div class="flex items-center justify-center gap-4">
-    <div class="h-px bg-gradient-to-r from-transparent via-amber-700/50 to-transparent w-20"></div>
+    <div class="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent w-20"></div>
     <h3 class="text-center text-xs font-black text-amber-400/90 uppercase tracking-[0.2em] flex items-center gap-2.5">
       <i class="fa-solid fa-dharmachakra text-amber-400"></i> Mindfulness Reflection
     </h3>
-    <div class="h-px bg-gradient-to-r from-transparent via-amber-700/50 to-transparent w-20"></div>
+    <div class="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent w-20"></div>
   </div>
 
   <div
-    class="mindful-card max-w-2xl mx-auto bg-gradient-to-b from-[#1c1510] to-[#120e0b] border border-amber-500/25 rounded-2xl shadow-2xl px-6 py-10 relative overflow-hidden group">
+    class="mindful-card max-w-2xl mx-auto bg-gradient-to-b from-[#0f172a] to-[#080d1a] border border-amber-500/30 rounded-2xl shadow-2xl px-6 py-10 relative overflow-hidden group">
     
     <!-- Background Accent Icon -->
     <i class="fa-solid fa-dharmachakra text-amber-500/5 text-[200px] absolute -bottom-12 -right-12 pointer-events-none transform rotate-12 transition-transform duration-700 group-hover:rotate-45"></i>
@@ -57,43 +53,43 @@
         
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every sight</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲမြင်မြင် ...</span>
         </div>
 
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every sound</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲကြားကြား ...</span>
         </div>
 
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every smell</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘယ်လိုအနံ့ပဲရရ ...</span>
         </div>
 
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every taste</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲစားစား ...</span>
         </div>
 
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every touch</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာနဲ့ပဲထိတွေ့ထိတွေ့ ...</span>
         </div>
 
         <div class="flex items-center justify-center gap-3 py-1 group/row">
           <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every thought</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-600/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
+          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
           <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲတွေးတွေး ...</span>
         </div>
 
       </div>
 
-      <!-- Main Conclusion Title (Utilizing site's .text-gold-gradient) -->
+      <!-- Main Conclusion Title -->
       <h2 class="mindful-title text-3xl md:text-4xl font-black text-gold-gradient uppercase tracking-wider pb-1">
         STAY MINDFUL
       </h2>
