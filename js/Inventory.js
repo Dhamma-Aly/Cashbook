@@ -1,274 +1,276 @@
-// js/Inventory.js - Inventory (11Inv) Logic 
-let currentInvPage = 1; // 📌 Pagination အတွက် Page ကို မှတ်ရန်
+// ===================================================================
+// js/Inventory.js - Inventory (11Inv) Logic
+// Backend returns { success, data: [ {entry objects} ], kpis } via
+// GET /api/inventory (see cashbook-api/handlers-books.js).
+// Each entry object has: id, uniqueId, entry_date, location, category,
+// unit, qty, item_desc, note, month_year, book_name.
+// Field IDs below match the actual markup in view/Inventory.html.
+// ===================================================================
+
+const INV_ROWS_PER_PAGE = 30;
+let currentInvPage = 1;
+let invAllEntries = [];
+let invFilteredEntries = [];
 
 window.renderInventoryView = async function() {
-  const container = document.getElementById("view-container");
-  const res = await fetch("view/Inventory.html");
-  container.innerHTML = await res.text();
-
+  currentInvPage = 1;
   window.currentSheetKey = "11Inv";
 
-  const renderData = (rows) => {
-    // Header ၅ ကြောင်းကို ဖြတ်ထုတ်မည်
-    let dataRows = rows && rows.length > 5 ? rows.slice(5) : [];
-    
-    // အလွတ် (Empty rows) များကို ဖယ်ရှားမည်
-    dataRows = dataRows.filter(r => r[0] || r[1]);
-
-    // ၁။ 🌟 KPI (စုစုပေါင်း) များကို Data အားလုံးပေါ်မူတည်၍ အရင်တွက်ပါမည် 🌟
-    let kitCount = 0, hallCount = 0, simCount = 0, storeCount = 0;
-    dataRows.forEach(r => {
-      const loc = r[2] || "-";
-      const qty = parseInt(r[6]) || 0;
-      if (loc.includes("မီးဖို")) kitCount += qty;
-      else if (loc.includes("ဓမ္မာရုံ")) hallCount += qty;
-      else if (loc.includes("သိမ်")) simCount += qty;
-      else storeCount += qty;
-    });
-
-    // ၂။ 🌟 နောက်ဆုံးစာကြောင်း (အသစ်ဆုံး) ကို အပေါ်ဆုံးပို့ရန် Reverse လုပ်ပါမည် 🌟
-    dataRows.reverse();
-    
-    // Reverse လုပ်ပြီးသား Data ကို Search နှင့် Export အတွက် သိမ်းပါမည်
-    window.currentSheetData = dataRows;
-
-    // ၃။ Pagination ဖြတ်ခြင်း
-    const ROWS_PER_PAGE = 30;
-    const maxPage = Math.ceil(dataRows.length / ROWS_PER_PAGE) || 1;
-    
-    // Page နံပါတ် အလွန်အမင်း မသွားစေရန် ထိန်းချုပ်ခြင်း
-    if (currentInvPage > maxPage) currentInvPage = maxPage;
-    if (currentInvPage < 1) currentInvPage = 1;
-
-    const start = (currentInvPage - 1) * ROWS_PER_PAGE;
-    const end = start + ROWS_PER_PAGE;
-    
-    // Page အတွက် အကြောင်း ၃၀ ကို ဖြတ်ယူမည်
-    const pageRows = dataRows.slice(start, end);
-
-    const tbody = document.getElementById("inv-table-body");
-    tbody.innerHTML = "";
-
-    if (dataRows.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
+  try {
+    const res = await window.fetchInventoryDataAPI();
+    if (res && res.success) {
+      invAllEntries = (res.data || []).slice().reverse(); // newest first
+      updateInventoryKPIs(res.kpis);
     } else {
-      // ၄။ Table ဆွဲခြင်း
-      pageRows.forEach((r, idx) => {
-        const uid = r[10] || ""; // Column K: real Unique-ID
-        // မူလစဉ်နံပါတ် ရှိလျှင်ပြမည်။ မရှိလျှင် လက်ရှိစာမျက်နှာအလိုက် တွက်ချက်ပြမည်။
-        const srNo = r[0] || (start + idx + 1); 
-        const date = r[1] || "-";
-        const loc = r[2] || "-";
-        const cat = r[3] || "-";
-        const item = r[4] || "-";
-        const unit = r[5] || "-";
-        const qty = parseInt(r[6]) || 0;
-        const note = r[7] || "-";
-        const monthYear = r[8] || "-";
-        const bookName = r[9] || "11Inv - ပစ္စည်းစာရင်း";
+      invAllEntries = [];
+      updateInventoryKPIs(null);
+    }
+  } catch (error) {
+    console.error("Error fetching inventory data:", error);
+    invAllEntries = [];
+    updateInventoryKPIs(null);
+  }
 
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
+  applyInventoryFilter();
+};
+
+function updateInventoryKPIs(kpis) {
+  const k = kpis || { kitchen: 0, dhammaHall: 0, sim: 0, store: 0 };
+  const setText = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = (val || 0).toLocaleString();
+  };
+  setText("kpi-inv-kitchen", k.kitchen);
+  setText("kpi-inv-dhammahall", k.dhammaHall);
+  setText("kpi-inv-sim", k.sim);
+  setText("kpi-inv-store", k.store);
+}
+
+function applyInventoryFilter() {
+  const searchInput = document.getElementById("inv-search-input");
+  const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+
+  if (!query) {
+    invFilteredEntries = invAllEntries;
+  } else {
+    invFilteredEntries = invAllEntries.filter(e => {
+      return [e.entry_date, e.location, e.category, e.item_desc, e.unit, e.note, e.book_name]
+        .some(v => (v || "").toString().toLowerCase().includes(query));
+    });
+  }
+
+  renderInventoryTable();
+}
+
+function renderInventoryTable() {
+  const tbody = document.getElementById("inv-table-body");
+  if (!tbody) return;
+
+  const total = invFilteredEntries.length;
+  const maxPage = Math.max(1, Math.ceil(total / INV_ROWS_PER_PAGE));
+  if (currentInvPage > maxPage) currentInvPage = maxPage;
+  if (currentInvPage < 1) currentInvPage = 1;
+
+  const start = (currentInvPage - 1) * INV_ROWS_PER_PAGE;
+  const end = Math.min(start + INV_ROWS_PER_PAGE, total);
+  const pageRows = invFilteredEntries.slice(start, end);
+
+  if (total === 0) {
+    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50">ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
+  } else {
+    let html = "";
+    pageRows.forEach((entry, idx) => {
+      const uid = entry.uniqueId || "";
+      const srNo = start + idx + 1;
+      const qty = parseInt(entry.qty) || 0;
+
+      html += `
+        <tr>
           <td class="text-center font-bold text-amber-500/70">${srNo}</td>
-          <td class="font-mono text-xs">${date}</td>
-          <td class="font-bold text-amber-300">${loc}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${cat}</span></td>
-          <td class="font-semibold text-amber-100">${item}</td>
-          <td>${unit}</td>
+          <td class="font-mono text-xs">${entry.entry_date || "-"}</td>
+          <td class="font-bold text-amber-300">${entry.location || "-"}</td>
+          <td><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-400">${entry.category || "-"}</span></td>
+          <td class="font-semibold text-amber-100">${entry.item_desc || "-"}</td>
+          <td>${entry.unit || "-"}</td>
           <td class="text-right font-mono font-bold text-emerald-400">${qty.toLocaleString()}</td>
-          <td class="text-xs text-amber-200/70">${note}</td>
-          <td class="font-mono text-xs">${monthYear}</td>
-          <td class="text-xs text-amber-500/70">${bookName}</td>
+          <td class="text-xs text-amber-200/70">${entry.note || "-"}</td>
+          <td class="font-mono text-xs">${entry.month_year || "-"}</td>
+          <td class="text-xs text-amber-500/70">${entry.book_name || "11Inv - ပစ္စည်းစာရင်း"}</td>
           <td class="text-center right-0 sticky px-3">
             <div class="flex items-center justify-center gap-2.5">
               <button onclick="editInvEntry('${uid}')" class="p-2 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-sm" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
               <button onclick="deleteInvEntry('${uid}')" class="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+        </tr>
+      `;
+    });
+    tbody.innerHTML = html;
+  }
 
-    // ၅။ အပေါ်ဆုံးတွင်တွက်ထားသော စုစုပေါင်း KPI များကို ထည့်သွင်းခြင်း
-    const kitEl = document.getElementById("kpi-inv-kitchen");
-    if(kitEl) kitEl.textContent = kitCount.toLocaleString();
-    
-    const hallEl = document.getElementById("kpi-inv-dhammahall");
-    if(hallEl) hallEl.textContent = hallCount.toLocaleString();
-    
-    const simEl = document.getElementById("kpi-inv-sim");
-    if(simEl) simEl.textContent = simCount.toLocaleString();
-    
-    const storeEl = document.getElementById("kpi-inv-store");
-    if(storeEl) storeEl.textContent = storeCount.toLocaleString();
+  const invStartEl = document.getElementById("inv-page-start");
+  const invEndEl = document.getElementById("inv-page-end");
+  const invTotalEl = document.getElementById("inv-total-entries");
+  if (invStartEl) invStartEl.textContent = total ? start + 1 : 0;
+  if (invEndEl) invEndEl.textContent = end;
+  if (invTotalEl) invTotalEl.textContent = total;
 
-    // Inventory Pagination numbers update & Button States
-    const totalInv = dataRows.length;
-    const invStartEl = document.getElementById("inv-page-start");
-    const invEndEl = document.getElementById("inv-page-end");
-    const invTotalEl = document.getElementById("inv-total-entries");
+  const btnPrev = document.getElementById("btn-inv-prev-page");
+  const btnNext = document.getElementById("btn-inv-next-page");
+  if (btnPrev) btnPrev.disabled = currentInvPage <= 1;
+  if (btnNext) btnNext.disabled = end >= total;
+}
 
-    if (invStartEl) invStartEl.textContent = totalInv ? start + 1 : 0;
-    if (invEndEl) invEndEl.textContent = Math.min(end, totalInv);
-    if (invTotalEl) invTotalEl.textContent = totalInv;
-
-    // Previous / Next Button များကို Enable/Disable လုပ်ပေးခြင်း
-    const btnPrev = document.getElementById("btn-inv-prev-page");
-    const btnNext = document.getElementById("btn-inv-next-page");
-    if (btnPrev) btnPrev.disabled = currentInvPage <= 1;
-    if (btnNext) btnNext.disabled = currentInvPage >= maxPage;
-  };
-
-  const data = await window.fetchSheetData("11Inv");
-  if(data) renderData(data);
+// ===================================================================
+// Search & Pagination
+// ===================================================================
+window.onInvSearchInput = function() {
+  currentInvPage = 1;
+  applyInventoryFilter();
 };
 
-// ⏭️ Next Page Function
 window.nextInvPage = function() {
-  const ROWS_PER_PAGE = 30;
-  const totalRows = window.currentSheetData ? window.currentSheetData.length : 0;
-  const maxPage = Math.ceil(totalRows / ROWS_PER_PAGE) || 1;
+  const maxPage = Math.max(1, Math.ceil(invFilteredEntries.length / INV_ROWS_PER_PAGE));
   if (currentInvPage < maxPage) {
     currentInvPage++;
-    window.renderInventoryView();
+    renderInventoryTable();
   }
 };
 
-// ◀️ Previous Page Function
 window.prevInvPage = function() {
   if (currentInvPage > 1) {
     currentInvPage--;
-    window.renderInventoryView();
+    renderInventoryTable();
   }
 };
 
+// ===================================================================
+// Add / Edit Modal Controllers
+// ===================================================================
 window.openAddInvModal = function() {
   const modal = document.getElementById("inv-entry-modal");
-  document.getElementById("inv-entry-form").reset();
-  document.getElementById("inv-uniqueId").value = "";
-  document.getElementById("inv-date").valueAsDate = new Date();
+  const form = document.getElementById("inv-entry-form");
+  if (form) form.reset();
+
+  document.getElementById("inv-id").value = "";
+  const dateInput = document.getElementById("inv-date");
+  if (dateInput) dateInput.valueAsDate = new Date();
+
   const titleEl = document.getElementById("inv-modal-title");
-  if (titleEl) titleEl.textContent = "ပစ္စည်း အသစ် ထည့်သွင်းရန်";
+  if (titleEl) titleEl.textContent = "ပစ္စည်းအသစ် သွင်းယူ / ပြင်ဆင်ရန်";
 
-  const locSelect = document.getElementById("inv-location");
-  if (locSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_LOCATIONS) {
-    locSelect.innerHTML = "";
-    window.APP_CONFIG.INVENTORY_LOCATIONS.forEach(l => locSelect.add(new Option(l, l)));
-  }
-
-  const catSelect = document.getElementById("inv-category");
-  if (catSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_CATEGORIES) {
-    catSelect.innerHTML = "";
-    window.APP_CONFIG.INVENTORY_CATEGORIES.forEach(c => catSelect.add(new Option(c, c)));
-  }
-
-  const unitSelect = document.getElementById("inv-unit");
-  if (unitSelect && window.APP_CONFIG && window.APP_CONFIG.INVENTORY_UNITS) {
-    unitSelect.innerHTML = "";
-    window.APP_CONFIG.INVENTORY_UNITS.forEach(u => unitSelect.add(new Option(u, u)));
-  }
-
-  modal.classList.remove("hidden");
+  if (modal) modal.classList.remove("hidden");
 };
 
 window.closeInvModal = function() {
-  document.getElementById("inv-entry-modal").classList.add("hidden");
+  const modal = document.getElementById("inv-entry-modal");
+  if (modal) modal.classList.add("hidden");
 };
 
-window.saveInvEntryForm = async function(event) {
-  event.preventDefault();
-  const uniqueId = document.getElementById("inv-uniqueId").value;
-  const date = document.getElementById("inv-date").value;
-  const loc = document.getElementById("inv-location").value;
-  const cat = document.getElementById("inv-category").value;
+// The HTML form (view/Inventory.html) calls saveInventoryForm(event) on submit.
+window.saveInventoryForm = async function(event) {
+  if (event && event.preventDefault) event.preventDefault();
+
+  const uniqueId = document.getElementById("inv-id").value;
+  const entry_date = document.getElementById("inv-date").value;
+  const location = document.getElementById("inv-location").value;
+  const category = document.getElementById("inv-category").value;
+  const item_desc = document.getElementById("inv-item-name").value;
   const unit = document.getElementById("inv-unit").value;
   const qty = parseInt(document.getElementById("inv-qty").value) || 0;
-  const desc = document.getElementById("inv-desc").value;
-  const note = document.getElementById("inv-note").value;
+  const note = document.getElementById("inv-remark").value;
 
-  const monthYear = date ? date.substring(0, 7) : "";
-  const finalUniqueId = uniqueId || `INV-${Date.now()}`;
-  const rowData = ["", date, loc, cat, desc, unit, qty, note, monthYear, "11Inv - ပစ္စည်းစာရင်း", finalUniqueId];
+  const month_year = entry_date ? entry_date.substring(0, 7) : "";
+  const isEdit = !!uniqueId;
 
-  window.closeInvModal();
-  document.getElementById("loading-overlay").classList.remove("hidden");
+  const payload = {
+    uniqueId: uniqueId || `INV-${Date.now()}`,
+    entry_date,
+    location,
+    category,
+    unit,
+    qty,
+    item_desc,
+    note,
+    month_year,
+    book_name: "ပစ္စည်းစာရင်း"
+  };
 
+  window.showLoading(true);
   try {
-    await window.saveSheetEntry("11Inv", rowData, uniqueId || null);
-    await window.renderInventoryView();
+    const res = await window.saveInventoryEntryAPI(payload, isEdit);
+    if (res && res.success) {
+      window.closeInvModal();
+      await window.renderInventoryView();
+    } else {
+      alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+    }
   } catch (err) {
-    alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + err.message);
+    console.error("Save Inventory Error:", err);
+    alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    document.getElementById("loading-overlay").classList.add("hidden");
+    window.showLoading(false);
   }
 };
+// Backward-compatible alias
+window.saveInvEntryForm = window.saveInventoryForm;
 
 window.editInvEntry = function(uid) {
-  const r = (window.currentSheetData || []).find(row => String(row[10]) === String(uid));
-  if (!r) return;
+  const entry = invAllEntries.find(e => String(e.uniqueId) === String(uid));
+  if (!entry) return;
 
   window.openAddInvModal();
   const titleEl = document.getElementById("inv-modal-title");
   if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
-  document.getElementById("inv-uniqueId").value = uid;
-  document.getElementById("inv-date").value = r[1] || "";
-  
+
+  document.getElementById("inv-id").value = uid;
+  document.getElementById("inv-date").value = entry.entry_date || "";
   const locSelect = document.getElementById("inv-location");
-  if (locSelect) locSelect.value = r[2] || "";
-  
+  if (locSelect) locSelect.value = entry.location || "";
   const catSelect = document.getElementById("inv-category");
-  if (catSelect) catSelect.value = r[3] || "";
-  
-  document.getElementById("inv-desc").value = r[4] || "";
-  
-  const unitSelect = document.getElementById("inv-unit");
-  if (unitSelect) unitSelect.value = r[5] || "";
-  
-  document.getElementById("inv-qty").value = parseInt(r[6]) || 0;
-  document.getElementById("inv-note").value = r[7] || "";
+  if (catSelect) catSelect.value = entry.category || "";
+  document.getElementById("inv-item-name").value = entry.item_desc || "";
+  document.getElementById("inv-unit").value = entry.unit || "";
+  document.getElementById("inv-qty").value = parseInt(entry.qty) || 0;
+  document.getElementById("inv-remark").value = entry.note || "";
 };
 
 window.deleteInvEntry = async function(uid) {
   if (!confirm("ဤပစ္စည်းစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
-  document.getElementById("loading-overlay").classList.remove("hidden");
+
+  window.showLoading(true);
   try {
-    await window.deleteSheetEntry("11Inv", uid);
-    await window.renderInventoryView();
+    const res = await window.deleteInventoryEntryAPI(uid);
+    if (res && res.success) {
+      await window.renderInventoryView();
+    } else {
+      alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+    }
   } catch (err) {
-    alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + err.message);
+    console.error("Delete Inventory Error:", err);
+    alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    document.getElementById("loading-overlay").classList.add("hidden");
+    window.showLoading(false);
   }
 };
 
 window.exportInventoryCSV = function() {
-  const rows = window.currentSheetData;
-  if (!rows || rows.length === 0) return alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+  if (!invFilteredEntries || invFilteredEntries.length === 0) {
+    alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+    return;
+  }
 
-  let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-  rows.forEach(r => {
-    csvContent += r.map(c => `"${(c || '').toString().replace(/"/g, '""')}"`).join(",") + "\n";
+  let csv = "\uFEFF";
+  csv += "စဉ်,ရက်စွဲ,နေရာ,အမျိုးအစား,အကြောင်းအရာ,ရေတွက်ပုံ,အရေအတွက်,မှတ်ချက်,လနှစ်,စာအုပ်အမည်\n";
+
+  invFilteredEntries.forEach((e, idx) => {
+    const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
+    csv += [idx + 1, esc(e.entry_date), esc(e.location), esc(e.category), esc(e.item_desc), esc(e.unit), e.qty || 0, esc(e.note), esc(e.month_year), esc(e.book_name)].join(",") + "\n";
   });
 
-  const encodedUri = encodeURI(csvContent);
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `11Inv_Export_${new Date().toISOString().split('T')[0]}.csv`);
-  document.body.appendChild(link);
+  link.href = URL.createObjectURL(blob);
+  link.download = `11Inv_Export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
-  document.body.removeChild(link);
-};
-
-window.onInvSearchInput = function() {
-  const query = document.getElementById("inv-search-input").value.toLowerCase();
-  const tbody = document.getElementById("inv-table-body");
-  if (!tbody) return;
-
-  const trs = tbody.getElementsByTagName("tr");
-  Array.from(trs).forEach(tr => {
-    // သတိပြုရန် - လက်ရှိ Page (အကြောင်း ၃၀) အတွင်း၌သာ ရှာပေးပါမည်။
-    const text = tr.innerText.toLowerCase();
-    tr.style.display = text.includes(query) ? "" : "none";
-  });
 };
