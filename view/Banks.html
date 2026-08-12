@@ -94,41 +94,41 @@
 
 </div>
 
-<!-- 💡 100% Solid & Centered 2-Column Entry Modal -->
-<div id="entry-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-3 sm:p-4 hidden">
-  <div class="bg-[#0e172a] border border-amber-500/40 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+<!-- 💡 100% Guaranteed 2-Column Side-by-Side Solid Dark Entry Modal -->
+<div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-3 sm:p-4 hidden" style="background-color: rgba(3, 7, 18, 0.96) !important; z-index: 99999 !important;">
+  <div class="rounded-2xl border border-amber-500/40 shadow-2xl overflow-hidden flex flex-col w-full max-w-2xl max-h-[90vh]" style="background-color: #0e172a !important; color: #f8fafc !important;">
     
     <!-- Modal Header -->
-    <div class="px-5 py-3.5 bg-[#080d1a] border-b border-amber-500/30 flex items-center justify-between shrink-0">
+    <div class="px-5 py-3.5 border-b border-amber-500/30 flex items-center justify-between shrink-0" style="background-color: #080d1a !important;">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-sm font-bold">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm font-bold">
           <i class="fa-solid fa-file-circle-plus"></i>
         </div>
         <h3 id="entry-modal-title" class="text-sm sm:text-base font-black text-amber-300 tracking-wide">
           စာရင်းအသစ် သွင်းယူ / ပြင်ဆင်ရန်
         </h3>
       </div>
-      <button type="button" onclick="closeEntryModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 transition flex items-center justify-center cursor-pointer">
+      <button type="button" onclick="closeEntryModal()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-rose-400 transition flex items-center justify-center cursor-pointer">
         <i class="fa-solid fa-xmark text-sm"></i>
       </button>
     </div>
 
-    <!-- Modal Form Body (Scrollable 2-Column Grid) -->
+    <!-- Modal Form Body (Flex 2-Column Side-by-Side Layout) -->
     <form id="entry-form" onsubmit="saveEntryForm(event)" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
       
       <!-- Hidden Inputs -->
       <input type="hidden" id="entry-id" value="">
 
       <!-- Row 1: ရက်စွဲ & အမျိုးအစား (၂ ကွက် ဘေးချင်းစီ) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ရက်စွဲ (Date) <span class="text-rose-400">*</span></label>
-          <input type="date" id="entry-date" required class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold">
+          <input type="date" id="entry-date" required class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
 
-        <div>
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">အမျိုးအစား (Type)</label>
-          <select id="entry-type" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold">
+          <select id="entry-type" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
             <option value="ဝင်ငွေ">ဝင်ငွေ (Income)</option>
             <option value="ထွက်ငွေ">ထွက်ငွေ (Expense)</option>
           </select>
@@ -136,10 +136,10 @@
       </div>
 
       <!-- Row 2: ခေါင်းစဉ် & ခေါင်းစဉ်ခွဲ (၂ ကွက် ဘေးချင်းစီ) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ခေါင်းစဉ် (Category)</label>
-          <select id="entry-category" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold">
+          <select id="entry-category" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
             <option value="အထွေထွေ">အထွေထွေ</option>
             <option value="လှူဒါန်းငွေ">လှူဒါန်းငွေ</option>
             <option value="ဆွမ်းပဒေသာပင်">ဆွမ်းပဒေသာပင်</option>
@@ -147,35 +147,35 @@
           </select>
         </div>
 
-        <div>
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
-          <input type="text" id="entry-subcategory" placeholder="ပုံမှန်" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400">
+          <input type="text" id="entry-subcategory" placeholder="ပုံမှန်" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
       </div>
 
       <!-- Row 3: ဘောက်ချာနံပါတ် & ငွေပမာဏ (၂ ကွက် ဘေးချင်းစီ) -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
+      <div style="display: flex; gap: 12px; width: 100%;">
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ဘောက်ချာနံပါတ် (Voucher No)</label>
-          <input type="text" id="entry-voucher" placeholder="ဥပမာ- ၆၅၀-၁၂" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 font-mono">
+          <input type="text" id="entry-voucher" placeholder="ဥပမာ- ၆၅၀-၁၂" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
 
-        <div>
+        <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ငွေပမာဏ (Amount - MMK) <span class="text-rose-400">*</span></label>
-          <input type="number" id="entry-amount" required placeholder="0.00" class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 font-mono font-black text-sm">
+          <input type="number" id="entry-amount" required placeholder="0.00" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono font-black text-sm" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
       </div>
 
       <!-- Row 4: လက်ခံသူ / တာဝန်ခံ -->
       <div>
         <label class="block font-extrabold text-amber-200/90 mb-1">လက်ခံသူ / တာဝန်ခံ (User/Receiver)</label>
-        <input type="text" id="entry-receiver" placeholder="အမည် သို့မဟုတ် တာဝန်ခံ..." class="w-full h-10 px-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400">
+        <input type="text" id="entry-receiver" placeholder="အမည် သို့မဟုတ် တာဝန်ခံ..." class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
       </div>
 
       <!-- Row 5: အကြောင်းအရာ -->
       <div>
         <label class="block font-extrabold text-amber-200/90 mb-1">အကြောင်းအရာ (Description)</label>
-        <textarea id="entry-description" rows="2" placeholder="အသေးစိတ် အကြောင်းအရာ ရေးသားပါ..." class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-600 outline-none focus:border-amber-400 resize-none"></textarea>
+        <textarea id="entry-description" rows="2" placeholder="အသေးစိတ် အကြောင်းအရာ ရေးသားပါ..." class="w-full p-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 resize-none" style="background-color: #080d1a !important; color: #f8fafc !important;"></textarea>
       </div>
 
       <!-- Modal Footer Action Buttons -->
