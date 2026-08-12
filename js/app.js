@@ -1,6 +1,6 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Full Error-Free Version with 2-Column Modal Controllers 
+// Full Error-Free Version with 2-Column Modal Controllers  
 // ===================================================================
 
 window.currentSheet = window.currentSheet || 'Home';
