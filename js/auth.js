@@ -86,18 +86,16 @@
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      // getApiUrl() ထံမှ Cloudflare Worker URL ကို ယူမည်
-      const apiUrl = typeof window.getApiUrl === "function" 
-        ? window.getApiUrl() 
-        : (window.CONFIG && window.CONFIG.API_URL) 
+      // Cloudflare Worker Base URL ကို config.js ထံမှ ယူမည်
+      const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL)
+        || (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
         || "https://cashbook-api.dhammaaly.workers.dev";
 
-      // Cloudflare D1 Worker API သို့ Login Request ပို့မည်
-      const res = await fetch(apiUrl, {
+      // Cloudflare D1 Worker API သို့ Login Request ပို့မည် (POST /api/login)
+      const res = await fetch(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "checkLogin",
           username: username,
           password: password
         })
@@ -137,7 +135,7 @@
       } else {
         // D1 Login မအောင်မြင်ပါက Error ပြမည်
         if (errDiv) {
-          errDiv.textContent = json.message || "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+          errDiv.textContent = json.error || json.message || "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
           errDiv.classList.remove("hidden");
         }
       }
