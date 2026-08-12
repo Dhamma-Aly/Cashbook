@@ -1,38 +1,52 @@
-// ===================================================================
-// sw.js - Service Worker with Proper GET-only Caching & API Bypass
-// ===================================================================
+/* sw.js - Sāsana ERP Progressive Web App (PWA) Service Worker */
 
-const CACHE_NAME = 'sasana-erp-v1';
+const CACHE_NAME = 'sasana-erp-v3.0.0';
+
+// Offline အသုံးပြုနိုင်ရန် Cache လုပ်ထားမည့် ဖိုင်များ စာရင်း
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './favicon.svg',
-  './css/tailwind.min.css',
+  './avicon.svg',
+  './css/tailwind.build.css',
   './css/fontawesome.min.css',
   './css/style.css',
+  './view/Dashboard.html',
+  './view/Banks.html',
+  './view/Books.html',
+  './view/Inventory.html',
+  './view/yogi.html',
+  './view/report-system.html',
   './js/config.js',
   './js/api.js',
   './js/auth.js',
+  './js/Dashboard.js',
+  './js/Banks.js',
+  './js/Books.js',
+  './js/Inventory.js',
+  './js/yogi.js',
+  './js/report-system.js',
   './js/app.js'
 ];
 
-// Install Event
+// 1. Service Worker Install Event - Assets များကို Cache ထဲသို့ သိမ်းဆည်းခြင်း
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE).catch((err) => console.warn('Cache addAll error:', err));
+      console.log('[Sāsana ERP SW] Caching all core assets');
+      return cache.addAll(ASSETS_TO_CACHE);
     }).then(() => self.skipWaiting())
   );
 });
 
-// Activate Event
+// 2. Service Worker Activate Event - Cache အဟောင်းများကို သန့်ရှင်းရေးလုပ်ခြင်း
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cache) => {
           if (cache !== CACHE_NAME) {
+            console.log('[Sāsana ERP SW] Deleting old cache:', cache);
             return caches.delete(cache);
           }
         })
@@ -41,40 +55,36 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event (FIXES: Failed to execute 'put' on 'Cache': Request method 'POST' is unsupported)
+// 3. Service Worker Fetch Event - Network First with Cache Fallback Strategy
 self.addEventListener('fetch', (event) => {
-  // 💡 1. POST, PUT, DELETE Request များကို Cache ထဲ မသိမ်းဘဲ Network သို့ တိုက်ရိုက် ပို့မည်
-  if (event.request.method !== 'GET') {
-    return; // Bypass service worker cache for POST requests
+  // GET မဟုတ်သော Request များ သို့မဟုတ် External API Call များကို ကျော်မည်
+  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+    return;
   }
 
-  // 💡 2. Cloudflare Worker API Request များကို Cache မသိမ်းဘဲ တိုက်ရိုက် ပို့မည်
-  const url = new URL(event.request.url);
-  if (url.origin.includes('workers.dev')) {
-    return; // Do not cache API calls
-  }
-
-  // 💡 3. GET Static Files များအတွက်သာ Cache သုံးမည်
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
-          return networkResponse;
-        }
-        const responseToCache = networkResponse.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          // Cache API supports GET requests only
-          if (event.request.method === 'GET') {
+    fetch(event.request)
+      .then((response) => {
+        // Network မှ ရရှိပါက Cache ထဲတွင်လည်း အသစ်ပြန်လည် အစားထိုးမည်
+        if (response && response.status === 200 && response.type === 'basic') {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, responseToCache);
+          });
+        }
+        return response;
+      })
+      .catch(() => {
+        // Network မရပါက (Offline ဖြစ်နေပါက) Cache ထဲမှ ဖိုင်ကို ယူသုံးမည်
+        return caches.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) {
+            return cachedResponse;
+          }
+          // Page Navigation ဖြစ်ပါက index.html သို့ ပြန်ညွှန်းမည်
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
           }
         });
-        return networkResponse;
-      }).catch(() => {
-        // Fallback or offline support
-      });
-    })
+      })
   );
 });
