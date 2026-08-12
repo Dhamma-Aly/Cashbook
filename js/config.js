@@ -2,11 +2,14 @@
 // js/config.js - Sāsana ERP System Configuration & API Endpoint Setup
 // ===================================================================
 
-// 🎯 စကရင်ရှော့အရ အတည်ပြုရရှိထားသော Cloudflare Worker URL အမှန်
+// 🎯 Cloudflare Worker Backend URL
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
 
 window.CONFIG = {
   API_BASE_URL: WORKER_API_URL,
+
+  // App Version
+  APP_VERSION: "v3.0_D1_AUTH",
 
   // Sheet Names & Page Titles Mapping
   SHEET_TITLES: {
@@ -28,17 +31,29 @@ window.CONFIG = {
     'Report': 'အသုံးစရိတ် အစီရင်ခံစာ'
   },
 
-  // Yogi Categories & Options
-  YOGI_CATEGORIES: ['လူပုဂ္ဂိုလ်', 'ရဟန်း', 'သီလရှင်'],
-  YOGI_GENDERS: ['ကျား', 'မ'],
-  YOGI_STATUSES: ['Active', 'Inactive'],
+  // 👤 Authorized Users / Receivers (လက်ခံသူ / တာဝန်ခံ စာရင်း)
+  RECEIVERS: ['User 1', 'User 2', 'User 3'],
 
-  // Inventory Options
-  INV_LOCATIONS: ['မီးဖိုဆောင်', 'ဓမ္မာရုံ', 'သိမ်', 'စတို', 'အခြား'],
-  INV_CATEGORIES: ['ပရိဘောဂ', 'လျှပ်စစ်', 'မီးဖိုချောင်သုံး', 'ဆေးဝါး/ကျန်းမာရေး', 'အထွေထွေ'],
-  INV_UNITS: ['ခု', 'စုံ', 'လုံး', 'ထုပ်', 'ဖာ', 'ကတ်', 'စီး'],
+  // 🏦 Banks Group Categories & Dependent Subcategories
+  BANK_CATEGORIES: ['စာရင်းဖွင့်', 'ဘဏ်အပ်ငွေ', 'ဘဏ်ထုတ်ငွေ'],
+  BANK_SUBCATEGORIES: {
+    'စာရင်းဖွင့်': ['အထွေထွေ စာရင်းဖွင့်', 'ဘဏ် စာရင်းဖွင့်', 'အခြား'],
+    'ဘဏ်အပ်ငွေ': ['လှူဒါန်းငွေ အပ်နှံခြင်း', 'အသင်းဝင်ကြေး အပ်နှံခြင်း', 'အထွေထွေ အပ်နှံခြင်း'],
+    'ဘဏ်ထုတ်ငွေ': ['ကျောင်းစရိတ် ထုတ်ယူခြင်း', 'ဆွမ်းစရိတ် ထုတ်ယူခြင်း', 'အထွေထွေ ထုတ်ယူခြင်း']
+  },
 
-  // Subcategories for Cashbook Income and Expense
+  // 📖 Books Group Categories
+  BOOK_CATEGORIES: [
+    'အထွေထွေ',
+    'ကျောင်းရန်ပုံငွေ',
+    'ဆွမ်းပဒေသာပင်',
+    'ဓမ္မာရုံငွေစာရင်း',
+    'စေတီငွေစာရင်း',
+    'လျှပ်စစ်ပဒေသာပင်',
+    'ဆေးပဒေသာပင်'
+  ],
+
+  // 💸 Subcategories for Cashbook Income and Expense
   SUBCATEGORIES: {
     'ဝင်ငွေ': [
       'လှူဒါန်းငွေ',
@@ -56,7 +71,17 @@ window.CONFIG = {
       'ဝန်ထမ်းစရိတ်',
       'အထွေထွေစရိတ်'
     ]
-  }
+  },
+
+  // 🧘 Yogi Categories & Options
+  YOGI_CATEGORIES: ['လူပုဂ္ဂိုလ်', 'ရဟန်း', 'သီလရှင်'],
+  YOGI_GENDERS: ['ကျား', 'မ'],
+  YOGI_STATUSES: ['Active', 'Inactive'],
+
+  // 📦 Inventory Options
+  INV_LOCATIONS: ['မီးဖိုဆောင်', 'ဓမ္မာရုံ', 'သိမ်', 'စတို', 'အခြား'],
+  INV_CATEGORIES: ['ပရိဘောဂ', 'လျှပ်စစ်', 'မီးဖိုချောင်သုံး', 'ဆေးဝါး/ကျန်းမာရေး', 'အထွေထွေ'],
+  INV_UNITS: ['ခု', 'စုံ', 'လုံး', 'ထုပ်', 'ဖာ', 'ကတ်', 'စီး']
 };
 
 window.APP_CONFIG = window.CONFIG;
