@@ -1,11 +1,11 @@
 /**
- * YOGI MANAGEMENT SYSTEM — Pure D1 Auth Controller (FULL FIXED)
+ * Sāsana ERP System — Pure D1 Auth Controller
  * File: js/auth.js 
  * 
- * ✅ FIXES:
- * - Added window.showWorkspace and window.showLoginOverlay
+ * ✅ Features:
  * - Direct D1 Cloudflare Worker Authentication
  * - No hardcoded passwords in frontend
+ * - Handles workspace & login overlay toggling
  */
 
 (function () {
@@ -13,10 +13,10 @@
 
   // 1. Get Current User Name
   window.getCurrentUser = function () {
-    return localStorage.getItem("yogi_user_name") || localStorage.getItem("cashbook_user_name") || "Admin";
+    return localStorage.getItem("sasana_user_name") || localStorage.getItem("yogi_user_name") || "Admin";
   };
 
-  // 2. Show Workspace UI (Fixes ReferenceError)
+  // 2. Show Workspace UI
   window.showWorkspace = function () {
     document.documentElement.className = "dark is-authed";
     const loginOverlay = document.getElementById("login-overlay");
@@ -43,15 +43,14 @@
 
   // 4. Check Existing Auth Session on Page Load
   window.checkExistingSession = function () {
-    const token = localStorage.getItem("yogi_auth_token") || localStorage.getItem("cashbook_auth_token");
-    const expiresAt = Number(localStorage.getItem("yogi_token_expires_at") || localStorage.getItem("cashbook_token_expires_at") || 0);
+    const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
+    const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
 
     const isValid = token && expiresAt && Date.now() < expiresAt;
 
     if (isValid) {
       window.showWorkspace();
 
-      // App စတင်မည်
       if (typeof window.initApp === "function") {
         window.initApp();
       }
@@ -86,12 +85,12 @@
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      // Cloudflare Worker Base URL ကို config.js ထံမှ ယူမည်
+      // Config URL ကို ယူမည်
       const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL)
         || (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
         || "https://cashbook-api.dhammaaly.workers.dev";
 
-      // Cloudflare D1 Worker API သို့ Login Request ပို့မည် (POST /api/login)
+      // Cloudflare D1 Worker API သို့ Login Request ပို့မည်
       const res = await fetch(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -104,16 +103,24 @@
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
       if (res.ok && json.success && json.token) {
-        // D1 Login အောင်မြင်ပါက Session သိမ်းဆည်းမည်
+        // Session သိမ်းဆည်းမည်
         const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
         const expiresAt = Date.now() + expiresInMs;
 
+        const userObj = json.user || { username: username, role: "Staff" };
+
+        localStorage.setItem("sasana_auth_token", json.token);
+        localStorage.setItem("sasana_user_name", userObj.username);
+        localStorage.setItem("sasana_user_role", userObj.role || "Staff");
+        localStorage.setItem("sasana_token_expires_at", String(expiresAt));
+
+        // Legacy Support
         localStorage.setItem("yogi_auth_token", json.token);
-        localStorage.setItem("yogi_user_name", json.user ? json.user.username : username);
+        localStorage.setItem("yogi_user_name", userObj.username);
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (window.AppState) {
-          window.AppState.currentUser = json.user ? json.user.username : username;
+          window.AppState.currentUser = userObj.username;
         }
 
         if (passwordInput) passwordInput.value = "";
@@ -121,11 +128,11 @@
         // UI ပြောင်းလဲမည်
         window.showWorkspace();
 
-        // App နှင့် Live Sync စတင်မည်
+        // App & Live Sync စတင်မည်
         if (typeof window.initApp === "function") {
           window.initApp();
         } else if (typeof window.switchTab === "function") {
-          window.switchTab("home");
+          window.switchTab("Home");
         }
 
         if (typeof window.startLiveSync === "function") {
@@ -133,7 +140,6 @@
         }
 
       } else {
-        // D1 Login မအောင်မြင်ပါက Error ပြမည်
         if (errDiv) {
           errDiv.textContent = json.error || json.message || "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
           errDiv.classList.remove("hidden");
@@ -159,6 +165,11 @@
   };
 
   window.handleLogoutSilent = function () {
+    localStorage.removeItem("sasana_auth_token");
+    localStorage.removeItem("sasana_user_name");
+    localStorage.removeItem("sasana_user_role");
+    localStorage.removeItem("sasana_token_expires_at");
+
     localStorage.removeItem("yogi_auth_token");
     localStorage.removeItem("yogi_user_name");
     localStorage.removeItem("yogi_token_expires_at");
