@@ -51,7 +51,9 @@
           <select id="login-username" required class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
             <option value="" disabled selected>-- အသုံးပြုသူအမည် ရွေးချယ်ပါ --</option>
             <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
+            <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
             <option value="Account">Account (ငွေစာရင်းကိုင်)</option>
+            <option value="Staff">Staff (ဝန်ထမ်း)</option>
             <option value="Viewer">Viewer (ကြည့်ရှုသူ)</option>
           </select>
         </div>
@@ -189,19 +191,6 @@
     <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-500 mb-3"></div>
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
-
-  <!--
-    NOTE: The Cashbook/Book entry modal (#entry-modal), Inventory modal
-    (#inv-entry-modal) and Yogi modal (#yogi-entry-modal) used to be
-    duplicated here AND inside each view/*.html fragment that gets
-    injected into #view-container. Two elements sharing the same id in
-    the DOM at once is invalid HTML and made getElementById() resolve to
-    whichever copy happened to come first in document order, silently
-    shadowing the other. Each view fragment already ships its own
-    correctly-wired modal (see view/Banks.html, view/Books.html,
-    view/Inventory.html, view/yogi.html), so the old copies below have
-    been removed rather than kept as dead/conflicting markup.
-  -->
 
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
