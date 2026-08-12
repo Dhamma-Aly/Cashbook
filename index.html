@@ -8,7 +8,7 @@
 
   <!-- PWA & Mobile Web App Meta Tags -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#120e0b">
+  <meta name="theme-color" content="#020617">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -25,11 +25,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-[#0f0e0c] font-myanmar flex h-screen overflow-hidden text-amber-100/90">
+<body class="bg-[#020617] font-myanmar flex h-screen overflow-hidden text-slate-100">
 
   <!-- LOGIN OVERLAY -->
-  <div id="login-overlay" class="fixed inset-0 bg-[#080705] z-[100] flex items-center justify-center p-4">
-    <div class="relative w-full max-w-md bg-[#14110d]/95 border border-amber-600/30 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
+  <div id="login-overlay" class="fixed inset-0 bg-[#020617]/95 z-[100] flex items-center justify-center p-4">
+    <div class="relative w-full max-w-md bg-[#0f172a] border border-amber-500/30 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
       
       <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
@@ -48,7 +48,7 @@
       <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left">
         <div>
           <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (USERNAME)</label>
-          <select id="login-username" required class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
+          <select id="login-username" required class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
             <option value="" disabled selected>-- အသုံးပြုသူအမည် ရွေးချယ်ပါ --</option>
             <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
             <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
@@ -60,21 +60,21 @@
 
         <div>
           <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">လျှို့ဝှက်နံပါတ် (PASSWORD)</label>
-          <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-3 bg-[#0a0806] border border-amber-800/40 rounded-xl text-xs text-amber-100 placeholder:text-amber-700/50 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
+          <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-xs text-amber-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
         </div>
 
-        <div id="login-error" class="hidden text-rose-400 font-semibold text-[11px] bg-rose-950/30 border border-rose-500/30 p-2.5 rounded-xl text-center"></div>
+        <div id="login-error" class="hidden text-rose-400 font-semibold text-[11px] bg-rose-950/40 border border-rose-500/40 p-2.5 rounded-xl text-center"></div>
 
-        <button type="submit" class="w-full py-3.5 mt-2 bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 hover:from-amber-600 hover:to-yellow-500 text-amber-950 font-black rounded-xl transition-all duration-300 shadow-lg shadow-amber-600/20 flex items-center justify-center gap-2 text-xs tracking-wider cursor-pointer">
+        <button type="submit" class="w-full py-3.5 mt-2 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-black rounded-xl transition-all duration-300 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-xs tracking-wider cursor-pointer">
           <span>စနစ်သို့ ဝင်ရောက်မည်</span>
           <i class="fa-solid fa-arrow-right-to-bracket text-sm"></i>
         </button>
       </form>
 
-      <div class="pt-4 border-t border-amber-900/30 flex items-center justify-between text-[11px] text-amber-500/60">
+      <div class="pt-4 border-t border-amber-500/20 flex items-center justify-between text-[11px] text-amber-400/70">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="font-medium text-amber-200/60">System Ready</span>
+          <span class="font-medium text-amber-200/80">System Ready</span>
         </div>
         <span class="font-mono">v3.0 Sāsana ERP</span>
       </div>
@@ -85,20 +85,20 @@
   <div id="erp-workspace" class="hidden flex h-full w-full relative">
     
     <!-- Mobile Sidebar Backdrop Overlay -->
-    <div id="sidebar-overlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-black/70 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
+    <div id="sidebar-overlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
 
     <!-- Responsive Sidebar Navigation -->
-    <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#120e0b] border-r border-amber-900/30 flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
-      <div class="h-[64px] px-4 border-b border-amber-900/30 flex items-center justify-between text-amber-100 bg-[#18130f] shrink-0">
+    <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#080d1a] border-r border-amber-500/20 flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+      <div class="h-[64px] px-4 border-b border-amber-500/20 flex items-center justify-between text-amber-100 bg-[#020617] shrink-0">
         <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide">
           <i class="fa-solid fa-dharmachakra text-amber-400 text-lg"></i>
           <span class="text-gold-gradient">ဓမ္မအလင်းရောင်</span>
         </div>
         <div class="flex items-center gap-1">
-          <button onclick="closeMobileSidebar()" class="md:hidden text-amber-500/60 hover:text-white p-1.5 rounded-lg cursor-pointer">
+          <button onclick="closeMobileSidebar()" class="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg cursor-pointer">
             <i class="fa-solid fa-xmark text-sm"></i>
           </button>
-          <button onclick="handleLogout()" class="text-amber-500/60 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
+          <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
             <i class="fa-solid fa-power-off text-xs"></i>
           </button>
         </div>
@@ -110,7 +110,7 @@
           <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
+        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
         <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
           <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေ ရန်ပုံငွေ (Bank)</span> 
         </button>
@@ -121,7 +121,7 @@
           <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">တစ်ဦးတည်းစာရင်း (Bank)</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
+        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
         <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
           <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ကျောင်းရန်ပုံငွေ စာအုပ်</span> 
         </button>
@@ -144,12 +144,12 @@
           <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေရန်ပုံငွေစာအုပ်</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
+        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
         <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ပစ္စည်းစာရင်း">
           <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ပစ္စည်းစာရင်း</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
+        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
         <button onclick="switchTab('12Yogi')" id="btn-12Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အမြဲနေ ယောဂီစာရင်း">
           <i class="fa-solid fa-person-praying text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အမြဲနေ ယောဂီ</span> 
         </button>
@@ -157,7 +157,7 @@
           <i class="fa-solid fa-people-roof text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စခန်းဝင် ယောဂီ</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-500/50 px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
+        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
         <button onclick="switchTab('14Rep')" id="btn-14Rep" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အသုံးစရိတ် အစီရင်ခံစာ">
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အသုံးစရိတ် အစီရင်ခံစာ</span>
         </button>
@@ -166,28 +166,28 @@
 
     <!-- Main Content Work Area -->
     <div class="flex-1 flex flex-col overflow-hidden w-full">
-      <header class="bg-[#120e0b] border-b border-amber-900/30 h-[64px] px-4 md:px-6 flex justify-between items-center z-10 shrink-0 gap-3">
+      <header class="bg-[#080d1a] border-b border-amber-500/20 h-[64px] px-4 md:px-6 flex justify-between items-center z-10 shrink-0 gap-3">
         <div class="flex items-center gap-3 min-w-0">
           <!-- Mobile Menu Hamburger Button -->
-          <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#1a1410] border border-amber-900/40 cursor-pointer shrink-0" title="Open Menu">
+          <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#0f172a] border border-amber-500/30 cursor-pointer shrink-0" title="Open Menu">
             <i class="fa-solid fa-bars text-base"></i>
           </button>
-          <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-amber-100 tracking-wide truncate">Home Dashboard</h1>
+          <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-slate-100 tracking-wide truncate">Home Dashboard</h1>
         </div>
 
-        <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-amber-950/50 border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+        <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
           <i class="fa-solid fa-calendar-day text-amber-400"></i> <span id="current-user-display" class="truncate max-w-[150px] sm:max-w-none">Date: -- | Admin</span>
         </div>
       </header>
 
-      <main id="main-content" class="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#0f0e0c] relative">
+      <main id="main-content" class="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#020617] relative">
         <div id="view-container"></div>
       </main>
     </div>
   </div>
 
   <!-- Loading Overlay -->
-  <div id="loading-overlay" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[150] flex flex-col items-center justify-center hidden">
+  <div id="loading-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[150] flex flex-col items-center justify-center hidden">
     <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-500 mb-3"></div>
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
