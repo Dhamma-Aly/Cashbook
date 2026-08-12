@@ -1,16 +1,17 @@
+// ===================================================================
 // js/Dashboard.js - Home Dashboard View Renderer
 // Renders the object-shaped { kpis, sheetBalances } response from
 // GET /api/home-summary (see cashbook-api/handlers-books.js)
+// ===================================================================
+
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
 
   // If view template is not yet loaded into container, fetch and inject it safely
   if (container && !document.getElementById("home-bank-table")) {
     try {
-      const res = await fetch("view/Dashboard.html");
-      if (res.ok) {
-        container.innerHTML = await res.text();
-      }
+      const fetchFn = window.fetchTemplate || (async (p) => { const r = await fetch(p); return await r.text(); });
+      container.innerHTML = await fetchFn("view/Dashboard.html");
     } catch (e) {
       console.warn("Could not fetch view/Dashboard.html:", e);
     }
@@ -32,12 +33,13 @@ window.renderDashboardView = async function() {
     setKpi("kpi-home-fund", kpis.totalFund);
     setKpi("kpi-home-bank", kpis.totalBank);
     setKpi("kpi-home-cash", kpis.totalCash);
+    
     const countEl = document.getElementById("kpi-home-count");
     if (countEl) countEl.textContent = (kpis.totalCount || 0).toLocaleString();
 
     const sheetNames = Object.keys(sheetBalances);
     if (sheetNames.length === 0) {
-      tableElem.innerHTML = `<div class="p-8 text-center text-amber-500/50 text-sm">ဒေတာ မရှိသေးပါ။</div>`;
+      tableElem.innerHTML = `<div class="p-8 text-center text-amber-500/50 text-sm font-bold"><i class="fa-solid fa-folder-open mr-2"></i> ဒေတာ မရှိသေးပါ။</div>`;
       return;
     }
 
@@ -59,7 +61,7 @@ window.renderDashboardView = async function() {
         <thead>
           <tr class="bg-[#1a1410] border-b border-amber-500/40 text-amber-300 text-xs uppercase font-extrabold tracking-wider">
             <th class="w-14 text-center py-4 px-3 text-amber-400">စဉ်</th>
-            <th class="min-w-[220px] py-4 px-4 text-amber-200">ဘဏ်/စာအုပ် စာရင်း</th>
+            <th class="min-w-[220px] py-4 px-4 text-amber-200">ဘဏ် / စာအုပ် စာရင်း</th>
             <th class="w-32 text-center py-4 px-4 text-amber-400/80">အမျိုးအစား</th>
             <th class="text-right min-w-[160px] py-4 px-4 text-emerald-400 bg-emerald-950/40 border-x border-emerald-500/20 font-black">လက်ကျန်ငွေ</th>
           </tr>
@@ -76,9 +78,9 @@ window.renderDashboardView = async function() {
         <td class="text-center font-bold text-amber-500/70 py-3.5 px-3 font-mono">${idx + 1}</td>
         <td class="font-bold text-amber-200 group-hover:text-amber-100 py-3.5 px-4">${name}</td>
         <td class="text-center py-3.5 px-4">
-          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isBank ? 'bg-sky-500/10 text-sky-300' : 'bg-amber-500/10 text-amber-300'}">${isBank ? 'ဘဏ်' : 'စာအုပ်'}</span>
+          <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isBank ? 'bg-sky-500/10 text-sky-300 border border-sky-500/20' : 'bg-amber-500/10 text-amber-300 border border-amber-500/20'}">${isBank ? 'ဘဏ်' : 'စာအုပ်'}</span>
         </td>
-        <td class="text-right font-mono text-emerald-400 font-bold py-3.5 px-4 bg-emerald-950/20 border-x border-emerald-500/10 group-hover:bg-emerald-950/30">${bal.toLocaleString()}</td>
+        <td class="text-right font-mono text-emerald-400 font-bold py-3.5 px-4 bg-emerald-950/20 border-x border-emerald-500/10 group-hover:bg-emerald-950/30">${bal.toLocaleString()} MMK</td>
       </tr>`;
     });
 
@@ -100,3 +102,7 @@ window.renderDashboardView = async function() {
     renderHomeData(null);
   }
 };
+
+// Safety Aliases
+window.loadDashboardView = window.renderDashboardView;
+window.renderHomeView = window.renderDashboardView;
