@@ -1,17 +1,16 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Safely handles global declarations to avoid duplicate identifier errors
+// Drives Navigation, Tab Switching, Real-Time Live Sync (Auto-polling 10s),
+// Mobile Sidebar Controls, and Modals for Cashbooks, Inventory & Yogis 
 // ===================================================================
 
-// Safe Global Variable Assignments (Avoids SyntaxError: Identifier has already been declared)
 window.currentSheet = window.currentSheet || 'Home';
 window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
-
 const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof window.initApp === 'function') window.initApp();
+  window.initApp();
 });
 
 window.initApp = function() {
@@ -56,7 +55,7 @@ window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
     // Modal ပွင့်နေချိန် သို့မဟုတ် Screen ပိတ်ထားချိန်တွင် Auto Sync ခဏ ရပ်မည်
-    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden)');
+    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
     window.refreshCurrentTabSilent();
@@ -148,13 +147,24 @@ window.fetchTemplate = async function(path) {
     return await res.text();
   } catch (err) {
     console.error('Template Fetch Error:', err);
-    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
+    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path} (Folder နာမည် view သို့မဟုတ် views စစ်ဆေးပါ)</div>`;
   }
 };
 
 // ===================================================================
-// 4. Yogi Modal Dialog Controllers
+// 4. Modal Dialog Controllers (Fixes ReferenceError: openAddModal is not defined)
 // ===================================================================
+window.openAddModal = function() {
+  if (['12Yogi', '13Yogi'].includes(window.currentSheet)) {
+    window.openAddYogiModal();
+  } else if (typeof window.openAddEntryModal === 'function') {
+    window.openAddEntryModal();
+  } else {
+    const modal = document.getElementById('yogi-entry-modal') || document.getElementById('entry-modal');
+    if (modal) modal.classList.remove('hidden');
+  }
+};
+
 window.openAddYogiModal = function() {
   const form = document.getElementById('yogi-entry-form');
   if (!form) return;
