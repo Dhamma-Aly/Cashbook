@@ -10,28 +10,52 @@ const getApiBaseUrl = () => {
   if (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.API_BASE_URL) {
     return window.APP_CONFIG.API_BASE_URL;
   }
-  return 'https://cashbook-api.dhamma-aly.workers.dev';
+  // Fallback URL (Fix: dhammaaly - Hyphen မပါပါ)
+  return 'https://cashbook-api.dhammaaly.workers.dev';
 };
 
 // Safe API Fetch Helper
 async function safeApiRequest(endpoint, options = {}) {
   const url = `${getApiBaseUrl()}${endpoint}`;
+  
+  // Headers ရောစပ်ခြင်း (Safe Merge)
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(options.headers || {})
+  };
+
   try {
     const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
+      ...options,
+      headers
     });
+
     if (res.ok) {
       return await res.json();
     }
-    return { success: false, data: [], kpis: {}, sheetBalances: {}, error: `HTTP ${res.status}` };
+
+    return { 
+      success: false, 
+      data: [], 
+      kpis: {}, 
+      sheetBalances: {}, 
+      error: `HTTP ${res.status}` 
+    };
   } catch (err) {
     console.warn(`API Connection Warning [${endpoint}]:`, err.message);
-    return { success: false, data: [], kpis: {}, sheetBalances: {}, error: err.message };
+    return { 
+      success: false, 
+      data: [], 
+      kpis: {}, 
+      sheetBalances: {}, 
+      error: err.message 
+    };
   }
 }
 
+// -------------------------------------------------------------------
 // 1. Cashbook & Bank Ledgers API (1CB ~ 10GB)
+// -------------------------------------------------------------------
 window.fetchSheetData = async function(sheetName = '1CB') {
   return await safeApiRequest(`/api/entries?sheet=${encodeURIComponent(sheetName)}`);
 };
@@ -50,7 +74,9 @@ window.deleteCashbookEntryAPI = async function(uniqueId) {
   });
 };
 
+// -------------------------------------------------------------------
 // 2. Home Dashboard Summary API
+// -------------------------------------------------------------------
 window.fetchHomeSummary = async function() {
   const res = await safeApiRequest('/api/home-summary');
   if (!res || !res.success) {
@@ -64,7 +90,9 @@ window.fetchHomeSummary = async function() {
 };
 window.fetchHomeSummaryAPI = window.fetchHomeSummary;
 
+// -------------------------------------------------------------------
 // 3. Yogi Management API (12Yogi & 13Yogi)
+// -------------------------------------------------------------------
 window.fetchYogiDataAPI = async function(sheetType = '12Yogi', statusFilter = null) {
   let ep = `/api/yogi?sheet=${encodeURIComponent(sheetType)}`;
   if (statusFilter) ep += `&status=${encodeURIComponent(statusFilter)}`;
@@ -91,7 +119,9 @@ window.deleteYogiAPI = async function(uniqueId) {
   });
 };
 
+// -------------------------------------------------------------------
 // 4. Inventory API (11Inv)
+// -------------------------------------------------------------------
 window.fetchInventoryDataAPI = async function() {
   return await safeApiRequest('/api/inventory');
 };
@@ -109,7 +139,9 @@ window.deleteInventoryEntryAPI = async function(uniqueId) {
   });
 };
 
+// -------------------------------------------------------------------
 // 5. Summary Report API (14Rep)
+// -------------------------------------------------------------------
 window.fetchReportDataAPI = async function() {
   return await safeApiRequest('/api/report');
 };
