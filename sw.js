@@ -1,48 +1,32 @@
 // ===================================================================
-// sw.js - Service Worker for Sāsana ERP PWA
-// Enables instant loading & fast static caching for app UI,
-// while keeping API requests (/api/) live and direct for real-time data
+// sw.js - Service Worker with Proper GET-only Caching & API Bypass
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v1.2';
-
-// Static UI Assets to pre-cache on app install
-const STATIC_ASSETS = [
+const CACHE_NAME = 'sasana-erp-v1';
+const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './avicon.svg',
-  './css/tailwind.build.css',
+  './favicon.svg',
+  './css/tailwind.min.css',
   './css/fontawesome.min.css',
   './css/style.css',
   './js/config.js',
   './js/api.js',
   './js/auth.js',
-  './js/Dashboard.js',
-  './js/Banks.js',
-  './js/Books.js',
-  './js/Inventory.js',
-  './js/yogi.js',
-  './js/report-system.js',
-  './js/app.js',
-  './view/Dashboard.html',
-  './view/Banks.html',
-  './view/Books.html',
-  './view/Inventory.html',
-  './view/yogi.html',
-  './view/report-system.html'
+  './js/app.js'
 ];
 
-// 1. Install Event - Pre-cache Static Assets
+// Install Event
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+      return cache.addAll(ASSETS_TO_CACHE).catch((err) => console.warn('Cache addAll error:', err));
     }).then(() => self.skipWaiting())
   );
 });
 
-// 2. Activate Event - Clean Up Old Caches
+// Activate Event
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
@@ -57,39 +41,40 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 3. Fetch Event - Stale-While-Revalidate for UI, Network-Only for /api/
+// Fetch Event (FIXES: Failed to execute 'put' on 'Cache': Request method 'POST' is unsupported)
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-
-  // Rule A: Real-Time API Requests (/api/) -> Always Network Direct
-  if (url.pathname.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return new Response(
-          JSON.stringify({ success: false, error: 'အင်တာနက်/ကွန်ရက် ချိတ်ဆက်မှု မရှိပါ' }),
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-      })
-    );
-    return;
+  // 💡 1. POST, PUT, DELETE Request များကို Cache ထဲ မသိမ်းဘဲ Network သို့ တိုက်ရိုက် ပို့မည်
+  if (event.request.method !== 'GET') {
+    return; // Bypass service worker cache for POST requests
   }
 
-  // Rule B: Static App Assets -> Stale-While-Revalidate Strategy (Instant UI render)
+  // 💡 2. Cloudflare Worker API Request များကို Cache မသိမ်းဘဲ တိုက်ရိုက် ပို့မည်
+  const url = new URL(event.request.url);
+  if (url.origin.includes('workers.dev')) {
+    return; // Do not cache API calls
+  }
+
+  // 💡 3. GET Static Files များအတွက်သာ Cache သုံးမည်
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request).then((networkResponse) => {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(event.request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
         }
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          // Cache API supports GET requests only
+          if (event.request.method === 'GET') {
+            cache.put(event.request, responseToCache);
+          }
+        });
         return networkResponse;
       }).catch(() => {
-        return cachedResponse;
+        // Fallback or offline support
       });
-
-      return cachedResponse || fetchPromise;
     })
   );
 });
