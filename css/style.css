@@ -1,4 +1,4 @@
-/* css/style.css - Sāsana ERP Custom Responsive CSS, Modal Fixes & Dark Theme */
+/* css/style.css - Sāsana ERP Custom Responsive CSS & Deep Navy Slate Theme */
 
 :root {
   color-scheme: dark;
@@ -16,7 +16,7 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  background-color: #0f0e0c;
+  background-color: #020617 !important; /* Deep Slate Navy Background */
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -27,8 +27,8 @@ html, body {
 
 /* ⚡ Gold Gradient Header Text */
 .text-gold-gradient {
-  color: #c4ae85 !important;
-  background: linear-gradient(135deg, #e8dcc4 0%, #c4ae85 50%, #967a50 100%) !important;
+  color: #fbbf24 !important;
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #d97706 100%) !important;
   -webkit-background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
   background-clip: text !important;
@@ -45,14 +45,14 @@ button, a, select, input, textarea {
   height: 6px; 
 }
 ::-webkit-scrollbar-track { 
-  background: #0f0e0c; 
+  background: #020617; 
 }
 ::-webkit-scrollbar-thumb { 
-  background: #261e17; 
+  background: #1e293b; 
   border-radius: 4px; 
 }
 ::-webkit-scrollbar-thumb:hover { 
-  background: #3d3025; 
+  background: #334155; 
 }
 
 /* 👆 Smooth Momentum Scrolling */
@@ -63,29 +63,29 @@ button, a, select, input, textarea {
 /* 🔘 Navigation Buttons Styling */
 .nav-btn {
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #a89f91 !important;
+  color: #94a3b8 !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   border-left: 4px solid transparent;
 }
 .nav-btn:hover {
-  background-color: rgba(176, 148, 102, 0.12) !important;
-  color: #e8dcc4 !important;
+  background-color: rgba(30, 41, 59, 0.6) !important;
+  color: #f8fafc !important;
 }
 .nav-btn.active {
-  background-color: #211912 !important;
-  color: #c4ae85 !important;
+  background-color: #0f172a !important;
+  color: #fbbf24 !important;
   font-weight: 700 !important;
-  border-left: 4px solid #b09466;
+  border-left: 4px solid #f59e0b !important;
 }
 
-/* 📊 KPI Cards Styling */
+/* 📊 KPI Cards Styling (Matches Deep Slate Navy theme) */
 .stats-card {
-  background: linear-gradient(135deg, #1c1510 0%, #120e0b 100%) !important;
-  border: 1.5px solid rgba(176, 148, 102, 0.25) !important;
+  background: linear-gradient(135deg, #0f172a 0%, #080d1a 100%) !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
   border-radius: 0.85rem !important;
-  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.7) !important;
+  box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.8) !important;
   padding: 0.85rem 1.1rem !important;
   display: flex !important;
   align-items: center !important;
@@ -117,7 +117,7 @@ button, a, select, input, textarea {
    🌙 MODAL DIALOGS & SOLID DARK BACKDROP GUARANTEE
    =================================================================== */
 #entry-modal, #inv-entry-modal, #yogi-entry-modal, .modal-backdrop {
-  background-color: rgba(3, 7, 18, 0.95) !important;
+  background-color: rgba(2, 6, 23, 0.88) !important;
   z-index: 99999 !important;
 }
 
@@ -142,57 +142,39 @@ select option {
   color: #f8fafc !important;
 }
 
-/* 📐 2-Column Responsive Flex Helper for Modal Forms */
-.form-row-2col {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .form-row-2col {
-    flex-direction: row;
-  }
-  .form-row-2col > div {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
 /* 📋 Table Responsiveness & Sticky Headers */
 table thead th {
   position: sticky;
   top: 0;
   z-index: 20;
-  background-color: #1a1410 !important;
+  background-color: #080d1a !important;
   padding: 12px 16px;
   font-size: 0.725rem !important;
   text-transform: uppercase;
-  color: #c4ae85 !important;
-  border-bottom: 1px solid rgba(176, 148, 102, 0.3) !important;
+  color: #fef08a !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.3) !important;
   white-space: nowrap !important;
 }
 
 table tbody td {
   padding: 10px 16px;
-  border-bottom: 1px solid rgba(176, 148, 102, 0.12) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
   font-size: 0.8rem !important;
   white-space: nowrap !important;
-  color: #e7dfd5 !important;
+  color: #f1f5f9 !important;
 }
 
 table tbody tr:hover {
-  background-color: rgba(176, 148, 102, 0.08) !important;
+  background-color: rgba(245, 158, 11, 0.08) !important;
 }
 
 /* Sticky Action Column on Right */
 table th.sticky, table td.sticky, th.right-0, td.right-0 {
   position: sticky !important;
   right: 0 !important;
-  background-color: #14100c !important;
+  background-color: #080d1a !important;
   z-index: 25 !important;
-  border-left: 1px solid rgba(176, 148, 102, 0.2) !important;
+  border-left: 1px solid rgba(245, 158, 11, 0.2) !important;
 }
 
 /* ===================================================================
@@ -206,6 +188,8 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
     visibility: visible !important;
     width: 16rem !important;
     flex-shrink: 0 !important;
+    background-color: #080d1a !important;
+    border-right: 1px solid rgba(245, 158, 11, 0.2) !important;
   }
   #mobile-menu-btn, #sidebar-overlay {
     display: none !important;
@@ -222,7 +206,16 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
     z-index: 50 !important;
     transform: translateX(-100%);
     transition: transform 0.3s ease-in-out;
+    background-color: #080d1a !important;
   }
   #main-sidebar.mobile-open {
     transform: translateX(0) !important;
   }
+  table tbody td {
+    padding: 8px 12px;
+    font-size: 0.75rem !important;
+  }
+  .stats-card {
+    padding: 0.75rem 0.9rem !important;
+  }
+}
