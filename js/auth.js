@@ -1,6 +1,6 @@
 /**
  * YOGI MANAGEMENT SYSTEM — Pure D1 Auth Controller (FULL FIXED)
- * File: js/auth.js
+ * File: js/auth.js 
  * 
  * ✅ FIXES:
  * - Added window.showWorkspace and window.showLoginOverlay
