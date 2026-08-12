@@ -1,203 +1,171 @@
-// ===================================================================
-// js/auth.js - Authentication Controller with Fail-Safe Fallback
-// Guarantees Admin / admin123 login works seamlessly even if API is offline
-// ===================================================================
+/**
+ * YOGI MANAGEMENT SYSTEM — Pure D1 Auth Controller (FULL FIXED)
+ * File: js/auth.js
+ * 
+ * ✅ FIXES:
+ * - Direct D1 Cloudflare Worker Authentication
+ * - No hardcoded passwords in frontend
+ * - Correct LocalStorage Keys (yogi_auth_token, yogi_user_name, yogi_token_expires_at)
+ */
 
-window.currentUser = null;
-let clockInterval = null;
+(function () {
+  "use strict";
 
-// 1. Get Current User Helper
-window.getCurrentUser = function() {
-  if (window.currentUser) return window.currentUser;
-  const saved = localStorage.getItem("cashbook_user");
-  if (saved) {
-    try {
-      window.currentUser = JSON.parse(saved);
-      return window.currentUser;
-    } catch(e) {
-      localStorage.removeItem("cashbook_user");
-    }
-  }
-  return null;
-};
+  // 1. Get Current User Name
+  window.getCurrentUser = function () {
+    return localStorage.getItem("yogi_user_name") || "Admin";
+  };
 
-// 2. Initialize Auth State
-window.initAuth = function() {
-  const user = window.getCurrentUser();
-  const loginOverlay = document.getElementById("login-overlay");
-  const workspace = document.getElementById("erp-workspace");
+  // 2. Check Existing Auth Session on Page Load
+  window.checkExistingSession = function () {
+    const token = localStorage.getItem("yogi_auth_token");
+    const expiresAt = Number(localStorage.getItem("yogi_token_expires_at") || 0);
 
-  if (user) {
-    if (loginOverlay) loginOverlay.classList.add("hidden");
-    if (workspace) workspace.classList.remove("hidden");
-    updateUserBadge();
-    startLiveClock();
-    return true;
-  }
+    // Token ရှိပြီး သက်တမ်းမကုန်သေးပါက Login အဖြစ် သတ်မှတ်မည်
+    const isValid = token && expiresAt && Date.now() < expiresAt;
 
-  if (loginOverlay) loginOverlay.classList.remove("hidden");
-  if (workspace) workspace.classList.add("hidden");
-  return false;
-};
+    const loginOverlay = document.getElementById("login-overlay");
+    const workspace = document.getElementById("erp-workspace");
+    const liveUserEl = document.getElementById("live-user-name");
 
-// 3. UI Helpers
-window.showLoginOverlay = function() {
-  const loginOverlay = document.getElementById("login-overlay");
-  const workspace = document.getElementById("erp-workspace");
-  if (loginOverlay) loginOverlay.classList.remove("hidden");
-  if (workspace) workspace.classList.add("hidden");
-};
+    if (isValid) {
+      document.documentElement.className = "dark is-authed";
+      if (loginOverlay) loginOverlay.classList.add("hidden");
+      if (workspace) workspace.classList.remove("hidden");
+      if (liveUserEl) liveUserEl.textContent = window.getCurrentUser();
 
-window.showWorkspace = function() {
-  const loginOverlay = document.getElementById("login-overlay");
-  const workspace = document.getElementById("erp-workspace");
-  if (loginOverlay) loginOverlay.classList.add("hidden");
-  if (workspace) workspace.classList.remove("hidden");
-  updateUserBadge();
-  startLiveClock();
-};
-
-// 4. Secure Fail-Safe Login Submission Handler
-window.handleLoginSubmit = async function(event) {
-  event.preventDefault();
-
-  const usernameInput = document.getElementById("login-username");
-  const passwordInput = document.getElementById("login-password");
-  const errDiv = document.getElementById("login-error");
-  const submitBtn = event.target ? event.target.querySelector("button[type='submit']") : null;
-
-  const username = usernameInput ? usernameInput.value.trim() : "";
-  const pass = passwordInput ? passwordInput.value.trim() : "";
-
-  if (!username || !pass) {
-    if (errDiv) {
-      errDiv.textContent = "အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်ပါခင်ဗျာ။";
-      errDiv.classList.remove("hidden");
-    }
-    return;
-  }
-
-  if (submitBtn) submitBtn.disabled = true;
-
-  try {
-    let loggedInUser = null;
-
-    // A. First Attempt: Cloudflare Worker D1 Database API Login
-    try {
-      const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) ||
-                      (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL) ||
-                      "https://cashbook-api.dhamma-aly.workers.dev";
-
-      const res = await fetch(`${baseUrl}/api/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password: pass })
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success && json.user) {
-          loggedInUser = {
-            username: json.user.username,
-            role: json.user.role || json.user.username,
-            loginTime: new Date().toISOString()
-          };
-        }
+      // App စတင်မည်
+      if (typeof window.initApp === "function") {
+        window.initApp();
       }
-    } catch (netErr) {
-      console.warn("API Server unreachable, falling back to local credentials:", netErr);
-    }
-
-    // B. Second Attempt: Fail-Safe Local Verification (Guarantees Admin/admin123 ALWAYS WORKS)
-    if (!loggedInUser) {
-      const LOCAL_ACCOUNTS = {
-        "Admin": "admin123",
-        "Account": "account123",
-        "Viewer": "viewer123"
-      };
-
-      const expectedPass = LOCAL_ACCOUNTS[username] || "admin123";
-
-      if (pass === expectedPass || pass === "123456" || pass === "admin123") {
-        loggedInUser = {
-          username: username,
-          role: username,
-          loginTime: new Date().toISOString()
-        };
-      }
-    }
-
-    // C. Handle Login Success or Error Output
-    if (loggedInUser) {
-      window.currentUser = loggedInUser;
-      localStorage.setItem("cashbook_user", JSON.stringify(window.currentUser));
-
-      if (errDiv) errDiv.classList.add("hidden");
-      window.showWorkspace();
-
-      if (window.switchTab) {
-        window.switchTab("Home");
-      }
+      return true;
     } else {
+      window.handleLogoutSilent();
+      return false;
+    }
+  };
+
+  // 3. Login Submission Handler (Queries Cloudflare D1 API)
+  window.handleLoginSubmit = async function (event) {
+    if (event && event.preventDefault) event.preventDefault();
+
+    const usernameInput = document.getElementById("login-username");
+    const passwordInput = document.getElementById("login-password");
+    const errDiv = document.getElementById("login-error");
+    const submitBtn = event && event.target ? event.target.querySelector("button[type='submit']") : null;
+
+    const username = usernameInput ? usernameInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
+
+    if (!username || !password) {
       if (errDiv) {
-        errDiv.textContent = "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။ (Password မှားသည်)";
+        errDiv.textContent = "အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါခင်ဗျာ။";
         errDiv.classList.remove("hidden");
       }
+      return;
     }
-  } catch (err) {
-    console.error("Login Exception:", err);
-    if (errDiv) {
-      errDiv.textContent = "ဝင်ရောက်ရာတွင် အမှားရှိပါသည်: " + (err.message || "Error");
-      errDiv.classList.remove("hidden");
+
+    if (errDiv) errDiv.classList.add("hidden");
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      // getApiUrl() ထံမှ Cloudflare Worker URL ကို ယူမည်
+      const apiUrl = typeof window.getApiUrl === "function" 
+        ? window.getApiUrl() 
+        : "https://yogi-list.kotuntunwin1985.workers.dev";
+
+      // Cloudflare D1 Worker API သို့ Login Request ပို့မည်
+      const res = await fetch(apiUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "checkLogin",
+          username: username,
+          password: password
+        })
+      });
+
+      const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
+
+      if (res.ok && json.success && json.token) {
+        // D1 Login အောင်မြင်ပါက Token စသည်တို့ကို LocalStorage တွင် သိမ်းဆည်းမည်
+        const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
+        const expiresAt = Date.now() + expiresInMs;
+
+        localStorage.setItem("yogi_auth_token", json.token);
+        localStorage.setItem("yogi_user_name", json.user ? json.user.username : username);
+        localStorage.setItem("yogi_token_expires_at", String(expiresAt));
+
+        // AppState တွင် Current User မှတ်သားမည်
+        if (window.AppState) {
+          window.AppState.currentUser = json.user ? json.user.username : username;
+        }
+
+        // UI ပြောင်းလဲမည်
+        document.documentElement.className = "dark is-authed";
+        const loginOverlay = document.getElementById("login-overlay");
+        const workspace = document.getElementById("erp-workspace");
+        if (loginOverlay) loginOverlay.classList.add("hidden");
+        if (workspace) workspace.classList.remove("hidden");
+
+        const liveUserEl = document.getElementById("live-user-name");
+        if (liveUserEl) liveUserEl.textContent = json.user ? json.user.username : username;
+
+        // Password Input ကွက်ကို ရှင်းထုတ်မည်
+        if (passwordInput) passwordInput.value = "";
+
+        // App နှင့် Live Sync စတင်မည်
+        if (typeof window.initApp === "function") {
+          window.initApp();
+        } else if (typeof window.switchTab === "function") {
+          window.switchTab("home");
+        }
+
+        if (typeof window.startLiveSync === "function") {
+          window.startLiveSync();
+        }
+
+      } else {
+        // D1 Login မအောင်မြင်ပါက Error Message ပြမည်
+        if (errDiv) {
+          errDiv.textContent = json.message || "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+          errDiv.classList.remove("hidden");
+        }
+      }
+
+    } catch (err) {
+      console.error("[Login Exception]", err);
+      if (errDiv) {
+        errDiv.textContent = "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
+        errDiv.classList.remove("hidden");
+      }
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
-  } finally {
-    if (submitBtn) submitBtn.disabled = false;
-  }
-};
+  };
 
-// 5. Logout Handler
-window.handleLogout = function() {
-  if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
-    if (clockInterval) clearInterval(clockInterval);
-    localStorage.removeItem("cashbook_user");
-    window.currentUser = null;
-    location.reload();
-  }
-};
+  // 4. Logout Handlers
+  window.handleLogout = function () {
+    if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
+      window.handleLogoutSilent();
+    }
+  };
 
-// 6. Custom Date Formatter
-function formatCustomDate() {
-  const now = new Date();
-  const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  window.handleLogoutSilent = function () {
+    localStorage.removeItem("yogi_auth_token");
+    localStorage.removeItem("yogi_user_name");
+    localStorage.removeItem("yogi_token_expires_at");
 
-  const dayName = days[now.getDay()];
-  const dayNum = now.getDate();
-  const monthName = months[now.getMonth()];
-  const yearTwoDigits = String(now.getFullYear()).slice(-2);
+    document.documentElement.className = "dark not-authed";
+    const loginOverlay = document.getElementById("login-overlay");
+    const workspace = document.getElementById("erp-workspace");
 
-  let hours = now.getHours();
-  const minutes = String(now.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
+    if (loginOverlay) loginOverlay.classList.remove("hidden");
+    if (workspace) workspace.classList.add("hidden");
+  };
 
-  return `${dayName} ${dayNum} ${monthName} ${yearTwoDigits} <span class="text-amber-500/40 font-normal px-1">|</span> ${hours}:${minutes} ${ampm}`;
-}
-
-// 7. Update User Badge Header
-function updateUserBadge() {
-  const user = window.getCurrentUser();
-  if (!user) return;
-  const badgeStr = formatCustomDate();
-  const badge = document.getElementById("current-user-display");
-  if (badge) {
-    badge.innerHTML = `DATE: ${badgeStr} <span class="text-amber-500/40 font-normal px-1">|</span> ${user.username}`;
-  }
-}
-
-// 8. Start Live Clock Interval
-function startLiveClock() {
-  if (clockInterval) clearInterval(clockInterval);
-  clockInterval = setInterval(updateUserBadge, 10000);
-}
+  // Init Session Check on Load
+  document.addEventListener("DOMContentLoaded", () => {
+    window.checkExistingSession();
+  });
+})();
