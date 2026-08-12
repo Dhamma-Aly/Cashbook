@@ -1,4 +1,4 @@
-<!-- view/Banks.html (or view/Books.html) - Fully Fixed 100% Solid 2-Column Modal -->
+<!-- view/Banks.html (or view/Books.html) - Fully Fixed Neat & Compact Centered Modal -->
 
 <div class="space-y-5">
   
@@ -94,14 +94,14 @@
 
 </div>
 
-<!-- 💡 100% Guaranteed 2-Column Side-by-Side Solid Dark Entry Modal -->
-<div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-3 sm:p-4 hidden" style="background-color: rgba(3, 7, 18, 0.96) !important; z-index: 99999 !important;">
-  <div class="rounded-2xl border border-amber-500/40 shadow-2xl overflow-hidden flex flex-col w-full max-w-2xl max-h-[90vh]" style="background-color: #0e172a !important; color: #f8fafc !important;">
+<!-- 💡 Compact & Centered Modal Box (max-width: 580px သပ်သပ်ရပ်ရပ် အလယ်တည့်တည့် ပေါ်မည်) -->
+<div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(3, 7, 18, 0.88) !important; z-index: 99999 !important;">
+  <div class="rounded-2xl border border-amber-500/35 shadow-2xl overflow-hidden flex flex-col w-full max-h-[90vh]" style="max-width: 580px !important; background-color: #0e172a !important; color: #f8fafc !important;">
     
     <!-- Modal Header -->
-    <div class="px-5 py-3.5 border-b border-amber-500/30 flex items-center justify-between shrink-0" style="background-color: #080d1a !important;">
+    <div class="px-5 py-3.5 border-b border-amber-500/25 flex items-center justify-between shrink-0" style="background-color: #080d1a !important;">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 text-amber-400 flex items-center justify-center text-sm font-bold">
+        <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-sm font-bold">
           <i class="fa-solid fa-file-circle-plus"></i>
         </div>
         <h3 id="entry-modal-title" class="text-sm sm:text-base font-black text-amber-300 tracking-wide">
@@ -113,8 +113,8 @@
       </button>
     </div>
 
-    <!-- Modal Form Body (Flex 2-Column Side-by-Side Layout) -->
-    <form id="entry-form" onsubmit="saveEntryForm(event)" class="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 text-xs">
+    <!-- Modal Form Body (Centered 2-Column Compact Layout) -->
+    <form id="entry-form" onsubmit="saveEntryForm(event)" class="flex-1 overflow-y-auto p-5 space-y-3.5 text-xs">
       
       <!-- Hidden Inputs -->
       <input type="hidden" id="entry-id" value="">
@@ -123,12 +123,12 @@
       <div style="display: flex; gap: 12px; width: 100%;">
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ရက်စွဲ (Date) <span class="text-rose-400">*</span></label>
-          <input type="date" id="entry-date" required class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <input type="date" id="entry-date" required class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
 
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">အမျိုးအစား (Type)</label>
-          <select id="entry-type" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <select id="entry-type" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
             <option value="ဝင်ငွေ">ဝင်ငွေ (Income)</option>
             <option value="ထွက်ငွေ">ထွက်ငွေ (Expense)</option>
           </select>
@@ -139,7 +139,7 @@
       <div style="display: flex; gap: 12px; width: 100%;">
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ခေါင်းစဉ် (Category)</label>
-          <select id="entry-category" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <select id="entry-category" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
             <option value="အထွေထွေ">အထွေထွေ</option>
             <option value="လှူဒါန်းငွေ">လှူဒါန်းငွေ</option>
             <option value="ဆွမ်းပဒေသာပင်">ဆွမ်းပဒေသာပင်</option>
@@ -149,7 +149,7 @@
 
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
-          <input type="text" id="entry-subcategory" placeholder="ပုံမှန်" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <input type="text" id="entry-subcategory" placeholder="ပုံမှန်" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
       </div>
 
@@ -157,34 +157,34 @@
       <div style="display: flex; gap: 12px; width: 100%;">
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ဘောက်ချာနံပါတ် (Voucher No)</label>
-          <input type="text" id="entry-voucher" placeholder="ဥပမာ- ၆၅၀-၁၂" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <input type="text" id="entry-voucher" placeholder="ဥပမာ- ၆၅၀-၁၂" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
 
         <div style="flex: 1; min-width: 0;">
           <label class="block font-extrabold text-amber-200/90 mb-1">ငွေပမာဏ (Amount - MMK) <span class="text-rose-400">*</span></label>
-          <input type="number" id="entry-amount" required placeholder="0.00" class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono font-black text-sm" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <input type="number" id="entry-amount" required placeholder="0.00" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono font-black text-sm" style="background-color: #080d1a !important; color: #f8fafc !important;">
         </div>
       </div>
 
       <!-- Row 4: လက်ခံသူ / တာဝန်ခံ -->
       <div>
         <label class="block font-extrabold text-amber-200/90 mb-1">လက်ခံသူ / တာဝန်ခံ (User/Receiver)</label>
-        <input type="text" id="entry-receiver" placeholder="အမည် သို့မဟုတ် တာဝန်ခံ..." class="w-full h-10 px-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
+        <input type="text" id="entry-receiver" placeholder="အမည် သို့မဟုတ် တာဝန်ခံ..." class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
       </div>
 
       <!-- Row 5: အကြောင်းအရာ -->
       <div>
         <label class="block font-extrabold text-amber-200/90 mb-1">အကြောင်းအရာ (Description)</label>
-        <textarea id="entry-description" rows="2" placeholder="အသေးစိတ် အကြောင်းအရာ ရေးသားပါ..." class="w-full p-3 border border-amber-500/30 rounded-xl text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 resize-none" style="background-color: #080d1a !important; color: #f8fafc !important;"></textarea>
+        <textarea id="entry-description" rows="2" placeholder="အသေးစိတ် အကြောင်းအရာ ရေးသားပါ..." class="w-full p-2.5 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 resize-none" style="background-color: #080d1a !important; color: #f8fafc !important;"></textarea>
       </div>
 
       <!-- Modal Footer Action Buttons -->
-      <div class="pt-4 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
-        <button type="button" onclick="closeEntryModal()" class="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs transition cursor-pointer">
+      <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
+        <button type="button" onclick="closeEntryModal()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs transition cursor-pointer">
           မသိမ်းတော့ပါ (Cancel)
         </button>
 
-        <button type="submit" class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer">
+        <button type="submit" class="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer">
           <i class="fa-solid fa-floppy-disk"></i>
           <span>သိမ်းဆည်းမည် (Save)</span>
         </button>
