@@ -1,7 +1,6 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Drives Navigation, Tab Switching, Real-Time Live Sync (Auto-polling 10s),
-// Mobile Sidebar Controls, and Modals for Cashbooks, Inventory & Yogis 
+// Correctly routes Add Modal for Bank/Cashbook vs Yogi pages
 // ===================================================================
 
 window.currentSheet = window.currentSheet || 'Home';
@@ -10,7 +9,7 @@ window.autoRefreshTimer = window.autoRefreshTimer || null;
 const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
 
 document.addEventListener('DOMContentLoaded', () => {
-  window.initApp();
+  if (typeof window.initApp === 'function') window.initApp();
 });
 
 window.initApp = function() {
@@ -55,7 +54,7 @@ window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
     // Modal ပွင့်နေချိန် သို့မဟုတ် Screen ပိတ်ထားချိန်တွင် Auto Sync ခဏ ရပ်မည်
-    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden)');
+    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
     window.refreshCurrentTabSilent();
@@ -147,21 +146,35 @@ window.fetchTemplate = async function(path) {
     return await res.text();
   } catch (err) {
     console.error('Template Fetch Error:', err);
-    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path} (Folder နာမည် view သို့မဟုတ် views စစ်ဆေးပါ)</div>`;
+    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
   }
 };
 
 // ===================================================================
-// 4. Modal Dialog Controllers (Fixes ReferenceError: openAddModal is not defined)
+// 4. Smart Modal Dialog Controllers (Fixed Routing for Bank/Cashbook vs Yogi)
 // ===================================================================
 window.openAddModal = function() {
-  if (['12Yogi', '13Yogi'].includes(window.currentSheet)) {
+  const sheet = window.currentSheet || '';
+
+  // 💡 ၁။ အကယ်၍ ယောဂီ စာမျက်နှာ (12Yogi, 13Yogi) ဖြစ်ပါက -> Yogi Modal ကို ဖွင့်မည်
+  if (['12Yogi', '13Yogi'].includes(sheet) || sheet.includes('Yogi')) {
     window.openAddYogiModal();
-  } else if (typeof window.openAddEntryModal === 'function') {
+    return;
+  }
+
+  // 💡 ၂။ အကယ်၍ ဘဏ် / ငွေစာရင်း စာမျက်နှာများ (1CB, 2CB, 4GB စသည်) ဖြစ်ပါက -> ငွေစာရင်း Form ကို ဖွင့်မည်
+  if (typeof window.openAddEntryModal === 'function') {
     window.openAddEntryModal();
+  } else if (typeof window.openBookEntryModal === 'function') {
+    window.openBookEntryModal();
   } else {
-    const modal = document.getElementById('yogi-entry-modal') || document.getElementById('entry-modal');
-    if (modal) modal.classList.remove('hidden');
+    // Fallback: ငွေဝင်/ငွေထွက် စာရင်းသွင်း Modal ကို ပွင့်စေမည်
+    const entryModal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal') || document.getElementById('cashbook-entry-modal');
+    if (entryModal) {
+      entryModal.classList.remove('hidden');
+    } else {
+      console.warn("ငွေစာရင်း Modal မတွေ့ပါ။");
+    }
   }
 };
 
