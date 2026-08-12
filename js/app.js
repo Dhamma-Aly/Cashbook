@@ -1,33 +1,34 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Drives Navigation, Tab Switching, Real-Time Live Sync (Auto-polling 10s),
-// Mobile Sidebar Controls, and Modals for Cashbooks, Inventory & Yogis 
+// Safely handles global declarations to avoid duplicate identifier errors
 // ===================================================================
 
-let currentSheet = 'Home';
-let currentYogiSheet = '12Yogi';
-let autoRefreshTimer = null;
+// Safe Global Variable Assignments (Avoids SyntaxError: Identifier has already been declared)
+window.currentSheet = window.currentSheet || 'Home';
+window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
+window.autoRefreshTimer = window.autoRefreshTimer || null;
+
 const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
 
 document.addEventListener('DOMContentLoaded', () => {
-  initApp();
+  if (typeof window.initApp === 'function') window.initApp();
 });
 
-function initApp() {
-  const user = typeof getCurrentUser === 'function' ? getCurrentUser() : null;
+window.initApp = function() {
+  const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
   if (user) {
-    if (typeof showWorkspace === 'function') showWorkspace();
-    switchTab('Home');
-    startLiveSync(); // Start background real-time sync
+    if (typeof window.showWorkspace === 'function') window.showWorkspace();
+    window.switchTab(window.currentSheet || 'Home');
+    window.startLiveSync(); // Start background real-time sync
   } else {
-    if (typeof showLoginOverlay === 'function') showLoginOverlay();
+    if (typeof window.showLoginOverlay === 'function') window.showLoginOverlay();
   }
-}
+};
 
 // ===================================================================
 // 1. Mobile Sidebar Responsive Controls (Phones & Tablets)
 // ===================================================================
-function toggleMobileSidebar() {
+window.toggleMobileSidebar = function() {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
@@ -37,60 +38,60 @@ function toggleMobileSidebar() {
     sidebar.classList.remove('-translate-x-full');
     if (overlay) overlay.classList.remove('hidden');
   } else {
-    closeMobileSidebar();
+    window.closeMobileSidebar();
   }
-}
+};
 
-function closeMobileSidebar() {
+window.closeMobileSidebar = function() {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (sidebar) sidebar.classList.add('-translate-x-full');
   if (overlay) overlay.classList.add('hidden');
-}
+};
 
 // ===================================================================
 // 2. Real-Time Live Sync Engine (Silent Background Refetching)
 // ===================================================================
-function startLiveSync() {
-  if (autoRefreshTimer) clearInterval(autoRefreshTimer);
-  autoRefreshTimer = setInterval(() => {
+window.startLiveSync = function() {
+  if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
+  window.autoRefreshTimer = setInterval(() => {
     // Modal ပွင့်နေချိန် သို့မဟုတ် Screen ပိတ်ထားချိန်တွင် Auto Sync ခဏ ရပ်မည်
     const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
-    refreshCurrentTabSilent();
+    window.refreshCurrentTabSilent();
   }, LIVE_SYNC_INTERVAL);
-}
+};
 
-function refreshCurrentTabSilent() {
-  // Silent auto refresh without triggering full-screen loading spinner
+window.refreshCurrentTabSilent = function() {
   try {
-    if (['12Yogi', '13Yogi'].includes(currentSheet)) {
-      if (typeof renderYogiView === 'function') renderYogiView(true);
-    } else if (['1CB', '2CB', '3CB'].includes(currentSheet)) {
-      if (typeof loadSheetView === 'function') loadSheetView(true);
-    } else if (['4GB','5FB','6HB','7PB','8EB','9MB','10GB'].includes(currentSheet)) {
-      if (typeof loadSheetView === 'function') loadSheetView(true);
-    } else if (currentSheet === '11Inv') {
-      if (typeof renderInventoryView === 'function') renderInventoryView(true);
-    } else if (currentSheet === 'Home') {
-      if (typeof renderDashboardView === 'function') renderDashboardView(true);
-    } else if (['14Rep', 'Report'].includes(currentSheet)) {
-      if (typeof renderReportView === 'function') renderReportView(true);
+    const sheet = window.currentSheet;
+    if (['12Yogi', '13Yogi'].includes(sheet)) {
+      if (typeof window.renderYogiView === 'function') window.renderYogiView(true);
+    } else if (['1CB', '2CB', '3CB'].includes(sheet)) {
+      if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
+    } else if (['4GB','5FB','6HB','7PB','8EB','9MB','10GB'].includes(sheet)) {
+      if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
+    } else if (sheet === '11Inv') {
+      if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
+    } else if (sheet === 'Home') {
+      if (typeof window.renderDashboardView === 'function') window.renderDashboardView(true);
+    } else if (['14Rep', 'Report'].includes(sheet)) {
+      if (typeof window.renderReportView === 'function') window.renderReportView(true);
     }
   } catch (err) {
     console.warn("Silent Sync Error:", err);
   }
-}
+};
 
 // ===================================================================
 // 3. View Router & Navigation
 // ===================================================================
-async function switchTab(sheetName) {
-  currentSheet = sheetName;
+window.switchTab = async function(sheetName) {
+  window.currentSheet = sheetName;
 
   // Auto close mobile sidebar when a menu item is tapped on mobile
-  closeMobileSidebar();
+  window.closeMobileSidebar();
 
   // Update Page Title in Header
   const titleEl = document.getElementById('page-title');
@@ -109,31 +110,31 @@ async function switchTab(sheetName) {
 
   try {
     if (sheetName === 'Home') {
-      container.innerHTML = await fetchTemplate('view/Dashboard.html');
-      if (typeof renderDashboardView === 'function') renderDashboardView();
+      container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
+      if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
     } else if (['1CB', '2CB', '3CB'].includes(sheetName)) {
-      container.innerHTML = await fetchTemplate('view/Banks.html');
-      if (typeof loadSheetView === 'function') loadSheetView();
+      container.innerHTML = await window.fetchTemplate('view/Banks.html');
+      if (typeof window.loadSheetView === 'function') window.loadSheetView();
     } else if (['4GB','5FB','6HB','7PB','8EB','9MB','10GB'].includes(sheetName)) {
-      container.innerHTML = await fetchTemplate('view/Books.html');
-      if (typeof loadSheetView === 'function') loadSheetView();
+      container.innerHTML = await window.fetchTemplate('view/Books.html');
+      if (typeof window.loadSheetView === 'function') window.loadSheetView();
     } else if (sheetName === '11Inv') {
-      container.innerHTML = await fetchTemplate('view/Inventory.html');
-      if (typeof renderInventoryView === 'function') renderInventoryView();
+      container.innerHTML = await window.fetchTemplate('view/Inventory.html');
+      if (typeof window.renderInventoryView === 'function') window.renderInventoryView();
     } else if (['12Yogi', '13Yogi'].includes(sheetName)) {
-      currentYogiSheet = sheetName;
-      container.innerHTML = await fetchTemplate('view/yogi.html');
-      if (typeof renderYogiView === 'function') renderYogiView();
+      window.currentYogiSheet = sheetName;
+      container.innerHTML = await window.fetchTemplate('view/yogi.html');
+      if (typeof window.renderYogiView === 'function') window.renderYogiView();
     } else if (['14Rep', 'Report'].includes(sheetName)) {
-      container.innerHTML = await fetchTemplate('view/report-system.html');
-      if (typeof renderReportView === 'function') renderReportView();
+      container.innerHTML = await window.fetchTemplate('view/report-system.html');
+      if (typeof window.renderReportView === 'function') window.renderReportView();
     }
   } catch (err) {
     console.error("Tab Switch Render Error:", err);
   }
-}
+};
 
-async function fetchTemplate(path) {
+window.fetchTemplate = async function(path) {
   try {
     let res = await fetch(path);
     
@@ -147,19 +148,19 @@ async function fetchTemplate(path) {
     return await res.text();
   } catch (err) {
     console.error('Template Fetch Error:', err);
-    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path} (Folder နာမည် view သို့မဟုတ် views စစ်ဆေးပါ)</div>`;
+    return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
   }
-}
+};
 
 // ===================================================================
 // 4. Yogi Modal Dialog Controllers
 // ===================================================================
-function openAddYogiModal() {
+window.openAddYogiModal = function() {
   const form = document.getElementById('yogi-entry-form');
   if (!form) return;
 
   form.reset();
-  const title = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[currentYogiSheet]) || 'ယောဂီ';
+  const title = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[window.currentYogiSheet]) || 'ယောဂီ';
   const modalTitle = document.getElementById('yogi-modal-title');
   if (modalTitle) modalTitle.textContent = `${title} - အသစ်ထည့်ရန်`;
 
@@ -167,7 +168,7 @@ function openAddYogiModal() {
   if (uniqueIdEl) uniqueIdEl.value = '';
 
   const sheetTypeEl = document.getElementById('yogi-sheet-type');
-  if (sheetTypeEl) sheetTypeEl.value = currentYogiSheet;
+  if (sheetTypeEl) sheetTypeEl.value = window.currentYogiSheet;
 
   const startDateEl = document.getElementById('yogi-start-date');
   if (startDateEl) startDateEl.value = new Date().toISOString().split('T')[0];
@@ -177,11 +178,11 @@ function openAddYogiModal() {
 
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.remove('hidden');
-}
+};
 
-function openEditYogiModal(uniqueId) {
-  if (typeof allYogiEntries === 'undefined') return;
-  const entry = allYogiEntries.find(item => item.uniqueId === uniqueId);
+window.openEditYogiModal = function(uniqueId) {
+  if (typeof window.allYogiEntries === 'undefined') return;
+  const entry = window.allYogiEntries.find(item => item.uniqueId === uniqueId);
   if (!entry) return;
 
   const modalTitle = document.getElementById('yogi-modal-title');
@@ -193,7 +194,7 @@ function openEditYogiModal(uniqueId) {
   };
 
   setVal('yogi-uniqueId', entry.uniqueId);
-  setVal('yogi-sheet-type', entry.sheet_type || currentYogiSheet);
+  setVal('yogi-sheet-type', entry.sheet_type || window.currentYogiSheet);
   setVal('yogi-start-date', entry.start_date);
   setVal('yogi-category', entry.category || 'လူပုဂ္ဂိုလ်');
   setVal('yogi-name', entry.name);
@@ -220,18 +221,18 @@ function openEditYogiModal(uniqueId) {
 
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.remove('hidden');
-}
+};
 
-function closeYogiModal() {
+window.closeYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.add('hidden');
-}
+};
 
-async function saveYogiEntryForm(e) {
+window.saveYogiEntryForm = async function(e) {
   if (e && e.preventDefault) e.preventDefault();
 
   const uniqueId = document.getElementById('yogi-uniqueId').value.trim() || 'YG_' + Date.now();
-  const sheet_type = document.getElementById('yogi-sheet-type').value || currentYogiSheet;
+  const sheet_type = document.getElementById('yogi-sheet-type').value || window.currentYogiSheet;
   const start_date = document.getElementById('yogi-start-date').value;
   const category = document.getElementById('yogi-category').value;
   const name = document.getElementById('yogi-name').value.trim();
@@ -245,7 +246,7 @@ async function saveYogiEntryForm(e) {
   const nrc = nrcTownship && nrcNumber ? `${nrcState}/${nrcTownship}${nrcType}${nrcNumber}` : '';
 
   const dob = document.getElementById('yogi-dob').value;
-  const age = parseInt(document.getElementById('yogi-age').value) || (typeof calcAgeFromDoB === 'function' ? calcAgeFromDoB(dob) : 0);
+  const age = parseInt(document.getElementById('yogi-age').value) || (typeof window.calcAgeFromDoB === 'function' ? window.calcAgeFromDoB(dob) : 0);
   const gender = document.getElementById('yogi-gender').value;
   const yogi_phone = document.getElementById('yogi-phone').value.trim();
   const home_phone = document.getElementById('yogi-home-phone').value.trim();
@@ -270,13 +271,13 @@ async function saveYogiEntryForm(e) {
     status: 'Active'
   };
 
-  showLoading(true);
+  window.showLoading(true);
   try {
-    if (typeof saveYogiAPI === 'function') {
-      const res = await saveYogiAPI(payload, isEdit);
+    if (typeof window.saveYogiAPI === 'function') {
+      const res = await window.saveYogiAPI(payload, isEdit);
       if (res.success) {
-        closeYogiModal();
-        if (typeof renderYogiView === 'function') renderYogiView();
+        window.closeYogiModal();
+        if (typeof window.renderYogiView === 'function') window.renderYogiView();
       } else {
         alert('သိမ်းဆည်းရာတွင် အမှားရှိပါသည်: ' + (res.error || res.message || ''));
       }
@@ -285,31 +286,31 @@ async function saveYogiEntryForm(e) {
     console.error('Save Yogi Error:', err);
     alert('သိမ်းဆည်းရာတွင် အမှားရှိပါသည်');
   } finally {
-    showLoading(false);
+    window.showLoading(false);
   }
-}
+};
 
 // Input Auto Helper Listeners
-function onYogiNameChange(val) {
+window.onYogiNameChange = function(val) {
   if (!val) return;
   const genderSelect = document.getElementById('yogi-gender');
-  if (genderSelect && typeof detectGenderFromName === 'function') {
-    genderSelect.value = detectGenderFromName(val);
+  if (genderSelect && typeof window.detectGenderFromName === 'function') {
+    genderSelect.value = window.detectGenderFromName(val);
   }
-}
+};
 
-function onYogiDoBChange(val) {
+window.onYogiDoBChange = function(val) {
   if (!val) return;
   const ageInput = document.getElementById('yogi-age');
-  if (ageInput && typeof calcAgeFromDoB === 'function') {
-    ageInput.value = calcAgeFromDoB(val);
+  if (ageInput && typeof window.calcAgeFromDoB === 'function') {
+    ageInput.value = window.calcAgeFromDoB(val);
   }
-}
+};
 
 // Global Loading Spinner
-function showLoading(show) {
+window.showLoading = function(show) {
   const overlay = document.getElementById('loading-overlay');
   if (!overlay) return;
   if (show) overlay.classList.remove('hidden');
   else overlay.classList.add('hidden');
-}
+};
