@@ -1,11 +1,13 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Full Error-Free Version with 2-Column Modal Controllers  
+// Safely handles global declarations to avoid duplicate identifier errors
 // ===================================================================
 
+// Safe Global Variable Assignments (Avoids SyntaxError: Identifier has already been declared)
 window.currentSheet = window.currentSheet || 'Home';
 window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
+
 const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -142,10 +144,8 @@ window.fetchTemplate = async function(path) {
 };
 
 // ===================================================================
-// 4. Modal Dialog Controllers (Fixes ReferenceError: closeEntryModal is not defined)
+// 4. Modal Dialog Controllers
 // ===================================================================
-
-// Modal ဖွင့်ပေးမည့် Function များ
 window.openAddModal = function() {
   const sheet = window.currentSheet || '';
   if (['12Yogi', '13Yogi'].includes(sheet) || sheet.includes('Yogi')) {
@@ -161,7 +161,6 @@ window.openAddEntryModal = function() {
 };
 window.openBookEntryModal = window.openAddEntryModal;
 
-// Modal ပိတ်ပေးမည့် Function များ (Fixes closeEntryModal is not defined)
 window.closeEntryModal = function() {
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal') || document.getElementById('cashbook-entry-modal');
   if (modal) modal.classList.add('hidden');
@@ -169,7 +168,6 @@ window.closeEntryModal = function() {
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
-// Yogi Modal Controllers
 window.openAddYogiModal = function() {
   const form = document.getElementById('yogi-entry-form');
   if (!form) return;
