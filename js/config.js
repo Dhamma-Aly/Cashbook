@@ -31,7 +31,7 @@ window.CONFIG = {
     'Report': 'အသုံးစရိတ် အစီရင်ခံစာ'
   },
 
-  // 👤 Authorized Users / Receivers (လက်ခံသူ / တာဝန်ခံ စာရင်း)
+  // 👤 Authorized Users / Receivers
   RECEIVERS: ['User 1', 'User 2', 'User 3'],
 
   // 🏦 Banks Group Categories & Dependent Subcategories
@@ -73,8 +73,8 @@ window.CONFIG = {
     ]
   },
 
-  // 🧘 Yogi Categories & Options
-  YOGI_CATEGORIES: ['လူပုဂ္ဂိုလ်', 'ရဟန်း', 'သီလရှင်'],
+  // 🧘 Updated Yogi Categories (လူပုဂ္ဂိုလ်၊ ရဟန်း၊ ကိုရင်၊ သီလရှင်၊ ဝေယျာဝိစ္စ)
+  YOGI_CATEGORIES: ['လူပုဂ္ဂိုလ်', 'ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'ဝေယျာဝိစ္စ'],
   YOGI_GENDERS: ['ကျား', 'မ'],
   YOGI_STATUSES: ['Active', 'Inactive'],
 
