@@ -150,7 +150,7 @@ window.fetchTemplate = async function(path) {
 window.openAddModal = function() {
   const sheet = window.currentSheet || '';
   if (['12Yogi', '13Yogi'].includes(sheet) || sheet.includes('Yogi')) {
-    window.openAddYogiModal();
+    if (typeof window.openAddYogiModal === 'function') window.openAddYogiModal();
   } else if (sheet === '11Inv') {
     if (typeof window.openAddInvModal === 'function') window.openAddInvModal();
   } else {
@@ -159,13 +159,47 @@ window.openAddModal = function() {
 };
 
 window.openAddEntryModal = function() {
-  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal') || document.getElementById('cashbook-entry-modal');
-  if (modal) modal.classList.remove('hidden');
+  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
+  if (!modal) return;
+
+  const form = document.getElementById('entry-form');
+  if (form) form.reset();
+
+  const idInput = document.getElementById("entry-id");
+  if (idInput) idInput.value = "";
+
+  const titleEl = document.getElementById("entry-modal-title");
+  if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
+
+  // 📅 ယနေ့ရက်စွဲ (Today's Date YYYY-MM-DD) Auto ဖြည့်ပေးခြင်း
+  const dateInput = document.getElementById("entry-date");
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
+  if (isBank) {
+    const catSelect = document.getElementById("entry-category");
+    if (catSelect) catSelect.value = "စာရင်းဖွင့်";
+    if (typeof window.onBankCategoryChange === 'function') window.onBankCategoryChange("စာရင်းဖွင့်");
+  } else {
+    const typeSelect = document.getElementById("entry-type");
+    if (typeSelect) typeSelect.value = "ဝင်ငွေ";
+    if (typeof window.onBookTypeChange === 'function') window.onBookTypeChange("ဝင်ငွေ");
+  }
+
+  modal.classList.remove('hidden');
 };
 window.openBookEntryModal = window.openAddEntryModal;
 
 window.closeEntryModal = function() {
-  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal') || document.getElementById('cashbook-entry-modal');
+  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 window.closeAddModal = window.closeEntryModal;
@@ -176,7 +210,17 @@ window.openAddYogiModal = function() {
   if (form) form.reset();
   
   const idInput = document.getElementById('yogi-uniqueId');
-  if (idInput) idInput.value = ''; // Reset ID for new entry
+  if (idInput) idInput.value = '';
+
+  // 📅 ယနေ့ရက်စွဲ Auto ဖြည့်ပေးခြင်း
+  const dateInput = document.getElementById('yogi-start-date');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
 
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.remove('hidden');
