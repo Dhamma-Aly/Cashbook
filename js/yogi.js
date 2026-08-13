@@ -60,7 +60,7 @@ function updateYogiKPIs(kpis) {
 }
 
 // -------------------------------------------------------------------
-// 3. Status Tab Switcher (Active vs Inactive)
+// 3. Status Tab Switcher (Active vs Inactive - Deep Navy Slate)
 // -------------------------------------------------------------------
 window.switchYogiStatusTab = function(status) {
   currentYogiStatus = status;
@@ -70,11 +70,11 @@ window.switchYogiStatusTab = function(status) {
   const inactiveBtn = document.getElementById('tab-yogi-inactive');
 
   if (status === 'Active') {
-    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#211912] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   } else {
-    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-rose-300 bg-[#211912] border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-500/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (inactiveBtn) inactiveBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-rose-300 bg-[#1e293b] border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (activeBtn) activeBtn.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   }
 
   applyYogiFilters();
@@ -122,7 +122,7 @@ function renderYogiTable() {
   if (totalEntries === 0) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="14" class="text-center py-8 text-amber-500/60 font-semibold">
+        <td colspan="14" class="text-center py-8 text-amber-400/60 font-semibold">
           <i class="fa-solid fa-users-slash mr-2"></i>
           ${currentYogiStatus === 'Active' ? 'စခန်းတွင်း ယောဂီစာရင်း မရှိပါ' : 'စခန်းထွက်ပြီးသူ ယောဂီစာရင်း မရှိပါ'}
         </td>
@@ -145,21 +145,21 @@ function renderYogiTable() {
     const phoneVal = entry.phone || entry.yogi_phone || '-';
 
     html += `
-      <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/20 text-xs">
+      <tr class="hover:bg-amber-500/5 transition border-b border-amber-500/20 text-xs">
         <td class="text-center font-bold text-amber-400/80 py-3">${srNo}</td>
-        <td class="font-mono text-amber-200">${entry.start_date || '-'}</td>
-        <td class="font-mono ${entry.end_date ? 'text-rose-400 font-bold' : 'text-amber-500/40'}">${entry.end_date || '-'}</td>
+        <td class="font-mono text-slate-300">${entry.start_date || '-'}</td>
+        <td class="font-mono ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${entry.end_date || '-'}</td>
         <td class="font-bold text-amber-300">${entry.category || '-'}</td>
         <td class="font-extrabold text-amber-100">${entry.name || '-'}</td>
-        <td class="text-amber-200/80">${entry.father_name || '-'}</td>
+        <td class="text-slate-300">${entry.father_name || '-'}</td>
         <td class="font-mono text-amber-200">${nrcVal}</td>
-        <td class="font-mono text-amber-200/80">${entry.dob || '-'}</td>
+        <td class="font-mono text-slate-300">${entry.dob || '-'}</td>
         <td class="text-center font-bold text-amber-300">${entry.age || '-'}</td>
         <td class="text-center font-bold ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${entry.gender || '-'}</td>
         <td class="font-mono text-amber-200">${phoneVal}</td>
-        <td class="font-mono text-amber-200/80">${entry.home_phone || '-'}</td>
-        <td class="truncate max-w-[220px] text-amber-200/80" title="${entry.address || ''}">${entry.address || '-'}</td>
-        <td class="text-center right-0 sticky bg-[#0a0806] z-10 px-2 py-1.5 border-l border-amber-900/30">
+        <td class="font-mono text-slate-300">${entry.home_phone || '-'}</td>
+        <td class="truncate max-w-[220px] text-slate-300" title="${entry.address || ''}">${entry.address || '-'}</td>
+        <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-2 py-1.5 border-l border-amber-500/20">
           <div class="flex items-center justify-center gap-1.5">
             <button onclick="openEditYogiModal('${uid}')" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer" title="ပြင်ဆင်မည်">
               <i class="fa-solid fa-pen-to-square"></i>
