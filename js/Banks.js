@@ -1,11 +1,11 @@
 // ===================================================================
-// js/Banks.js - Bank Group Table Renderer & Controller EXCLUSIVELY for (1CB, 2CB, 3CB)
+// js/Banks.js - Bank & Book Ledger Table Renderer (1CB~3CB, 4GB~10GB)
 // ===================================================================
 
-const BANK_ROWS_PER_PAGE = 30;
-let bankCurrentPage = 1;
-let bankAllEntries = [];      // Dataset for active bank sheet (latest first)
-let bankFilteredEntries = []; // Filtered by search query
+const LEDGER_ROWS_PER_PAGE = 30;
+let ledgerCurrentPage = 1;
+let ledgerAllEntries = [];      // Full dataset for the current sheet (latest first)
+let ledgerFilteredEntries = []; // After search filter
 
 // Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
 function formatMonthYear(dateStr) {
@@ -19,45 +19,36 @@ function formatMonthYear(dateStr) {
   return `${m}-${y}`;
 }
 
-// -------------------------------------------------------------------
-// 1. Render Bank View Entry Point (Only for 1CB, 2CB, 3CB)
-// -------------------------------------------------------------------
+// Render Function Main Entry
 window.renderBankView = async function(sheetKey) {
   let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
-  
-  // Safeguard: Force valid Bank sheets (1CB, 2CB, 3CB)
-  if (!['1CB', '2CB', '3CB'].includes(targetSheet)) {
-    targetSheet = '1CB';
+  if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
+    targetSheet = String(window.currentSheet || '1CB').trim();
   }
-  
   window.currentSheetKey = targetSheet;
-  bankCurrentPage = 1;
+  ledgerCurrentPage = 1;
 
   try {
     const res = await window.fetchSheetData(window.currentSheetKey);
     if (res && res.success) {
-      bankAllEntries = (res.data || []).slice().reverse();
-      updateBankKPIs(res.kpis);
+      ledgerAllEntries = (res.data || []).slice().reverse();
+      updateLedgerKPIs(res.kpis);
     } else {
-      bankAllEntries = [];
-      updateBankKPIs(null);
+      ledgerAllEntries = [];
+      updateLedgerKPIs(null);
     }
   } catch (error) {
-    console.error("Error fetching Bank ledger data:", error);
-    bankAllEntries = [];
-    updateBankKPIs(null);
+    console.error("Error fetching ledger data:", error);
+    ledgerAllEntries = [];
+    updateLedgerKPIs(null);
   }
 
-  applyBankSearchFilter();
+  applyLedgerSearchFilter();
 };
 
-// Alias Link for app.js and HTML refresh button
 window.loadSheetView = window.renderBankView;
 
-// -------------------------------------------------------------------
-// 2. Update Bank KPI Cards
-// -------------------------------------------------------------------
-function updateBankKPIs(kpis) {
+function updateLedgerKPIs(kpis) {
   const k = kpis || { totalIncome: 0, totalExpense: 0, balance: 0, count: 0 };
   const setText = (id, val) => {
     const el = document.getElementById(id);
@@ -69,22 +60,14 @@ function updateBankKPIs(kpis) {
   setText("kpi-count", (k.count || 0).toLocaleString());
 }
 
-// -------------------------------------------------------------------
-// 3. Search Filter & Table Rendering
-// -------------------------------------------------------------------
-window.onLedgerSearchInput = function() {
-  bankCurrentPage = 1;
-  applyBankSearchFilter();
-};
-
-function applyBankSearchFilter() {
+function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
   const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
   if (!query) {
-    bankFilteredEntries = bankAllEntries;
+    ledgerFilteredEntries = ledgerAllEntries;
   } else {
-    bankFilteredEntries = bankAllEntries.filter(e => {
+    ledgerFilteredEntries = ledgerAllEntries.filter(e => {
       const my = formatMonthYear(e.entry_date || e.month_year);
       return [
         e.entry_date, e.category, e.subcategory, e.voucher_no, 
@@ -93,21 +76,21 @@ function applyBankSearchFilter() {
     });
   }
 
-  renderBankTable();
+  renderLedgerTable();
 }
 
-function renderBankTable() {
+function renderLedgerTable() {
   const tbody = document.getElementById("table-body");
   if (!tbody) return;
 
-  const total = bankFilteredEntries.length;
-  const maxPage = Math.max(1, Math.ceil(total / BANK_ROWS_PER_PAGE));
-  if (bankCurrentPage > maxPage) bankCurrentPage = maxPage;
-  if (bankCurrentPage < 1) bankCurrentPage = 1;
+  const total = ledgerFilteredEntries.length;
+  const maxPage = Math.max(1, Math.ceil(total / LEDGER_ROWS_PER_PAGE));
+  if (ledgerCurrentPage > maxPage) ledgerCurrentPage = maxPage;
+  if (ledgerCurrentPage < 1) ledgerCurrentPage = 1;
 
-  const start = (bankCurrentPage - 1) * BANK_ROWS_PER_PAGE;
-  const end = Math.min(start + BANK_ROWS_PER_PAGE, total);
-  const pageRows = bankFilteredEntries.slice(start, end);
+  const start = (ledgerCurrentPage - 1) * LEDGER_ROWS_PER_PAGE;
+  const end = Math.min(start + LEDGER_ROWS_PER_PAGE, total);
+  const pageRows = ledgerFilteredEntries.slice(start, end);
 
   let tableHTML = "";
 
@@ -123,7 +106,6 @@ function renderBankTable() {
       const isIncome = entry.category === "ဝင်ငွေ";
       const monthYearFormatted = formatMonthYear(entry.entry_date || entry.month_year);
 
-      // Distinct Font Color Formatting for Financial Figures & Metadata
       const incomeHtml = income ? `<span class="text-emerald-400 font-mono font-bold">${income.toLocaleString()}</span>` : '<span class="text-slate-600">-</span>';
       const expenseHtml = expense ? `<span class="text-rose-400 font-mono font-bold">${expense.toLocaleString()}</span>` : '<span class="text-slate-600">-</span>';
       const balanceHtml = `<span class="text-amber-300 font-mono font-black">${balance.toLocaleString()}</span>`;
@@ -168,28 +150,30 @@ function renderBankTable() {
 
   const btnPrev = document.getElementById("btn-prev-page");
   const btnNext = document.getElementById("btn-next-page");
-  if (btnPrev) btnPrev.disabled = bankCurrentPage <= 1;
+  if (btnPrev) btnPrev.disabled = ledgerCurrentPage <= 1;
   if (btnNext) btnNext.disabled = end >= total;
 }
 
+window.onLedgerSearchInput = function() {
+  ledgerCurrentPage = 1;
+  applyLedgerSearchFilter();
+};
+
 window.prevPage = function() {
-  if (bankCurrentPage > 1) {
-    bankCurrentPage--;
-    renderBankTable();
+  if (ledgerCurrentPage > 1) {
+    ledgerCurrentPage--;
+    renderLedgerTable();
   }
 };
 
 window.nextPage = function() {
-  const maxPage = Math.max(1, Math.ceil(bankFilteredEntries.length / BANK_ROWS_PER_PAGE));
-  if (bankCurrentPage < maxPage) {
-    bankCurrentPage++;
-    renderBankTable();
+  const maxPage = Math.max(1, Math.ceil(ledgerFilteredEntries.length / LEDGER_ROWS_PER_PAGE));
+  if (ledgerCurrentPage < maxPage) {
+    ledgerCurrentPage++;
+    renderLedgerTable();
   }
 };
 
-// -------------------------------------------------------------------
-// 4. Bank Dynamic Subcategories Handler (စာရင်းဖွင့်, ဘဏ်အပ်ငွေ, ဘဏ်ထုတ်ငွေ)
-// -------------------------------------------------------------------
 window.onBankCategoryChange = function(cat) {
   const subSelect = document.getElementById("entry-subcategory");
   if (!subSelect) return;
@@ -200,33 +184,22 @@ window.onBankCategoryChange = function(cat) {
   subSelect.innerHTML = bankSubcats.map(s => `<option value="${s}">${s}</option>`).join('');
 };
 
-// Open Add Entry Modal for Bank
-window.openAddEntryModal = function() {
-  const modal = document.getElementById('entry-modal');
-  if (!modal) return;
+window.onBookTypeChange = function(type) {
+  const subSelect = document.getElementById("entry-subcategory");
+  if (!subSelect) return;
 
-  const form = document.getElementById('entry-form');
-  if (form) form.reset();
+  const subcats = (window.CONFIG && window.CONFIG.SUBCATEGORIES && window.CONFIG.SUBCATEGORIES[type])
+    || (type === 'ဝင်ငွေ' ? ['လှူဒါန်းငွေ', 'အသင်းဝင်ကြေး', 'အခြားဝင်ငွေ'] : ['ဆွမ်းစရိတ်', 'လျှပ်စစ်ဖိုး', 'အထွေထွေစရိတ်']);
 
-  const idInput = document.getElementById("entry-id");
-  if (idInput) idInput.value = "";
-
-  const titleEl = document.getElementById("entry-modal-title");
-  if (titleEl) titleEl.textContent = "ဘဏ်စာရင်းအသစ် သွင်းယူရန်";
-
-  const dateInput = document.getElementById("entry-date");
-  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-
-  const catSelect = document.getElementById("entry-category");
-  if (catSelect) catSelect.value = "စာရင်းဖွင့်";
-  window.onBankCategoryChange("စာရင်းဖွင့်");
-
-  modal.classList.remove('hidden');
+  subSelect.innerHTML = subcats.map(s => `<option value="${s}">${s}</option>`).join('');
 };
 
-// -------------------------------------------------------------------
-// 5. Save Entry Form Submission
-// -------------------------------------------------------------------
+window.openAddEntryModal = function() {
+  if (typeof window.openAddEntryModal === 'function') {
+    // Rely on app.js controller
+  }
+};
+
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -241,15 +214,17 @@ window.saveEntryForm = async function(event) {
   const voucher_no = document.getElementById("entry-voucher").value;
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
   const receiver = document.getElementById("entry-receiver").value;
-  
-  // 💡 မူရင်း ရိုက်ထည့်လိုက်သည့် အကြောင်းအရာ သီးသန့်ကိုသာ သိမ်းဆည်းမည်
   const description = document.getElementById("entry-description").value.trim();
 
   const income = category === "ဝင်ငွေ" ? amount : 0;
   const expense = category === "ထွက်ငွေ" ? amount : 0;
   const month_year = formatMonthYear(entry_date);
 
-  const sheet_name = window.currentSheetKey || '1CB';
+  let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  if (sheet_name === 'true' || sheet_name === 'false' || sheet_name === '1' || sheet_name === '1.0') {
+    sheet_name = String(window.currentSheet || '1CB').trim();
+  }
+
   const bookName = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[sheet_name]) || sheet_name;
 
   const isEdit = !!uniqueId;
@@ -276,26 +251,25 @@ window.saveEntryForm = async function(event) {
       window.closeEntryModal();
       await window.renderBankView(sheet_name);
     } else {
-      alert("ဘဏ်စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+      alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
     }
   } catch (err) {
-    console.error("Save Bank Entry Error:", err);
-    alert("ဘဏ်စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
+    console.error("Save Entry Error:", err);
+    alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
   } finally {
     window.showLoading(false);
   }
 };
 
-// Edit Entry
 window.editEntry = function(uid) {
-  const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
+  const entry = ledgerAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
 
-  const modal = document.getElementById('entry-modal');
+  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (modal) modal.classList.remove('hidden');
 
   const titleEl = document.getElementById("entry-modal-title");
-  if (titleEl) titleEl.textContent = "ဘဏ်စာရင်း ပြင်ဆင်ရန်";
+  if (titleEl) titleEl.textContent = "စာရင်း ပြင်ဆင်ရန်";
 
   const type = entry.category || "ဝင်ငွေ";
 
@@ -303,9 +277,16 @@ window.editEntry = function(uid) {
   document.getElementById("entry-date").value = entry.entry_date || "";
   document.getElementById("entry-type").value = type;
 
-  const catSelect = document.getElementById("entry-category");
-  if (catSelect) catSelect.value = entry.subcategory || "စာရင်းဖွင့်";
-  window.onBankCategoryChange(entry.subcategory || "စာရင်းဖွင့်");
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
+  if (isBank) {
+    const catSelect = document.getElementById("entry-category");
+    if (catSelect) catSelect.value = entry.subcategory || "စာရင်းဖွင့်";
+    window.onBankCategoryChange(entry.subcategory || "စာရင်းဖွင့်");
+  } else {
+    window.onBookTypeChange(type);
+  }
 
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
   document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
@@ -316,29 +297,27 @@ window.editEntry = function(uid) {
   document.getElementById("entry-description").value = entry.description || "";
 };
 
-// Delete Entry
 window.deleteEntry = async function(uid) {
-  if (!confirm("ဤဘဏ်စာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+  if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
 
   window.showLoading(true);
   try {
     const res = await window.deleteCashbookEntryAPI(uid);
     if (res && res.success) {
-      await window.renderBankView(window.currentSheetKey);
+      await window.renderBankView(window.currentSheetKey || window.currentSheet);
     } else {
       alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
     }
   } catch (err) {
-    console.error("Delete Bank Entry Error:", err);
+    console.error("Delete Entry Error:", err);
     alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
   } finally {
     window.showLoading(false);
   }
 };
 
-// Export to CSV
 window.exportCSV = function() {
-  if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
+  if (!ledgerFilteredEntries || ledgerFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
     return;
   }
@@ -346,7 +325,7 @@ window.exportCSV = function() {
   let csv = "\uFEFF";
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,အကြောင်းအရာ,လက်ခံသူ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,လနှစ်,စာအုပ်အမည်\n";
 
-  bankFilteredEntries.forEach((e, idx) => {
+  ledgerFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
     const my = formatMonthYear(e.entry_date || e.month_year);
     csv += [
@@ -359,6 +338,6 @@ window.exportCSV = function() {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${window.currentSheetKey || 'bank'}_export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `${window.currentSheetKey || 'ledger'}_export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
