@@ -10,7 +10,6 @@ const getApiBaseUrl = () => {
   if (typeof window.APP_CONFIG !== 'undefined' && window.APP_CONFIG.API_BASE_URL) {
     return window.APP_CONFIG.API_BASE_URL;
   }
-  // Fallback URL (Fix: dhammaaly - Hyphen မပါပါ)
   return 'https://cashbook-api.dhammaaly.workers.dev';
 };
 
@@ -18,7 +17,7 @@ const getApiBaseUrl = () => {
 async function safeApiRequest(endpoint, options = {}) {
   const url = `${getApiBaseUrl()}${endpoint}`;
   
-  // Headers ရောစပ်ခြင်း (Safe Merge)
+  // Headers merge
   const headers = {
     'Content-Type': 'application/json',
     ...(options.headers || {})
@@ -91,7 +90,7 @@ window.fetchHomeSummary = async function() {
 window.fetchHomeSummaryAPI = window.fetchHomeSummary;
 
 // -------------------------------------------------------------------
-// 3. Yogi Management API (12Yogi & 13Yogi)
+// 3. Yogi Management API (12Yogi & 13Yogi - Active ↔ Inactive Togglable)
 // -------------------------------------------------------------------
 window.fetchYogiDataAPI = async function(sheetType = '12Yogi', statusFilter = null) {
   let ep = `/api/yogi?sheet=${encodeURIComponent(sheetType)}`;
@@ -106,8 +105,17 @@ window.saveYogiAPI = async function(data, isEdit = false) {
   });
 };
 
+// စခန်းထွက်ပေးမည် (Active -> Inactive)
 window.checkoutYogiAPI = async function(payload) {
   return await safeApiRequest('/api/yogi/checkout', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  });
+};
+
+// 🔄 စခန်းတွင်း ပြန်လည်ဝင်မည် (Inactive -> Active)
+window.reactivateYogiAPI = async function(payload) {
+  return await safeApiRequest('/api/yogi/reactivate', {
     method: 'PUT',
     body: JSON.stringify(payload)
   });
