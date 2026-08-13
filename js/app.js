@@ -1,6 +1,6 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Safely handles global declarations to avoid duplicate identifier errors
+// Safely handles global declarations to avoid duplicate identifier errors 
 // ===================================================================
 
 // Safe Global Variable Assignments (Avoids SyntaxError)
