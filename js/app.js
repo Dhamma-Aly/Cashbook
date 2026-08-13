@@ -1,6 +1,6 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Safely handles global declarations to avoid duplicate identifier errors 
+// Safely handles global declarations to avoid duplicate identifier errors
 // ===================================================================
 
 // Safe Global Variable Assignments (Avoids SyntaxError)
@@ -131,15 +131,22 @@ window.switchTab = async function(sheetName) {
 
 window.fetchTemplate = async function(path) {
   try {
-    let res = await fetch(path);
-    if (!res.ok && path.startsWith('view/')) {
-      const fallbackPath = path.replace('view/', 'views/');
+    let targetPath = path.startsWith('./') ? path : `./${path}`;
+    let res = await fetch(targetPath);
+    
+    if (!res.ok && targetPath.includes('view/')) {
+      const fallbackPath = targetPath.replace('view/', 'views/');
       res = await fetch(fallbackPath);
     }
+    
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
     return await res.text();
   } catch (err) {
     console.error('Template Fetch Error:', err);
+    try {
+      let directRes = await fetch(path);
+      if (directRes.ok) return await directRes.text();
+    } catch (e) {}
     return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
   }
 };
