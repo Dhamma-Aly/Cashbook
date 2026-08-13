@@ -6,7 +6,7 @@
  * - Direct D1 Cloudflare Worker Authentication
  * - No hardcoded passwords in frontend
  * - Auto-clears legacy sessions on Version Update
- * - Handles workspace & login overlay toggling
+ * - Direct Fail-Proof Logout with Instant Reload
  */
 
 (function () {
@@ -165,23 +165,16 @@
     }
   };
 
-  // 6. Logout Handlers
+  // 6. Direct Fail-Proof Logout Handler (၁၀၀% စိတ်ချရသော Logout)
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
-      window.handleLogoutSilent();
+      localStorage.clear();
+      window.location.reload();
     }
   };
 
   window.handleLogoutSilent = function () {
-    localStorage.removeItem("sasana_auth_token");
-    localStorage.removeItem("sasana_user_name");
-    localStorage.removeItem("sasana_user_role");
-    localStorage.removeItem("sasana_token_expires_at");
-
-    localStorage.removeItem("yogi_auth_token");
-    localStorage.removeItem("yogi_user_name");
-    localStorage.removeItem("yogi_token_expires_at");
-
+    localStorage.clear();
     window.showLoginOverlay();
   };
 
