@@ -2,9 +2,6 @@
 // js/Banks.js - Bank & Book Ledger Table Renderer (1CB~3CB, 4GB~10GB)
 // Backend returns { success, data: [ {entry objects} ], kpis } via
 // GET /api/entries?sheet=... (see cashbook-api/handlers-books.js).
-// Each entry object has: id, uniqueId, sheet_name, entry_date, category
-// (ဝင်ငွေ/ထွက်ငွေ), subcategory, voucher_no, description, receiver,
-// income, expense, balance (running), month_year, book_name.
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 30;
@@ -14,7 +11,12 @@ let ledgerFilteredEntries = []; // After search filter
 
 // Render Function Main Entry
 window.renderBankView = async function(sheetKey) {
-  window.currentSheetKey = sheetKey || window.currentSheet || '1CB';
+  // Strict String Extraction for currentSheetKey (Safeguard against boolean true/false or '1.0')
+  let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
+  if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
+    targetSheet = String(window.currentSheet || '1CB').trim();
+  }
+  window.currentSheetKey = targetSheet;
   ledgerCurrentPage = 1;
 
   try {
@@ -109,10 +111,10 @@ function renderLedgerTable() {
           <td class="text-right font-mono font-black text-amber-300">${balance.toLocaleString()}</td>
           <td class="font-mono text-xs text-amber-500/60">${entry.month_year || "-"}</td>
           <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "-"}</td>
-          <td class="text-center right-0 sticky bg-[#0a0806] px-3">
+          <td class="text-center right-0 sticky bg-[#080d1a] px-3">
             <div class="flex items-center justify-center gap-2">
-              <button onclick="editEntry('${uid}')" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteEntry('${uid}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="editEntry('${uid}')" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteEntry('${uid}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer" title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -159,16 +161,26 @@ window.nextPage = function() {
 };
 
 // ===================================================================
-// Dynamic Category Dropdown (ဝင်ငွေ / ထွက်ငွေ အလိုက် Auto ပြောင်းရန်)
+// Bank & Book Subcategory Handlers
 // ===================================================================
-window.populateCategories = function(type = 'ဝင်ငွေ', selectedCat = '') {
-  const catSelect = document.getElementById("entry-category");
-  if (!catSelect) return;
+window.onBankCategoryChange = function(cat) {
+  const subSelect = document.getElementById("entry-subcategory");
+  if (!subSelect) return;
 
-  const subcats = (window.CONFIG && window.CONFIG.SUBCATEGORIES && window.CONFIG.SUBCATEGORIES[type]) 
-    || (type === 'ဝင်ငွေ' ? ['လှူဒါန်းငွေ', 'အသင်းဝင်ကြေး', 'ပဒေသာပင်လှူငွေ', 'အခြားဝင်ငွေ'] : ['ဆွမ်းစရိတ်', 'လျှပ်စစ်ဖိုး', 'ဆေးဝါးစရိတ်', 'ပြုပြင်ထိန်းသိမ်းစရိတ်', 'အထွေထွေစရိတ်']);
+  const bankSubcats = (window.CONFIG && window.CONFIG.BANK_SUBCATEGORIES && window.CONFIG.BANK_SUBCATEGORIES[cat])
+    || ['အထွေထွေ စာရင်းဖွင့်', 'အခြား'];
 
-  catSelect.innerHTML = subcats.map(c => `<option value="${c}" ${c === selectedCat ? 'selected' : ''}>${c}</option>`).join('');
+  subSelect.innerHTML = bankSubcats.map(s => `<option value="${s}">${s}</option>`).join('');
+};
+
+window.onBookTypeChange = function(type) {
+  const subSelect = document.getElementById("entry-subcategory");
+  if (!subSelect) return;
+
+  const subcats = (window.CONFIG && window.CONFIG.SUBCATEGORIES && window.CONFIG.SUBCATEGORIES[type])
+    || (type === 'ဝင်ငွေ' ? ['လှူဒါန်းငွေ', 'အသင်းဝင်ကြေး', 'အခြားဝင်ငွေ'] : ['ဆွမ်းစရိတ်', 'လျှပ်စစ်ဖိုး', 'အထွေထွေစရိတ်']);
+
+  subSelect.innerHTML = subcats.map(s => `<option value="${s}">${s}</option>`).join('');
 };
 
 // ===================================================================
@@ -192,18 +204,21 @@ window.openAddEntryModal = function() {
   const dateInput = document.getElementById("entry-date");
   if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
 
-  // Default Categories for "ဝင်ငွေ"
-  window.populateCategories('ဝင်ငွေ');
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
+  if (isBank) {
+    const catSelect = document.getElementById("entry-category");
+    if (catSelect) catSelect.value = "စာရင်းဖွင့်";
+    window.onBankCategoryChange("စာရင်းဖွင့်");
+  } else {
+    const typeSelect = document.getElementById("entry-type");
+    if (typeSelect) typeSelect.value = "ဝင်ငွေ";
+    window.onBookTypeChange("ဝင်ငွေ");
+  }
 
   modal.classList.remove('hidden');
 };
-
-// Event Listener for Entry Type Change (ဝင်ငွေ/ထွက်ငွေ)
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'entry-type') {
-    window.populateCategories(e.target.value);
-  }
-});
 
 // ===================================================================
 // Save Entry Form Submission
@@ -215,17 +230,25 @@ window.saveEntryForm = async function(event) {
   const entry_date = document.getElementById("entry-date").value;
   const category = document.getElementById("entry-type").value; // ဝင်ငွေ / ထွက်ငွေ
   const subcategory = document.getElementById("entry-category").value;
-  const extraNote = document.getElementById("entry-subcategory") ? document.getElementById("entry-subcategory").value : "";
+  
+  const subcatEl = document.getElementById("entry-subcategory");
+  const extraNote = subcatEl ? subcatEl.value : "";
+  
   const voucher_no = document.getElementById("entry-voucher").value;
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
   const receiver = document.getElementById("entry-receiver").value;
   let description = document.getElementById("entry-description").value;
-  if (extraNote) description = description ? `${description} (${extraNote})` : extraNote;
 
   const income = category === "ဝင်ငွေ" ? amount : 0;
   const expense = category === "ထွက်ငွေ" ? amount : 0;
   const month_year = entry_date ? entry_date.substring(0, 7) : "";
-  const sheet_name = window.currentSheetKey || window.currentSheet || '1CB';
+
+  // 🛡️ Strict String Extraction for sheet_name (Prevents boolean true/false or '1.0' bug)
+  let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  if (sheet_name === 'true' || sheet_name === 'false' || sheet_name === '1' || sheet_name === '1.0') {
+    sheet_name = String(window.currentSheet || '1CB').trim();
+  }
+
   const bookName = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[sheet_name]) || sheet_name;
 
   const isEdit = !!uniqueId;
@@ -235,6 +258,7 @@ window.saveEntryForm = async function(event) {
     entry_date,
     category,
     subcategory,
+    subcategory_detail: extraNote,
     voucher_no,
     description,
     receiver,
@@ -280,15 +304,23 @@ window.editEntry = function(uid) {
   document.getElementById("entry-date").value = entry.entry_date || "";
   document.getElementById("entry-type").value = type;
 
-  // Populate dynamic category dropdown first
-  window.populateCategories(type, entry.subcategory || "");
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
 
-  const subcatInput = document.getElementById("entry-subcategory");
-  if (subcatInput) subcatInput.value = "";
+  if (isBank) {
+    const catSelect = document.getElementById("entry-category");
+    if (catSelect) catSelect.value = entry.subcategory || "စာရင်းဖွင့်";
+    window.onBankCategoryChange(entry.subcategory || "စာရင်းဖွင့်");
+  } else {
+    window.onBookTypeChange(type);
+  }
 
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
   document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
-  document.getElementById("entry-receiver").value = entry.receiver || "";
+  
+  const recSelect = document.getElementById("entry-receiver");
+  if (recSelect) recSelect.value = entry.receiver || "";
+
   document.getElementById("entry-description").value = entry.description || "";
 };
 
