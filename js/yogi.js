@@ -1,5 +1,5 @@
 // ===================================================================
-// js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi)
+// js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi) 
 // Features Flicker-Free Silent Background Sync, DoB Auto-Age,
 // Name Prefix Auto-Gender, NRC Assembly, and Post/Checkout
 // ===================================================================
