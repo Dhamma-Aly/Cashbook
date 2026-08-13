@@ -1,22 +1,14 @@
-/* sw.js - Sāsana ERP Progressive Web App (PWA) Service Worker */
+// ===================================================================
+// sw.js - Sāsana ERP PWA Service Worker (V3.0 Final Cache Fix)
+// ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v3.0.0';
-
-// Offline အသုံးပြုနိုင်ရန် Cache လုပ်ထားမည့် ဖိုင်များ စာရင်း
+const CACHE_NAME = 'sasana-erp-v3.0-final-cache';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './avicon.svg',
-  './css/tailwind.build.css',
-  './css/fontawesome.min.css',
   './css/style.css',
-  './view/Dashboard.html',
-  './view/Banks.html',
-  './view/Books.html',
-  './view/Inventory.html',
-  './view/yogi.html',
-  './view/report-system.html',
+  './css/tailwind.build.css',
   './js/config.js',
   './js/api.js',
   './js/auth.js',
@@ -26,65 +18,73 @@ const ASSETS_TO_CACHE = [
   './js/Inventory.js',
   './js/yogi.js',
   './js/report-system.js',
-  './js/app.js'
+  './js/app.js',
+  './view/Dashboard.html',
+  './view/Banks.html',
+  './view/Books.html',
+  './view/Inventory.html',
+  './view/yogi.html',
+  './view/report-system.html'
 ];
 
-// 1. Service Worker Install Event - Assets များကို Cache ထဲသို့ သိမ်းဆည်းခြင်း
-self.addEventListener('install', (event) => {
+// Install Event - Precache all view templates and core assets
+self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Sāsana ERP SW] Caching all core assets');
-      return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('PWA Precache Error:', err));
+    })
   );
 });
 
-// 2. Service Worker Activate Event - Cache အဟောင်းများကို သန့်ရှင်းရေးလုပ်ခြင်း
-self.addEventListener('activate', (event) => {
+// Activate Event - Clean old legacy caches
+self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then(keys => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('[Sāsana ERP SW] Deleting old cache:', cache);
-            return caches.delete(cache);
-          }
-        })
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
       );
     }).then(() => self.clients.claim())
   );
 });
 
-// 3. Service Worker Fetch Event - Network First with Cache Fallback Strategy
-self.addEventListener('fetch', (event) => {
-  // GET မဟုတ်သော Request များ သို့မဟုတ် External API Call များကို ကျော်မည်
-  if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin)) {
+// Fetch Event Handler (Bypass /api/ calls & Cache-First for Views)
+self.addEventListener('fetch', event => {
+  const url = new URL(event.request.url);
+
+  // 1. Bypass API Requests (Always go to Cloudflare Worker API)
+  if (url.pathname.includes('/api/')) {
+    event.respondWith(
+      fetch(event.request).catch(() => new Response(JSON.stringify({ success: false, error: 'Network Error' }), {
+        headers: { 'Content-Type': 'application/json' }
+      }))
+    );
     return;
   }
 
+  // 2. Static Assets & HTML View Templates Cache Strategy
   event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Network မှ ရရှိပါက Cache ထဲတွင်လည်း အသစ်ပြန်လည် အစားထိုးမည်
-        if (response && response.status === 200 && response.type === 'basic') {
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+    caches.match(event.request).then(cachedResponse => {
+      if (cachedResponse) {
+        // Return cached asset & update cache in background
+        fetch(event.request).then(networkResponse => {
+          if (networkResponse && networkResponse.status === 200) {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse));
+          }
+        }).catch(() => {});
+        return cachedResponse;
+      }
+
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200 && event.request.method === 'GET') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => cache.put(event.request, responseToCache));
         }
-        return response;
-      })
-      .catch(() => {
-        // Network မရပါက (Offline ဖြစ်နေပါက) Cache ထဲမှ ဖိုင်ကို ယူသုံးမည်
-        return caches.match(event.request).then((cachedResponse) => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Page Navigation ဖြစ်ပါက index.html သို့ ပြန်ညွှန်းမည်
-          if (event.request.mode === 'navigate') {
-            return caches.match('./index.html');
-          }
-        });
-      })
+        return networkResponse;
+      });
+    }).catch(err => {
+      console.warn('PWA Fetch fallback error:', err);
+      return fetch(event.request);
+    })
   );
 });
