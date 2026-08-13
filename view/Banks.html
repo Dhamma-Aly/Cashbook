@@ -1,8 +1,8 @@
-<!-- view/Banks.html - Fully Refined Banks Group View & Modal (Deep Navy Slate Theme) -->
+<!-- view/Banks.html - Fully Refined Banks Group View & Modal -->
 
 <div class="space-y-5">
   
-  <!-- Top 4 KPI Cards (Inherits .stats-card from style.css) -->
+  <!-- Top 4 KPI Cards -->
   <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
@@ -34,11 +34,13 @@
     </div>
   </div>
 
-  <!-- Action Bar (Sleek Translucent Search Box & Deep Navy Slate Bar) -->
+  <!-- Action Bar (Sleek Translucent Search Box with Magnifying Glass Icon) -->
   <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl">
-    <!-- Search Box (Translucent Glassmorphism) -->
+    
+    <!-- Search Box with Icon -->
     <div class="w-full md:w-1/2 relative">
-      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a] border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
     </div>
 
     <!-- Right Action Buttons -->
@@ -60,7 +62,7 @@
           <th class="w-36 py-3.5 px-2">ခေါင်းစဉ်ခွဲ</th>
           <th class="w-28 py-3.5 px-2">ဘောင်ချာ</th>
           <th class="min-w-[280px] py-3.5 px-2">အကြောင်းအရာ</th>
-          <th class="w-28 py-3.5 px-2">လက်ခံသူ</th>
+          <th class="w-32 py-3.5 px-2">လက်ခံသူ</th>
           <th class="w-32 text-right py-3.5 px-2">ဝင်ငွေ</th>
           <th class="w-32 text-right py-3.5 px-2">ထွက်ငွေ</th>
           <th class="w-32 text-right py-3.5 px-2">လက်ကျန်</th>
@@ -79,7 +81,7 @@
     </table>
   </div>
 
-  <!-- Pagination Bar (Deep Navy Slate) -->
+  <!-- Pagination Bar -->
   <div id="ledger-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-5 py-3 rounded-xl gap-4 text-xs">
     <div class="text-amber-200/80 font-medium">
       Showing <span id="page-start" class="font-bold text-amber-400">0</span> to <span id="page-end" class="font-bold text-amber-400">0</span> of <span id="total-entries" class="font-bold text-amber-400">0</span> entries
@@ -97,12 +99,12 @@
 
 </div>
 
-<!-- 💡 STANDARD COMPACT MODAL (Zero Overlapping Guarantee) -->
+<!-- 💡 SPACIOUS COMPACT MODAL (620px Max-Width - 18px Vertical Gap - Zero Overlapping) -->
 <div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
-  <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
+  <div style="width: 100% !important; max-width: 620px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
     <!-- Modal Header -->
-    <div style="padding: 14px 20px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; shrink: 0;">
+    <div style="padding: 16px 22px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; shrink: 0;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 32px; height: 32px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
           <i class="fa-solid fa-file-circle-plus"></i>
@@ -116,13 +118,13 @@
       </button>
     </div>
 
-    <!-- Modal Form Body -->
-    <form id="entry-form" onsubmit="saveEntryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 14px !important; overflow-y: auto !important; flex: 1 !important;">
+    <!-- Modal Form Body (Spacious 18px Vertical Gap) -->
+    <form id="entry-form" onsubmit="saveEntryForm(event)" style="padding: 22px !important; display: flex !important; flex-direction: column !important; gap: 18px !important; overflow-y: auto !important; flex: 1 !important;">
       
       <input type="hidden" id="entry-id" value="">
 
       <!-- Row 1: Date & Type -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
           <input type="date" id="entry-date" required style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
@@ -138,7 +140,7 @@
       </div>
 
       <!-- Row 2: Category & Subcategory -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ် (Category)</label>
           <select id="entry-category" onchange="onBankCategoryChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
@@ -157,7 +159,7 @@
       </div>
 
       <!-- Row 3: Voucher & Amount -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ဘောက်ချာနံပါတ် (Voucher No)</label>
           <input type="text" id="entry-voucher" placeholder="ဥပမာ- ၆၅၀-၁၂" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
@@ -187,11 +189,11 @@
       </div>
 
       <!-- Footer Buttons -->
-      <div style="padding-top: 12px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
-        <button type="button" onclick="closeEntryModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">
+      <div style="padding-top: 14px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
+        <button type="button" onclick="closeEntryModal()" style="padding: 8px 20px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">
           Cancel
         </button>
-        <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">
+        <button type="submit" style="padding: 8px 24px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">
           Save
         </button>
       </div>
