@@ -1,7 +1,5 @@
 // ===================================================================
 // js/Banks.js - Bank & Book Ledger Table Renderer (1CB~3CB, 4GB~10GB)
-// Backend returns { success, data: [ {entry objects} ], kpis } via
-// GET /api/entries?sheet=... (see cashbook-api/handlers-books.js).
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 30;
@@ -9,9 +7,21 @@ let ledgerCurrentPage = 1;
 let ledgerAllEntries = [];      // Full dataset for the current sheet (latest first)
 let ledgerFilteredEntries = []; // After search filter
 
+// Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
+function formatMonthYear(dateStr) {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const m = months[d.getMonth()];
+  const y = String(d.getFullYear()).slice(-2);
+  return `${m}-${y}`;
+}
+
 // Render Function Main Entry
 window.renderBankView = async function(sheetKey) {
-  // Strict String Extraction for currentSheetKey (Safeguard against boolean true/false or '1.0')
+  // Strict String Extraction for currentSheetKey
   let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
   if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
     targetSheet = String(window.currentSheet || '1CB').trim();
@@ -61,9 +71,10 @@ function applyLedgerSearchFilter() {
     ledgerFilteredEntries = ledgerAllEntries;
   } else {
     ledgerFilteredEntries = ledgerAllEntries.filter(e => {
+      const my = formatMonthYear(e.entry_date || e.month_year);
       return [
         e.entry_date, e.category, e.subcategory, e.voucher_no, 
-        e.description, e.receiver, e.book_name, e.income, e.expense
+        e.description, e.receiver, e.book_name, e.income, e.expense, my
       ].some(v => (v || "").toString().toLowerCase().includes(query));
     });
   }
@@ -96,6 +107,12 @@ function renderLedgerTable() {
       const expense = parseFloat(entry.expense) || 0;
       const balance = parseFloat(entry.balance) || 0;
       const isIncome = entry.category === "ဝင်ငွေ";
+      const monthYearFormatted = formatMonthYear(entry.entry_date || entry.month_year);
+
+      // Receiver Badge Highlight
+      const receiverBadge = entry.receiver 
+        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px]">${entry.receiver}</span>` 
+        : '-';
 
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
@@ -105,11 +122,11 @@ function renderLedgerTable() {
           <td class="font-semibold text-amber-200">${entry.subcategory || "-"}</td>
           <td class="font-mono text-xs text-amber-300/80">${entry.voucher_no || "-"}</td>
           <td class="whitespace-normal max-w-xs text-slate-200">${entry.description || "-"}</td>
-          <td class="text-slate-300">${entry.receiver || "-"}</td>
+          <td>${receiverBadge}</td>
           <td class="text-right font-mono text-emerald-400 font-bold">${income ? income.toLocaleString() : '-'}</td>
           <td class="text-right font-mono text-rose-400 font-bold">${expense ? expense.toLocaleString() : '-'}</td>
           <td class="text-right font-mono font-black text-amber-300">${balance.toLocaleString()}</td>
-          <td class="font-mono text-xs text-amber-500/60">${entry.month_year || "-"}</td>
+          <td class="font-mono text-xs text-sky-200 font-bold">${monthYearFormatted}</td>
           <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "-"}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3">
             <div class="flex items-center justify-center gap-2">
@@ -137,9 +154,7 @@ function renderLedgerTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-// ===================================================================
 // Search & Pagination Controls
-// ===================================================================
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
   applyLedgerSearchFilter();
@@ -160,9 +175,7 @@ window.nextPage = function() {
   }
 };
 
-// ===================================================================
-// Bank & Book Subcategory Handlers
-// ===================================================================
+// Bank Subcategories Handler
 window.onBankCategoryChange = function(cat) {
   const subSelect = document.getElementById("entry-subcategory");
   if (!subSelect) return;
@@ -173,6 +186,7 @@ window.onBankCategoryChange = function(cat) {
   subSelect.innerHTML = bankSubcats.map(s => `<option value="${s}">${s}</option>`).join('');
 };
 
+// Book Subcategories Handler
 window.onBookTypeChange = function(type) {
   const subSelect = document.getElementById("entry-subcategory");
   if (!subSelect) return;
@@ -183,9 +197,7 @@ window.onBookTypeChange = function(type) {
   subSelect.innerHTML = subcats.map(s => `<option value="${s}">${s}</option>`).join('');
 };
 
-// ===================================================================
-// Add / Edit Modal Openers & Reset
-// ===================================================================
+// Open Add Entry Modal & Reset
 window.openAddEntryModal = function() {
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (!modal) return;
@@ -220,9 +232,7 @@ window.openAddEntryModal = function() {
   modal.classList.remove('hidden');
 };
 
-// ===================================================================
 // Save Entry Form Submission
-// ===================================================================
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -237,13 +247,15 @@ window.saveEntryForm = async function(event) {
   const voucher_no = document.getElementById("entry-voucher").value;
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
   const receiver = document.getElementById("entry-receiver").value;
-  let description = document.getElementById("entry-description").value;
+  
+  // 💡 မူရင်း ရိုက်ထည့်လိုက်သည့် အကြောင်းအရာ သီးသန့်ကိုသာ သိမ်းဆည်းမည် (ခေါင်းစဉ်ခွဲ တွဲမပါစေပါ)
+  const description = document.getElementById("entry-description").value.trim();
 
   const income = category === "ဝင်ငွေ" ? amount : 0;
   const expense = category === "ထွက်ငွေ" ? amount : 0;
-  const month_year = entry_date ? entry_date.substring(0, 7) : "";
+  const month_year = formatMonthYear(entry_date);
 
-  // 🛡️ Strict String Extraction for sheet_name (Prevents boolean true/false or '1.0' bug)
+  // 🛡️ Strict String Extraction for sheet_name
   let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   if (sheet_name === 'true' || sheet_name === 'false' || sheet_name === '1' || sheet_name === '1.0') {
     sheet_name = String(window.currentSheet || '1CB').trim();
@@ -285,9 +297,7 @@ window.saveEntryForm = async function(event) {
   }
 };
 
-// ===================================================================
-// Edit & Delete Actions
-// ===================================================================
+// Edit Entry
 window.editEntry = function(uid) {
   const entry = ledgerAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
@@ -324,6 +334,7 @@ window.editEntry = function(uid) {
   document.getElementById("entry-description").value = entry.description || "";
 };
 
+// Delete Entry
 window.deleteEntry = async function(uid) {
   if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
 
@@ -343,9 +354,7 @@ window.deleteEntry = async function(uid) {
   }
 };
 
-// ===================================================================
 // Export to CSV
-// ===================================================================
 window.exportCSV = function() {
   if (!ledgerFilteredEntries || ledgerFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
@@ -357,10 +366,11 @@ window.exportCSV = function() {
 
   ledgerFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
+    const my = formatMonthYear(e.entry_date || e.month_year);
     csv += [
       idx + 1, esc(e.entry_date), esc(e.category), esc(e.subcategory), esc(e.voucher_no),
       esc(e.description), esc(e.receiver), e.income || 0, e.expense || 0, e.balance || 0,
-      esc(e.month_year), esc(e.book_name)
+      esc(my), esc(e.book_name)
     ].join(",") + "\n";
   });
 
