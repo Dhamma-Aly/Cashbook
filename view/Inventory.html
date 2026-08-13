@@ -33,11 +33,15 @@
     </div>
   </div>
 
-  <!-- Action Bar -->
-  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4">
+  <!-- Action Bar (Translucent Glassmorphic Search Box) -->
+  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl">
+    <!-- Search Box with Icon -->
     <div class="w-full md:w-1/2 relative">
-      <input type="text" id="inv-search-input" oninput="onInvSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-3 pr-4 py-2 text-xs rounded-lg bg-[#080d1a] border border-amber-500/30 text-amber-100 outline-none focus:border-amber-400">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+      <input type="text" id="inv-search-input" oninput="onInvSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
     </div>
+
+    <!-- Right Action Buttons -->
     <div class="flex items-center gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
       <button onclick="renderInventoryView()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
       <button onclick="exportInventoryCSV()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
@@ -50,17 +54,17 @@
     <table class="w-full text-left border-collapse min-w-[1300px]">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-400 text-xs">
-          <th class="w-12 text-center py-3 px-2">စဉ်</th>
-          <th class="w-28 py-3 px-2">ရက်စွဲ</th>
-          <th class="w-32 py-3 px-2">နေရာ</th>
-          <th class="w-36 py-3 px-2">အမျိုးအစား</th>
-          <th class="min-w-[280px] py-3 px-2">အကြောင်းအရာ</th>
-          <th class="w-24 py-3 px-2">ရေတွက်ပုံ</th>
-          <th class="w-28 text-right py-3 px-2">အရေအတွက်</th>
-          <th class="min-w-[180px] py-3 px-2">မှတ်ချက်</th>
-          <th class="w-24 py-3 px-2">လနှစ်</th>
-          <th class="w-36 py-3 px-2">စာအုပ်အမည်</th>
-          <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3 px-2">လုပ်ဆောင်ချက်</th>
+          <th class="w-12 text-center py-3.5 px-2">စဉ်</th>
+          <th class="w-28 py-3.5 px-2">ရက်စွဲ</th>
+          <th class="w-32 py-3.5 px-2">နေရာ</th>
+          <th class="w-36 py-3.5 px-2">အမျိုးအစား</th>
+          <th class="min-w-[280px] py-3.5 px-2">အကြောင်းအရာ</th>
+          <th class="w-24 py-3.5 px-2">ရေတွက်ပုံ</th>
+          <th class="w-28 text-right py-3.5 px-2">အရေအတွက်</th>
+          <th class="min-w-[180px] py-3.5 px-2">မှတ်ချက်</th>
+          <th class="w-24 py-3.5 px-2">လနှစ်</th>
+          <th class="w-36 py-3.5 px-2">စာအုပ်အမည်</th>
+          <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2">လုပ်ဆောင်ချက်</th>
         </tr>
       </thead>
       <tbody id="inv-table-body">
@@ -91,41 +95,41 @@
 
 </div>
 
-<!-- 💡 Compact & Centered Inventory Modal (580px Max-Width - Deep Navy Slate) -->
-<div id="inv-entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(3, 7, 18, 0.92) !important; z-index: 99999 !important;">
-  <div class="rounded-2xl border border-amber-500/35 shadow-2xl overflow-hidden flex flex-col" style="width: 100% !important; max-width: 580px !important; background-color: #0e172a !important; color: #f8fafc !important; max-height: 90vh !important;">
+<!-- 💡 STANDARD COMPACT INVENTORY MODAL (Unit Dropdown List & Non-Overlapping Grid) -->
+<div id="inv-entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
+  <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
     <!-- Modal Header -->
-    <div class="px-5 py-3.5 border-b border-amber-500/25 flex items-center justify-between shrink-0" style="background-color: #080d1a !important;">
-      <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center text-sm font-bold">
+    <div style="padding: 14px 20px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; shrink: 0;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
           <i class="fa-solid fa-boxes-packing"></i>
         </div>
-        <h3 id="inv-modal-title" class="text-sm sm:text-base font-black text-amber-300 tracking-wide">
+        <h3 id="inv-modal-title" style="margin: 0; font-size: 14px; font-weight: 800; color: #fef08a; letter-spacing: 0.5px;">
           ပစ္စည်းအသစ် သွင်းယူ / ပြင်ဆင်ရန်
         </h3>
       </div>
-      <button type="button" onclick="closeInvModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-rose-400 hover:bg-slate-700 transition flex items-center justify-center cursor-pointer">
+      <button type="button" onclick="closeInvModal()" style="width: 32px; height: 32px; border-radius: 8px; background-color: #1e293b; color: #94a3b8; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;">
         <i class="fa-solid fa-xmark text-sm"></i>
       </button>
     </div>
 
-    <!-- Modal Form Body (Strict CSS Grid) -->
-    <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" class="flex-1 overflow-y-auto p-5 space-y-3.5 text-xs">
+    <!-- Modal Form Body (Spacious 18px Gap) -->
+    <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 18px !important; overflow-y: auto !important; flex: 1 !important;">
       
       <!-- Hidden Inputs -->
       <input type="hidden" id="inv-id" value="">
 
-      <!-- Row 1: ရက်စွဲ & နေရာ (၂ ကွက် ဘေးချင်းစီ) -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <!-- Row 1: Date & Location -->
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">ရက်စွဲ (Date) <span class="text-rose-400">*</span></label>
-          <input type="date" id="inv-date" required class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
+          <input type="date" id="inv-date" required style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">နေရာ (Location)</label>
-          <select id="inv-location" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">နေရာ (Location)</label>
+          <select id="inv-location" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="မီးဖိုဆောင်">မီးဖိုဆောင်</option>
             <option value="ဓမ္မာရုံ">ဓမ္မာရုံ</option>
             <option value="သိမ်">သိမ်</option>
@@ -135,11 +139,11 @@
         </div>
       </div>
 
-      <!-- Row 2: အမျိုးအစား & ပစ္စည်းအမည် (၂ ကွက် ဘေးချင်းစီ) -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <!-- Row 2: Category & Item Name -->
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">အမျိုးအစား (Category)</label>
-          <select id="inv-category" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အမျိုးအစား (Category)</label>
+          <select id="inv-category" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ပရိဘောဂ">ပရိဘောဂ</option>
             <option value="လျှပ်စစ်">လျှပ်စစ်ပစ္စည်း</option>
             <option value="မီးဖိုချောင်သုံး">မီးဖိုချောင်သုံး</option>
@@ -149,39 +153,47 @@
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">အကြောင်းအရာ / ပစ္စည်းအမည် <span class="text-rose-400">*</span></label>
-          <input type="text" id="inv-item-name" required placeholder="ဥပမာ- ပလတ်စတစ်ကုလားထိုင်" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 font-bold" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အကြောင်းအရာ / ပစ္စည်းအမည် <span style="color: #f43f5e;">*</span></label>
+          <input type="text" id="inv-item-name" required placeholder="ဥပမာ- ပလတ်စတစ်ကုလားထိုင်" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
         </div>
       </div>
 
-      <!-- Row 3: ရေတွက်ပုံ & အရေအတွက် (၂ ကွက် ဘေးချင်းစီ) -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
+      <!-- Row 3: Unit Dropdown List & Quantity -->
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">ရေတွက်ပုံ (Unit)</label>
-          <input type="text" id="inv-unit" placeholder="ဥပမာ- ခု / စုံ / ထုပ် / ကတ်" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရေတွက်ပုံ (Unit)</label>
+          <!-- 💡 Dropdown List Selection for INV_UNITS -->
+          <select id="inv-unit" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
+            <option value="ခု">ခု</option>
+            <option value="စုံ">စုံ</option>
+            <option value="လုံး">လုံး</option>
+            <option value="ထုပ်">ထုပ်</option>
+            <option value="ဖာ">ဖာ</option>
+            <option value="ကတ်">ကတ်</option>
+            <option value="စီး">စီး</option>
+            <option value="အခြား">အခြား</option>
+          </select>
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">အရေအတွက် (Quantity) <span class="text-rose-400">*</span></label>
-          <input type="number" id="inv-qty" required min="1" placeholder="1" class="w-full h-9 px-3 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 font-mono font-black text-sm" style="background-color: #080d1a !important; color: #f8fafc !important;">
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အရေအတွက် (Quantity) <span style="color: #f43f5e;">*</span></label>
+          <input type="number" id="inv-qty" required min="1" placeholder="1" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; font-weight: 800 !important; box-sizing: border-box !important; outline: none !important;">
         </div>
       </div>
 
-      <!-- Row 4: မှတ်ချက် -->
+      <!-- Row 4: Remark -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
-        <label class="font-extrabold text-amber-200/90 mb-1" style="display: block;">မှတ်ချက် (Remark)</label>
-        <textarea id="inv-remark" rows="2" placeholder="ဖြည့်စွက် အချက်အလက်များ (ဥပမာ- အသစ်/ဟောင်း)..." class="w-full p-2.5 border border-amber-500/30 rounded-xl text-slate-200 placeholder:text-slate-500 outline-none focus:border-amber-400 resize-none" style="background-color: #080d1a !important; color: #f8fafc !important;"></textarea>
+        <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">မှတ်ချက် (Remark)</label>
+        <textarea id="inv-remark" rows="2" placeholder="ဖြည့်စွက် အချက်အလက်များ (ဥပမာ- အသစ်/ဟောင်း)..." style="width: 100% !important; padding: 10px 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important; resize: none !important;"></textarea>
       </div>
 
-      <!-- Modal Footer Action Buttons (Side-by-Side Right Aligned) -->
-      <div class="pt-3 border-t border-slate-800 flex items-center justify-end gap-3 shrink-0">
-        <button type="button" onclick="closeInvModal()" class="px-5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-extrabold text-xs transition cursor-pointer">
+      <!-- Footer Buttons -->
+      <div style="padding-top: 12px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
+        <button type="button" onclick="closeInvModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">
           Cancel
         </button>
-
-        <button type="submit" class="px-6 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black text-xs transition shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer">
-          <i class="fa-solid fa-floppy-disk"></i>
-          <span>Save</span>
+        <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">
+          Save
         </button>
       </div>
 
