@@ -1,12 +1,6 @@
 /**
  * Sāsana ERP System — Pure D1 Auth Controller
  * File: js/auth.js 
- * 
- * ✅ Features:
- * - Direct D1 Cloudflare Worker Authentication
- * - No hardcoded passwords in frontend
- * - Auto-clears legacy sessions on Version Update
- * - Direct Fail-Proof Logout with Instant Reload
  */
 
 (function () {
@@ -19,9 +13,11 @@
     localStorage.setItem("sasana_app_version", CURRENT_APP_VERSION);
   }
 
-  // 1. Get Current User Name
+  // 1. Get Current User Name (Token ရှိမှသာ အမည် ပြန်ပေးမည်၊ Logout ဖြစ်ပါက null ပြန်မည်)
   window.getCurrentUser = function () {
-    return localStorage.getItem("sasana_user_name") || localStorage.getItem("yogi_user_name") || "Admin";
+    const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
+    if (!token) return null; // 🚨 Logout ထွက်ထားပါက null သီးသန့် ပြန်ပေးမည်
+    return localStorage.getItem("sasana_user_name") || localStorage.getItem("yogi_user_name") || null;
   };
 
   // 2. Show Workspace UI
@@ -35,7 +31,7 @@
 
     const liveUserEl = document.getElementById("live-user-name") || document.getElementById("current-user-display");
     if (liveUserEl) {
-      liveUserEl.textContent = window.getCurrentUser();
+      liveUserEl.textContent = window.getCurrentUser() || "Admin";
     }
   };
 
@@ -126,10 +122,6 @@
         localStorage.setItem("yogi_auth_token", json.token);
         localStorage.setItem("yogi_user_name", userObj.username);
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
-
-        if (window.AppState) {
-          window.AppState.currentUser = userObj.username;
-        }
 
         if (passwordInput) passwordInput.value = "";
 
