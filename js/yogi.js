@@ -1,7 +1,7 @@
 // ===================================================================
-// js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi) 
-// Features Flicker-Free Silent Background Sync, DoB Auto-Age,
-// Name Prefix Auto-Gender, NRC Assembly, and Post/Checkout
+// js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi)
+// Features Flicker-Free Background Sync, 2-Way Active <-> Inactive Toggle,
+// Dynamic Sequential Indexing (1, 2, 3...), Auto-Age, and Auto-Gender
 // ===================================================================
 
 let currentYogiSheet = '12Yogi';
@@ -12,7 +12,7 @@ let yogiCurrentPage = 1;
 const yogiRowsPerPage = 15;
 
 // -------------------------------------------------------------------
-// 1. Core View Renderer (Supports Silent Background Refresh)
+// 1. Core View Renderer
 // -------------------------------------------------------------------
 window.renderYogiView = async function(isSilent = false) {
   currentYogiSheet = window.currentYogiSheet || window.currentSheet || '12Yogi';
@@ -60,7 +60,7 @@ function updateYogiKPIs(kpis) {
 }
 
 // -------------------------------------------------------------------
-// 3. Status Tab Switcher (Active vs Inactive - Deep Navy Slate)
+// 3. Status Tab Switcher (Active vs Inactive)
 // -------------------------------------------------------------------
 window.switchYogiStatusTab = function(status) {
   currentYogiStatus = status;
@@ -112,7 +112,7 @@ function applyYogiFilters() {
 }
 
 // -------------------------------------------------------------------
-// 5. Render 14-Column Table Data
+// 5. Render 14-Column Table Data with Dynamic Sequential Indexing (1, 2, 3...)
 // -------------------------------------------------------------------
 function renderYogiTable() {
   const tbody = document.getElementById('yogi-table-body');
@@ -124,7 +124,7 @@ function renderYogiTable() {
       <tr>
         <td colspan="14" class="text-center py-8 text-amber-400/60 font-semibold">
           <i class="fa-solid fa-users-slash mr-2"></i>
-          ${currentYogiStatus === 'Active' ? 'စခန်းတွင်း ယောဂီစာရင်း မရှိပါ' : 'စခန်းထွက်ပြီးသူ ယောဂီစာရင်း မရှိပါ'}
+          ${currentYogiStatus === 'Active' ? 'Active ယောဂီစာရင်း မရှိပါ' : 'Inactive ယောဂီစာရင်း မရှိပါ'}
         </td>
       </tr>
     `;
@@ -138,7 +138,7 @@ function renderYogiTable() {
 
   let html = '';
   pageEntries.forEach((entry, idx) => {
-    const srNo = startIndex + idx + 1;
+    const srNo = startIndex + idx + 1; // Dynamic Sequential Indexing (1, 2, 3...)
     const uid = entry.uniqueId || entry.id || '';
     const isCheckout = (entry.status === 'Inactive');
     const nrcVal = entry.full_nrc || entry.nrc || '-';
@@ -161,18 +161,23 @@ function renderYogiTable() {
         <td class="truncate max-w-[220px] text-slate-300" title="${entry.address || ''}">${entry.address || '-'}</td>
         <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-2 py-1.5 border-l border-amber-500/20">
           <div class="flex items-center justify-center gap-1.5">
+            <!-- Edit Button -->
             <button onclick="openEditYogiModal('${uid}')" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer" title="ပြင်ဆင်မည်">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
 
+            <!-- 🔄 2-Way Togglable Action Button (Active -> Checkout | Inactive -> Reactivate) -->
             ${!isCheckout ? `
-              <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer" title="စခန်းထွက်ပေးမည် (Post/Checkout)">
+              <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer" title="စခန်းထွက်ပေးမည် (Inactive သို့ ပို့မည်)">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
               </button>
             ` : `
-              <span class="px-1.5 py-0.5 text-[10px] bg-rose-950/40 border border-rose-500/30 text-rose-400 rounded font-bold">ထွက်ပြီး</span>
+              <button onclick="reactivateYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer" title="စခန်းတွင်း ပြန်လည်ဝင်မည် (Active သို့ ပြန်ပို့မည်)">
+                <i class="fa-solid fa-arrow-right-to-bracket"></i>
+              </button>
             `}
 
+            <!-- Delete Button -->
             <button onclick="deleteYogiPrompt('${uid}')" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer" title="ဖျက်မည်">
               <i class="fa-solid fa-trash"></i>
             </button>
@@ -363,11 +368,13 @@ window.saveYogiEntryForm = async function(event) {
 };
 
 // -------------------------------------------------------------------
-// 9. Post (Checkout) & Delete Action Workflow
+// 9. 🔄 2-Way Active <-> Inactive Action Workflows
 // -------------------------------------------------------------------
+
+// A. Checkout Yogi (Active -> Inactive)
 window.checkoutYogiPrompt = async function(uniqueId, name) {
   const todayStr = new Date().toISOString().split('T')[0];
-  const confirmCheckout = confirm(`ယောဂီ "${name}" အား ယနေ့ (${todayStr}) ရက်စွဲဖြင့် စခန်းထွက်စာရင်း (Inactive) သို့ ပြောင်းလဲပါမည်လော။`);
+  const confirmCheckout = confirm(`ယောဂီ "${name}" အား ယနေ့ (${todayStr}) ရက်စွဲဖြင့် Inactive စာရင်း သို့ ပြောင်းလဲပါမည်လော။`);
 
   if (!confirmCheckout) return;
 
@@ -375,19 +382,41 @@ window.checkoutYogiPrompt = async function(uniqueId, name) {
   try {
     const response = await window.checkoutYogiAPI({ uniqueId, end_date: todayStr });
     if (response && response.success) {
-      alert('စခန်းထွက်စာရင်း အောင်မြင်စွာ ပြုလုပ်ပြီးပါပြီ။');
       await window.renderYogiView(false);
     } else {
-      alert('စခန်းထွက်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
+      alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
     }
   } catch (err) {
     console.error('Checkout Error:', err);
-    alert('စခန်းထွက်ရာတွင် အမှားရှိပါသည်');
+    alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်');
   } finally {
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
+// B. Reactivate Yogi (Inactive -> Active)
+window.reactivateYogiPrompt = async function(uniqueId, name) {
+  const confirmReactivate = confirm(`ယောဂီ "${name}" အား Active (စခန်းတွင်း/အမြဲနေဆဲ) စာရင်းသို့ ပြန်လည်ပြောင်းလဲပါမည်လော။`);
+
+  if (!confirmReactivate) return;
+
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+  try {
+    const response = await window.reactivateYogiAPI({ uniqueId });
+    if (response && response.success) {
+      await window.renderYogiView(false);
+    } else {
+      alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
+    }
+  } catch (err) {
+    console.error('Reactivate Error:', err);
+    alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်');
+  } finally {
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+// C. Delete Yogi
 window.deleteYogiPrompt = async function(uniqueId) {
   if (!confirm('ဤယောဂီစာရင်းကို ပယ်ဖျက်ရန် သေချာပါသလား။')) return;
 
