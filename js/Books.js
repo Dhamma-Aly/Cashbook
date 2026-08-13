@@ -1,5 +1,5 @@
 // ===================================================================
-// js/Books.js - Cashbook Books Table Renderer EXCLUSIVELY for (4GB ~ 10GB)
+// js/Books.js - Cashbook Books Table Renderer EXCLUSIVELY for (4GB ~ 10GB) 
 // ===================================================================
 
 const BOOK_ROWS_PER_PAGE = 30;
