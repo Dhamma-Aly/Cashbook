@@ -1,104 +1,150 @@
 // ===================================================================
-// cashbook-api/worker.js - Cloudflare Worker Main Entry Point
-// Authenticates Username & Password directly against D1 'users' table
+// cashbook-api/worker.js - Main Cloudflare Worker Entry Point & Router
+// Imports all modular handlers and handles CORS & Authentication
 // ===================================================================
 
-import { handleYogiRequests } from './handlers-yogi.js';
+import { handleBankRequests } from './handlers-banks.js';
 import { handleBookRequests } from './handlers-books.js';
-import { handleReportRequests } from './handlers-report.js';
+import { handleDashboardRequests } from './handlers-dashboard.js';
+import { handleInventoryRequests } from './handlers-inventory.js';
+import { handleYogiRequests } from './handlers-yogi.js';
+import { handleReportRequests } from './handlers-reports.js';
 
-// Global CORS Headers Helper
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Content-Type': 'application/json'
-  };
-}
+// Global CORS Headers (Frontend မှ API ခေါ်ယူနိုင်ရန်)
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const pathname = url.pathname;
+    const method = request.method;
 
-    // 1. Handle CORS Preflight OPTIONS Request
-    if (request.method === 'OPTIONS') {
+    // ---------------------------------------------------------------
+    // 1. Handle Preflight CORS Request (OPTIONS Method)
+    // ---------------------------------------------------------------
+    if (method === 'OPTIONS') {
       return new Response(null, {
         status: 204,
-        headers: corsHeaders()
+        headers: corsHeaders,
       });
     }
 
     try {
-      // 2. Secure D1 Database Login Endpoint (/api/login)
-      if (pathname === '/api/login' && request.method === 'POST') {
+      // -------------------------------------------------------------
+      // 2. Auth Endpoint: POST /api/login (D1 'users' Table တွင် တိုက်စစ်ခြင်း)
+      // -------------------------------------------------------------
+      if (pathname === '/api/login') {
+        if (method !== 'POST') {
+          return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {
+            status: 405,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         const body = await request.json();
-        const { username, password } = body;
+        const username = (body.username || '').trim();
+        const password = (body.password || '').trim();
 
         if (!username || !password) {
-          return new Response(
-            JSON.stringify({ success: false, error: 'အသုံးပြုသူအမည် နှင့် လျှို့ဝှက်နံပါတ် ဖြည့်သွင်းပါ' }),
-            { status: 400, headers: corsHeaders() }
-          );
+          return new Response(JSON.stringify({ success: false, error: 'Username and password required' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
 
-        // Query Cloudflare D1 Database 'users' Table directly!
-        const userRow = await env.DB.prepare(
-          'SELECT id, username, role FROM users WHERE username = ? AND password = ?'
-        ).bind(username, password).first();
+        // D1 Database ထဲရှိ users Table တွင် Username & Password တိုက်စစ်ခြင်း
+        const { results } = await env.DB.prepare(
+          `SELECT id, username, role FROM users WHERE username = ? AND password = ? LIMIT 1`
+        ).bind(username, password).all();
 
-        if (userRow) {
-          return new Response(
-            JSON.stringify({
-              success: true,
-              user: {
-                id: userRow.id,
-                username: userRow.username,
-                role: userRow.role,
-                loginTime: new Date().toISOString()
-              }
-            }),
-            { status: 200, headers: corsHeaders() }
-          );
+        if (results && results.length > 0) {
+          const user = results[0];
+          const token = `tok_${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+          return new Response(JSON.stringify({
+            success: true,
+            token,
+            user: {
+              id: user.id,
+              username: user.username,
+              role: user.role || 'Staff'
+            },
+            expiresInMs: 24 * 60 * 60 * 1000 // 24 Hours Session
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         } else {
-          return new Response(
-            JSON.stringify({ success: false, error: 'အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်' }),
-            { status: 401, headers: corsHeaders() }
-          );
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။'
+          }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
         }
       }
 
-      // 3. Route Yogi Management API Requests (12Yogi & 13Yogi)
+      // JSON Response Headers
+      const jsonCorsHeaders = {
+        ...corsHeaders,
+        'Content-Type': 'application/json',
+      };
+
+      // -------------------------------------------------------------
+      // 3. API Router: URL Path အလိုက် သက်ဆိုင်ရာ Handlers သို့ ပို့ဆောင်ခြင်း
+      // -------------------------------------------------------------
+      
+      // Dashboard Summary Endpoint
+      if (pathname === '/api/home-summary') {
+        return await handleDashboardRequests(request, env, jsonCorsHeaders);
+      }
+
+      // Cashbooks & Banks Endpoint
+      if (pathname === '/api/entries') {
+        const sheet = url.searchParams.get('sheet') || '';
+        const BANK_SHEETS = ['1CB', '2CB', '3CB'];
+
+        if (BANK_SHEETS.includes(sheet)) {
+          return await handleBankRequests(request, env, jsonCorsHeaders);
+        } else {
+          return await handleBookRequests(request, env, jsonCorsHeaders);
+        }
+      }
+
+      // Inventory Endpoint
+      if (pathname === '/api/inventory') {
+        return await handleInventoryRequests(request, env, jsonCorsHeaders);
+      }
+
+      // Yogi Management Endpoint
       if (pathname.startsWith('/api/yogi')) {
-        return await handleYogiRequests(request, env, pathname);
+        return await handleYogiRequests(request, env, jsonCorsHeaders);
       }
 
-      // 4. Route Summary Report API Requests (14Rep)
-      if (pathname.startsWith('/api/report')) {
-        return await handleReportRequests(request, env, pathname);
+      // Report Summary Endpoint
+      if (pathname === '/api/report') {
+        return await handleReportRequests(request, env, jsonCorsHeaders);
       }
 
-      // 5. Route Cashbooks, Inventory & Home Dashboard API Requests
-      if (
-        pathname.startsWith('/api/entries') ||
-        pathname.startsWith('/api/inventory') ||
-        pathname.startsWith('/api/home-summary')
-      ) {
-        return await handleBookRequests(request, env, pathname);
-      }
-
-      // Fallback 404 Route Not Found
-      return new Response(
-        JSON.stringify({ success: false, error: 'Sāsana ERP API - Route ရှာမတွေ့ပါ' }),
-        { status: 404, headers: corsHeaders() }
-      );
+      // -------------------------------------------------------------
+      // 4. Fallback 404 Route
+      // -------------------------------------------------------------
+      return new Response(JSON.stringify({ success: false, error: 'Endpoint not found' }), {
+        status: 404,
+        headers: jsonCorsHeaders,
+      });
 
     } catch (err) {
-      return new Response(
-        JSON.stringify({ success: false, error: err.message || 'Server Internal Error' }),
-        { status: 500, headers: corsHeaders() }
-      );
+      console.error('[Worker Unhandled Error]:', err);
+      return new Response(JSON.stringify({ success: false, error: err.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
   }
 };
