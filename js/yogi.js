@@ -1,6 +1,6 @@
 // ===================================================================
 // js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi)
-// Features Flicker-Free Background Sync, 2-Way Active <-> Inactive Toggle,
+// Features Flicker-Free Sync, 2-Way Active <-> Inactive Toggle,
 // Dynamic Sequential Indexing (1, 2, 3...), Auto-Age, and Auto-Gender
 // ===================================================================
 
@@ -138,7 +138,7 @@ function renderYogiTable() {
 
   let html = '';
   pageEntries.forEach((entry, idx) => {
-    const srNo = startIndex + idx + 1; // Dynamic Sequential Indexing (1, 2, 3...)
+    const srNo = startIndex + idx + 1; // Dynamic Sequential Indexing
     const uid = entry.uniqueId || entry.id || '';
     const isCheckout = (entry.status === 'Inactive');
     const nrcVal = entry.full_nrc || entry.nrc || '-';
@@ -166,7 +166,7 @@ function renderYogiTable() {
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
 
-            <!-- 🔄 2-Way Togglable Action Button (Active -> Checkout | Inactive -> Reactivate) -->
+            <!-- 🔄 2-Way Togglable Action Button -->
             ${!isCheckout ? `
               <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer" title="စခန်းထွက်ပေးမည် (Inactive သို့ ပို့မည်)">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
@@ -243,6 +243,13 @@ window.openAddYogiModal = function() {
   const startDateInput = document.getElementById('yogi-start-date');
   if (startDateInput) startDateInput.value = new Date().toISOString().split('T')[0];
 
+  // Default Category Selection
+  const catSelect = document.getElementById('yogi-category');
+  if (catSelect) {
+    catSelect.value = 'လူပုဂ္ဂိုလ်';
+    window.onYogiCategoryChange('လူပုဂ္ဂိုလ်');
+  }
+
   if (modal) modal.classList.remove('hidden');
 };
 
@@ -278,6 +285,28 @@ window.openEditYogiModal = function(uid) {
   modal.classList.remove('hidden');
 };
 
+// 💡 Category-driven Auto Gender Rule
+window.onYogiCategoryChange = function(category) {
+  const genderSelect = document.getElementById('yogi-gender');
+  if (!genderSelect) return;
+
+  if (category === 'ရဟန်း' || category === 'ကိုရင်') {
+    genderSelect.value = 'ကျား';
+  } else if (category === 'သီလရှင်') {
+    genderSelect.value = 'မ';
+  } else {
+    const nameVal = document.getElementById('yogi-name') ? document.getElementById('yogi-name').value : '';
+    genderSelect.value = detectGenderFromName(nameVal);
+  }
+};
+
+// Event listener for category change
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'yogi-category') {
+    window.onYogiCategoryChange(e.target.value);
+  }
+});
+
 // Auto Age Calculation on DoB Change
 window.onYogiDoBChange = function(dobString) {
   const age = calcAgeFromDoB(dobString);
@@ -287,6 +316,17 @@ window.onYogiDoBChange = function(dobString) {
 
 // Auto Gender Selection on Name Input
 window.onYogiNameChange = function(nameString) {
+  const catVal = document.getElementById('yogi-category') ? document.getElementById('yogi-category').value : '';
+  
+  if (catVal === 'ရဟန်း' || catVal === 'ကိုရင်') {
+    document.getElementById('yogi-gender').value = 'ကျား';
+    return;
+  }
+  if (catVal === 'သီလရှင်') {
+    document.getElementById('yogi-gender').value = 'မ';
+    return;
+  }
+
   const gender = detectGenderFromName(nameString);
   const genderSelect = document.getElementById('yogi-gender');
   if (genderSelect) genderSelect.value = gender;
