@@ -39,6 +39,12 @@ window.renderBankView = async function(sheetKey) {
   window.currentSheetKey = targetSheet;
   ledgerCurrentPage = 1;
 
+  // 💡 စာအုပ် ကူးပြောင်းလိုက်သည်နှင့် ဒေတာဟောင်း ပြမနေစေရန် ဇယားကို ချက်ချင်း Reset လုပ်ပြီး Loading ပြပေးခြင်း
+  const tbody = document.getElementById("table-body");
+  if (tbody) {
+    tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>`;
+  }
+
   try {
     const res = await window.fetchSheetData(window.currentSheetKey);
     if (res && res.success) {
@@ -179,6 +185,9 @@ function renderLedgerTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
+// ===================================================================
+// Search & Pagination Controls
+// ===================================================================
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
   applyLedgerSearchFilter();
