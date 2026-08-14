@@ -1,9 +1,9 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Safely handles global declarations to avoid duplicate identifier errors
+// Handles global routing, live sync, and modal control delegations
 // ===================================================================
 
-// Safe Global Variable Assignments (Avoids SyntaxError)
+// Safe Global Variable Assignments
 window.currentSheet = window.currentSheet || 'Home';
 window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
@@ -55,7 +55,6 @@ window.closeMobileSidebar = function() {
 window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
-    // Modal တစ်ခုခု ပွင့်နေပါက (သို့) Page Hidden ဖြစ်နေပါက Silent Refresh မလုပ်ပါ
     const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
@@ -68,9 +67,7 @@ window.refreshCurrentTabSilent = function() {
     const sheet = window.currentSheet;
     if (['12Yogi', '13Yogi'].includes(sheet)) {
       if (typeof window.renderYogiView === 'function') window.renderYogiView(true);
-    } else if (['1CB', '2CB', '3CB'].includes(sheet)) {
-      if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
-    } else if (['4GB','5FB','6HB','7PB','8EB','9MB','10GB'].includes(sheet)) {
+    } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheet)) {
       if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
     } else if (sheet === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
@@ -107,11 +104,9 @@ window.switchTab = async function(sheetName) {
     if (sheetName === 'Home') {
       container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
-    } else if (['1CB', '2CB', '3CB'].includes(sheetName)) {
+    } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheetName)) {
+      // 💡 Both Banks (1CB~3CB) and Books (4GB~10GB) load view/Banks.html directly
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
-      if (typeof window.loadSheetView === 'function') window.loadSheetView();
-    } else if (['4GB','5FB','6HB','7PB','8EB','9MB','10GB'].includes(sheetName)) {
-      container.innerHTML = await window.fetchTemplate('view/Books.html');
       if (typeof window.loadSheetView === 'function') window.loadSheetView();
     } else if (sheetName === '11Inv') {
       container.innerHTML = await window.fetchTemplate('view/Inventory.html');
@@ -219,7 +214,6 @@ window.openAddYogiModal = function() {
   const idInput = document.getElementById('yogi-uniqueId');
   if (idInput) idInput.value = '';
 
-  // 📅 ယနေ့ရက်စွဲ Auto ဖြည့်ပေးခြင်း
   const dateInput = document.getElementById('yogi-start-date');
   if (dateInput) {
     const today = new Date();
