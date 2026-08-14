@@ -1,5 +1,5 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer
+// js/report-system.js - Annual & Summary Expense Report Renderer 
 // ===================================================================
 
 let currentReportMode = 'Annual'; // 'Annual' or 'Summary'
