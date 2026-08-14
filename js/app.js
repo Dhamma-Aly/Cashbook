@@ -82,7 +82,7 @@ window.refreshCurrentTabSilent = function() {
 };
 
 // ===================================================================
-// 3. View Router & Navigation
+// 3. View Router & Navigation (Case-Insensitive Fallback Enabled)
 // ===================================================================
 window.switchTab = async function(sheetName) {
   window.currentSheet = sheetName;
@@ -105,7 +105,6 @@ window.switchTab = async function(sheetName) {
       container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
     } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheetName)) {
-      // 💡 Both Banks (1CB~3CB) and Books (4GB~10GB) load view/Banks.html directly
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
       if (typeof window.loadSheetView === 'function') window.loadSheetView();
     } else if (sheetName === '11Inv') {
@@ -124,11 +123,19 @@ window.switchTab = async function(sheetName) {
   }
 };
 
+// 💡 Case-Insensitive Smart Template Fetcher
 window.fetchTemplate = async function(path) {
   try {
     let targetPath = path.startsWith('./') ? path : `./${path}`;
     let res = await fetch(targetPath);
+
+    // Fallback 1: Try lowercase filename (e.g. view/banks.html)
+    if (!res.ok) {
+      const lowerPath = targetPath.toLowerCase();
+      res = await fetch(lowerPath);
+    }
     
+    // Fallback 2: Try views/ folder
     if (!res.ok && targetPath.includes('view/')) {
       const fallbackPath = targetPath.replace('view/', 'views/');
       res = await fetch(fallbackPath);
@@ -138,10 +145,6 @@ window.fetchTemplate = async function(path) {
     return await res.text();
   } catch (err) {
     console.error('Template Fetch Error:', err);
-    try {
-      let directRes = await fetch(path);
-      if (directRes.ok) return await directRes.text();
-    } catch (e) {}
     return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
   }
 };
@@ -173,7 +176,6 @@ window.openAddEntryModal = function() {
   const titleEl = document.getElementById("entry-modal-title");
   if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
 
-  // 📅 ယနေ့ရက်စွဲ (Today's Date YYYY-MM-DD) Auto ဖြည့်ပေးခြင်း
   const dateInput = document.getElementById("entry-date");
   if (dateInput) {
     const today = new Date();
