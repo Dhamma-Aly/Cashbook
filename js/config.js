@@ -34,6 +34,15 @@ window.CONFIG = {
   // 👤 Authorized Users / Receivers
   RECEIVERS: ['User 1', 'User 2', 'User 3'],
 
+  // 🔄 TRANSFER TARGET BANK MAPPING (စာအုပ်နှင့် ဘဏ် ချိတ်ဆက်မှု မက်ပင်း)
+  TRANSFER_MAPPING: {
+    '4GB': { targetBank: '1CB', bankTitle: 'အထွေထွေ ရန်ပုံငွေ (Bank)' },
+    '5FB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' },
+    '8EB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' },
+    '9MB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' },
+    '10GB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' }
+  },
+
   // ===================================================================
   // 3-TIER DEPENDENT DROPDOWN TREE (Sheet Group -> Type -> Category -> Subcategory)
   // ===================================================================
@@ -61,6 +70,9 @@ window.CONFIG = {
         'ဆွမ်းစရိတ်ကုန်ကျခြင်း': ['မီးဖိုချောင်အသုံးစရိတ်', 'သင်္ကန်းတရားစခန်း အသုံးစရိတ်'],
         'အုပ်ချုပ်မှုအသုံးစရိတ်': ['ကျောင်းပစ္စည်းဝယ်ယူခြင်း', 'ဆ/ဥ ပြုပြင်စရိတ်', 'အထွေထွေအသုံးစရိတ်'],
         'ယာဉ်အုပ်စုအသုံးစရိတ်': ['ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား']
+      },
+      'စာရင်းပြောင်း': {
+        'စာရင်းပြောင်း': ['စာရင်းပြောင်း']
       }
     },
 
