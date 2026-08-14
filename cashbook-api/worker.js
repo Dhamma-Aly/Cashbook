@@ -1,22 +1,41 @@
 // ===================================================================
 // cashbook-api/worker.js - Main Cloudflare Worker Entry Point & Router
-// Imports all modular handlers and handles CORS & Authentication
+// Imports all modular handlers and handles CORS & Security Authentication
 // ===================================================================
 
 import { handleBankRequests } from './handlers-banks.js';
-import { handleBookRequests } from './handlers-books.js';
 import { handleDashboardRequests } from './handlers-dashboard.js';
 import { handleInventoryRequests } from './handlers-inventory.js';
 import { handleYogiRequests } from './handlers-yogi.js';
 import { handleReportRequests } from './handlers-reports.js';
 
-// Global CORS Headers (Frontend မှ API ခေါ်ယူနိုင်ရန်)
+// Global CORS Headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
+
+// 🔒 SECURITY HELPER: Validate Authorization Bearer Token & Expiry
+function isValidToken(request) {
+  const authHeader = request.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) return false;
+  
+  const token = authHeader.substring(7).trim();
+  if (!token || !token.startsWith("tok_")) return false;
+
+  // Extract Token Timestamp 'tok_{id}_{timestamp}_{rand}'
+  const parts = token.split("_");
+  if (parts.length >= 3) {
+    const tokenTime = parseInt(parts[2]);
+    const MAX_AGE_MS = 24 * 60 * 60 * 1000; // 24-hour Session
+    if (isNaN(tokenTime) || (Date.now() - tokenTime) > MAX_AGE_MS) {
+      return false; // Token expired
+    }
+  }
+  return true;
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -25,7 +44,7 @@ export default {
     const method = request.method;
 
     // ---------------------------------------------------------------
-    // 1. Handle Preflight CORS Request (OPTIONS Method)
+    // 1. Handle Preflight CORS Request (OPTIONS)
     // ---------------------------------------------------------------
     if (method === 'OPTIONS') {
       return new Response(null, {
@@ -36,7 +55,7 @@ export default {
 
     try {
       // -------------------------------------------------------------
-      // 2. Auth Endpoint: POST /api/login (D1 'users' Table တွင် တိုက်စစ်ခြင်း)
+      // 2. Auth Endpoint: POST /api/login (Public)
       // -------------------------------------------------------------
       if (pathname === '/api/login') {
         if (method !== 'POST') {
@@ -57,7 +76,7 @@ export default {
           });
         }
 
-        // D1 Database ထဲရှိ users Table တွင် Username & Password တိုက်စစ်ခြင်း
+        // Query D1 users table
         const { results } = await env.DB.prepare(
           `SELECT id, username, role FROM users WHERE username = ? AND password = ? LIMIT 1`
         ).bind(username, password).all();
@@ -74,7 +93,7 @@ export default {
               username: user.username,
               role: user.role || 'Staff'
             },
-            expiresInMs: 24 * 60 * 60 * 1000 // 24 Hours Session
+            expiresInMs: 24 * 60 * 60 * 1000 // 24-hour Session
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
@@ -89,51 +108,48 @@ export default {
         }
       }
 
-      // JSON Response Headers
+      // -------------------------------------------------------------
+      // 🔒 3. SECURITY GATEWAY: Protected Endpoints Token Check
+      // -------------------------------------------------------------
+      if (!isValidToken(request)) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Unauthorized: မလုပ်ဆောင်မီ Login ပြန်လည်ဝင်ရောက်ပါခင်ဗျာ။'
+        }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
       const jsonCorsHeaders = {
         ...corsHeaders,
         'Content-Type': 'application/json',
       };
 
       // -------------------------------------------------------------
-      // 3. API Router: URL Path အလိုက် သက်ဆိုင်ရာ Handlers သို့ ပို့ဆောင်ခြင်း
+      // 4. Authorized API Router
       // -------------------------------------------------------------
-      
-      // Dashboard Summary Endpoint
       if (pathname === '/api/home-summary') {
         return await handleDashboardRequests(request, env, jsonCorsHeaders);
       }
 
-      // Cashbooks & Banks Endpoint
+      // 💡 Route ALL cashbook & bank requests (1CB to 10GB) directly to handleBankRequests
       if (pathname === '/api/entries') {
-        const sheet = url.searchParams.get('sheet') || '';
-        const BANK_SHEETS = ['1CB', '2CB', '3CB'];
-
-        if (BANK_SHEETS.includes(sheet)) {
-          return await handleBankRequests(request, env, jsonCorsHeaders);
-        } else {
-          return await handleBookRequests(request, env, jsonCorsHeaders);
-        }
+        return await handleBankRequests(request, env, jsonCorsHeaders);
       }
 
-      // Inventory Endpoint
       if (pathname === '/api/inventory') {
         return await handleInventoryRequests(request, env, jsonCorsHeaders);
       }
 
-      // Yogi Management Endpoint
       if (pathname.startsWith('/api/yogi')) {
         return await handleYogiRequests(request, env, jsonCorsHeaders);
       }
 
-      // Report Summary Endpoint
       if (pathname === '/api/report') {
         return await handleReportRequests(request, env, jsonCorsHeaders);
       }
 
-      // -------------------------------------------------------------
-      // 4. Fallback 404 Route
-      // -------------------------------------------------------------
       return new Response(JSON.stringify({ success: false, error: 'Endpoint not found' }), {
         status: 404,
         headers: jsonCorsHeaders,
