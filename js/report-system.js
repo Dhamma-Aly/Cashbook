@@ -21,7 +21,6 @@ window.renderReportView = async function(isSilent = false) {
     }
   }
 
-  // Populate dynamic years in select dropdown
   populateReportYears();
 
   const yearSelect = document.getElementById("report-year-select");
@@ -32,7 +31,7 @@ window.renderReportView = async function(isSilent = false) {
   }
 
   try {
-    const res = await window.fetchReportDataAPI("4GB", currentReportYear, currentReportMode);
+    const res = await window.fetchReportDataAPI(currentReportYear);
     if (res && res.success && res.data) {
       rawReportData = res.data;
     } else {
@@ -52,7 +51,7 @@ window.renderReportView = async function(isSilent = false) {
 
 window.loadReportView = window.renderReportView;
 
-// Populate Dynamic Year Options in Selector
+// Populate Dynamic Year Options
 function populateReportYears() {
   const yearSelect = document.getElementById("report-year-select");
   if (!yearSelect || yearSelect.options.length > 1) return;
@@ -73,14 +72,30 @@ window.switchReportMode = function(mode) {
   const btnSummary = document.getElementById("btn-report-summary");
 
   if (mode === 'Annual') {
-    if (btnAnnual) btnAnnual.className = 'px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm';
-    if (btnSummary) btnSummary.className = 'px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer';
+    if (btnAnnual) {
+      btnAnnual.style.backgroundColor = "#1e293b";
+      btnAnnual.style.color = "#fbbf24";
+      btnAnnual.style.border = "1px solid rgba(245, 158, 11, 0.3)";
+    }
+    if (btnSummary) {
+      btnSummary.style.backgroundColor = "transparent";
+      btnSummary.style.color = "rgba(251, 191, 36, 0.6)";
+      btnSummary.style.border = "none";
+    }
   } else {
-    if (btnSummary) btnSummary.className = 'px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm';
-    if (btnAnnual) btnAnnual.className = 'px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer';
+    if (btnSummary) {
+      btnSummary.style.backgroundColor = "#1e293b";
+      btnSummary.style.color = "#fbbf24";
+      btnSummary.style.border = "1px solid rgba(245, 158, 11, 0.3)";
+    }
+    if (btnAnnual) {
+      btnAnnual.style.backgroundColor = "transparent";
+      btnAnnual.style.color = "rgba(251, 191, 36, 0.6)";
+      btnAnnual.style.border = "none";
+    }
   }
 
-  window.renderReportView(false);
+  applyReportFilters();
 };
 
 window.onReportYearChange = function(year) {
@@ -103,7 +118,6 @@ function applyReportFilters() {
   renderReportTableBody(query);
 }
 
-// Render Dynamic Table Header (Jan-26 vs Jan)
 function renderReportTableHeader() {
   const thead = document.getElementById("report-table-header");
   if (!thead) return;
@@ -126,7 +140,6 @@ function renderReportTableHeader() {
   thead.innerHTML = headerHtml;
 }
 
-// Render Matrix Body Rows
 function renderReportTableBody(query) {
   const tbody = document.getElementById("report-table-body");
   if (!tbody) return;
@@ -137,7 +150,6 @@ function renderReportTableBody(query) {
   }
 
   const { incomeRows, incomeTotals, grandIncomeTotal, expenseRows, expenseTotals, grandExpenseTotal, balanceTotals, grandNetBalance } = rawReportData;
-
   const fmt = (v) => v ? Number(v).toLocaleString() : '';
 
   let html = '';
@@ -235,29 +247,28 @@ window.exportReportCSV = function() {
   const shortYear = String(currentReportYear).slice(-2);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  let csv = "\uFEFF"; // UTF-8 BOM
+  let csv = "\uFEFF";
 
   const monthHeaders = months.map(m => (currentReportMode === 'Annual') ? `${m}-${shortYear}` : m);
   csv += ["Head", "Category", "Sub Category", ...monthHeaders, "Total"].map(v => `"${v}"`).join(",") + "\n";
 
   const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
 
-  // Income Rows
+  // Income
   (incomeRows || []).forEach(r => {
     const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
     csv += rowVals.join(",") + "\n";
   });
-
   csv += [esc("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
 
-  // Expense Rows
+  // Expense
   (expenseRows || []).forEach(r => {
     const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
     csv += rowVals.join(",") + "\n";
   });
-
   csv += [esc("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
 
+  // Balance
   csv += [esc("လက်ကျန်"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
