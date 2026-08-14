@@ -12,7 +12,7 @@ window.CONFIG = {
 
   // Sheet Names & Page Titles Mapping
   SHEET_TITLES: {
-    'Home': 'ပင်မ ဒက်ရှ်ဘုတ် (Home Dashboard)',
+    'Home': 'ပင်မစာမျက်နှာ (Home Dashboard)',
     '1CB': 'အထွေထွေ ရန်ပုံငွေ (Bank)',
     '2CB': 'ဆွမ်းပဒေသာပင် (Bank)',
     '3CB': 'တစ်ဦးတည်းစာရင်း (Bank)',
