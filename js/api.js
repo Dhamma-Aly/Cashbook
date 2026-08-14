@@ -1,6 +1,6 @@
 // ===================================================================
 // js/api.js - Standardized API Client & Function Mappings
-// Safe API Fetching to prevent Dashboard & Sidebar crashing
+// Automatically attaches Authorization Bearer Token to all requests
 // ===================================================================
 
 const getApiBaseUrl = () => {
@@ -13,13 +13,17 @@ const getApiBaseUrl = () => {
   return 'https://cashbook-api.dhammaaly.workers.dev';
 };
 
-// Safe API Fetch Helper
+// Safe API Fetch Helper with Authorization Token Header
 async function safeApiRequest(endpoint, options = {}) {
   const url = `${getApiBaseUrl()}${endpoint}`;
   
-  // Headers merge
+  // 🔒 LocalStorage မှ Auth Token ကို ဆွဲယူခြင်း
+  const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
+
+  // Headers အား လုံခြုံစွာ ရောစပ်ခြင်း
   const headers = {
     'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
     ...(options.headers || {})
   };
 
@@ -31,6 +35,13 @@ async function safeApiRequest(endpoint, options = {}) {
 
     if (res.ok) {
       return await res.json();
+    }
+
+    // Token သက်တမ်းကုန်/မမှန်ပါက Auto Logout ပြုလုပ်ရန်
+    if (res.status === 401) {
+      if (typeof window.handleLogoutSilent === 'function') {
+        window.handleLogoutSilent();
+      }
     }
 
     return { 
@@ -82,7 +93,9 @@ window.fetchHomeSummary = async function() {
     return {
       success: false,
       kpis: { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 },
-      sheetBalances: {}
+      sheetBalances: {},
+      fundSummary: {},
+      yogiSummary: {}
     };
   }
   return res;
@@ -90,7 +103,7 @@ window.fetchHomeSummary = async function() {
 window.fetchHomeSummaryAPI = window.fetchHomeSummary;
 
 // -------------------------------------------------------------------
-// 3. Yogi Management API (12Yogi & 13Yogi - Active ↔ Inactive Togglable)
+// 3. Yogi Management API (12Yogi & 13Yogi)
 // -------------------------------------------------------------------
 window.fetchYogiDataAPI = async function(sheetType = '12Yogi', statusFilter = null) {
   let ep = `/api/yogi?sheet=${encodeURIComponent(sheetType)}`;
@@ -105,7 +118,6 @@ window.saveYogiAPI = async function(data, isEdit = false) {
   });
 };
 
-// စခန်းထွက်ပေးမည် (Active -> Inactive)
 window.checkoutYogiAPI = async function(payload) {
   return await safeApiRequest('/api/yogi/checkout', {
     method: 'PUT',
@@ -113,7 +125,6 @@ window.checkoutYogiAPI = async function(payload) {
   });
 };
 
-// 🔄 စခန်းတွင်း ပြန်လည်ဝင်မည် (Inactive -> Active)
 window.reactivateYogiAPI = async function(payload) {
   return await safeApiRequest('/api/yogi/reactivate', {
     method: 'PUT',
