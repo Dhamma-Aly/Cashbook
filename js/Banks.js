@@ -1,10 +1,10 @@
 // ===================================================================
-// js/Banks.js - Bank & Book Ledger Table Renderer (1CB~3CB, 4GB~10GB)
+// js/Banks.js - Bank & Book Ledger Table Renderer & Cascading Controller
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 30;
 let ledgerCurrentPage = 1;
-let ledgerAllEntries = [];      // Full dataset for the current sheet (latest first)
+let ledgerAllEntries = [];      // Full dataset for active sheet (latest first)
 let ledgerFilteredEntries = []; // After search filter
 
 // Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
@@ -19,7 +19,18 @@ function formatMonthYear(dateStr) {
   return `${m}-${y}`;
 }
 
-// Render Function Main Entry
+// 🎯 Helper: Get Category Tree Group Key based on Sheet Code
+function getTreeGroupKey(sheetCode) {
+  const sheet = String(sheetCode || '1CB').trim();
+  if (['1CB', '2CB', '3CB'].includes(sheet)) return 'BANKS';
+  if (sheet === '4GB') return '4GB';
+  if (['6HB', '7PB'].includes(sheet)) return 'BUILDING_BOOKS';
+  return 'PADETHA_BOOKS'; // 5FB, 8EB, 9MB, 10GB
+}
+
+// -------------------------------------------------------------------
+// 1. Render Bank/Book View Main Entry
+// -------------------------------------------------------------------
 window.renderBankView = async function(sheetKey) {
   let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
   if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
@@ -48,6 +59,9 @@ window.renderBankView = async function(sheetKey) {
 
 window.loadSheetView = window.renderBankView;
 
+// -------------------------------------------------------------------
+// 2. Update KPI Cards
+// -------------------------------------------------------------------
 function updateLedgerKPIs(kpis) {
   const k = kpis || { totalIncome: 0, totalExpense: 0, balance: 0, count: 0 };
   const setText = (id, val) => {
@@ -60,6 +74,9 @@ function updateLedgerKPIs(kpis) {
   setText("kpi-count", (k.count || 0).toLocaleString());
 }
 
+// -------------------------------------------------------------------
+// 3. Search Filter & Table Rendering
+// -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
   const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -174,42 +191,106 @@ window.nextPage = function() {
   }
 };
 
-window.onBankCategoryChange = function(cat) {
-  const subSelect = document.getElementById("entry-subcategory");
-  if (!subSelect) return;
+// ===================================================================
+// 4. 🔄 3-TIER DEPENDENT DROPDOWN CASCADING HANDLERS
+// ===================================================================
 
-  const bankSubcats = (window.CONFIG && window.CONFIG.BANK_SUBCATEGORIES && window.CONFIG.BANK_SUBCATEGORIES[cat])
-    || ['အထွေထွေ စာရင်းဖွင့်', 'အခြား'];
+// A. Type (ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း) ပြောင်းလဲသည့်အခါ Category Dropdown ပြောင်းပေးရန်
+window.onEntryTypeChange = function(selectedType) {
+  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const groupKey = getTreeGroupKey(sheet);
+  const tree = window.CONFIG?.CATEGORY_TREE?.[groupKey] || {};
 
-  subSelect.innerHTML = bankSubcats.map(s => `<option value="${s}">${s}</option>`).join('');
-};
+  const typeData = tree[selectedType] || {};
+  const categories = Object.keys(typeData);
 
-window.onBookTypeChange = function(type) {
-  const subSelect = document.getElementById("entry-subcategory");
-  if (!subSelect) return;
-
-  const subcats = (window.CONFIG && window.CONFIG.SUBCATEGORIES && window.CONFIG.SUBCATEGORIES[type])
-    || (type === 'ဝင်ငွေ' ? ['လှူဒါန်းငွေ', 'အသင်းဝင်ကြေး', 'အခြားဝင်ငွေ'] : ['ဆွမ်းစရိတ်', 'လျှပ်စစ်ဖိုး', 'အထွေထွေစရိတ်']);
-
-  subSelect.innerHTML = subcats.map(s => `<option value="${s}">${s}</option>`).join('');
-};
-
-window.openAddEntryModal = function() {
-  if (typeof window.openAddEntryModal === 'function') {
-    // Rely on app.js controller
+  const catSelect = document.getElementById("entry-category");
+  if (catSelect) {
+    catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+    if (categories.length > 0) {
+      window.onEntryCategoryChange(categories[0]);
+    } else {
+      const subSelect = document.getElementById("entry-subcategory");
+      if (subSelect) subSelect.innerHTML = '';
+    }
   }
 };
 
+// B. Category (ခေါင်းစဉ်) ပြောင်းလဲသည့်အခါ Sub-category (ခေါင်းစဉ်ခွဲ) Dropdown ပြောင်းပေးရန်
+window.onEntryCategoryChange = function(selectedCategory) {
+  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const groupKey = getTreeGroupKey(sheet);
+  const tree = window.CONFIG?.CATEGORY_TREE?.[groupKey] || {};
+
+  const typeSelect = document.getElementById("entry-type");
+  const currentType = typeSelect ? typeSelect.value : 'ဝင်ငွေ';
+
+  const subcategories = tree[currentType]?.[selectedCategory] || ['ပုံမှန်'];
+
+  const subSelect = document.getElementById("entry-subcategory");
+  if (subSelect) {
+    subSelect.innerHTML = subcategories.map(s => `<option value="${s}">${s}</option>`).join('');
+  }
+};
+
+// Backward-compatibility aliases
+window.onBankCategoryChange = window.onEntryCategoryChange;
+window.onBookTypeChange = window.onEntryTypeChange;
+
+// ===================================================================
+// 5. Add / Edit Modal Openers & Dynamic Initialization
+// ===================================================================
+window.openAddEntryModal = function() {
+  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
+  if (!modal) return;
+
+  const form = document.getElementById('entry-form');
+  if (form) form.reset();
+
+  const idInput = document.getElementById("entry-id");
+  if (idInput) idInput.value = "";
+
+  const titleEl = document.getElementById("entry-modal-title");
+  if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
+
+  // Default Today Date
+  const dateInput = document.getElementById("entry-date");
+  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+
+  // Default Type to "ဝင်ငွေ" and populate dependent dropdowns
+  const typeSelect = document.getElementById("entry-type");
+  if (typeSelect) {
+    typeSelect.value = "ဝင်ငွေ";
+    window.onEntryTypeChange("ဝင်ငွေ");
+  }
+
+  modal.classList.remove('hidden');
+};
+
+// Event listeners for Type and Category change
+document.addEventListener('change', (e) => {
+  if (e.target) {
+    if (e.target.id === 'entry-type') {
+      window.onEntryTypeChange(e.target.value);
+    } else if (e.target.id === 'entry-category') {
+      window.onEntryCategoryChange(e.target.value);
+    }
+  }
+});
+
+// ===================================================================
+// 6. Save Entry Form Submission
+// ===================================================================
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
   const uniqueId = document.getElementById("entry-id").value;
   const entry_date = document.getElementById("entry-date").value;
-  const category = document.getElementById("entry-type").value; // ဝင်ငွေ / ထွက်ငွေ
-  const subcategory = document.getElementById("entry-category").value;
+  const category = document.getElementById("entry-type").value; // ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း
+  const subcategory = document.getElementById("entry-category").value; // ခေါင်းစဉ်
   
   const subcatEl = document.getElementById("entry-subcategory");
-  const extraNote = subcatEl ? subcatEl.value : "";
+  const extraNote = subcatEl ? subcatEl.value : ""; // ခေါင်းစဉ်ခွဲ
   
   const voucher_no = document.getElementById("entry-voucher").value;
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
@@ -261,6 +342,9 @@ window.saveEntryForm = async function(event) {
   }
 };
 
+// ===================================================================
+// 7. Edit & Delete Actions
+// ===================================================================
 window.editEntry = function(uid) {
   const entry = ledgerAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
@@ -275,17 +359,17 @@ window.editEntry = function(uid) {
 
   document.getElementById("entry-id").value = entry.uniqueId || "";
   document.getElementById("entry-date").value = entry.entry_date || "";
-  document.getElementById("entry-type").value = type;
+  
+  const typeSelect = document.getElementById("entry-type");
+  if (typeSelect) {
+    typeSelect.value = type;
+    window.onEntryTypeChange(type);
+  }
 
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
-
-  if (isBank) {
-    const catSelect = document.getElementById("entry-category");
-    if (catSelect) catSelect.value = entry.subcategory || "စာရင်းဖွင့်";
-    window.onBankCategoryChange(entry.subcategory || "စာရင်းဖွင့်");
-  } else {
-    window.onBookTypeChange(type);
+  const catSelect = document.getElementById("entry-category");
+  if (catSelect && entry.subcategory) {
+    catSelect.value = entry.subcategory;
+    window.onEntryCategoryChange(entry.subcategory);
   }
 
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
@@ -316,6 +400,9 @@ window.deleteEntry = async function(uid) {
   }
 };
 
+// ===================================================================
+// 8. Export to CSV
+// ===================================================================
 window.exportCSV = function() {
   if (!ledgerFilteredEntries || ledgerFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
