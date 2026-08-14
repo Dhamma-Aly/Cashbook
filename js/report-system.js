@@ -1,13 +1,13 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer 
+// js/report-system.js - Annual & Summary Expense Report Renderer
 // ===================================================================
 
 let currentReportMode = 'Annual'; // 'Annual' or 'Summary'
-let currentReportYear = new Date().getFullYear().toString(); // Auto Current Year (e.g. '2026')
+let currentReportYear = new Date().getFullYear().toString(); // Auto Current Year
 let rawReportData = null;
 
 // -------------------------------------------------------------------
-// 1. Core View Renderer (Flicker-Free Silent Refresh Support)
+// 1. Core View Renderer
 // -------------------------------------------------------------------
 window.renderReportView = async function(isSilent = false) {
   const container = document.getElementById("view-container");
@@ -21,7 +21,7 @@ window.renderReportView = async function(isSilent = false) {
     }
   }
 
-  // 💡 ခုနှစ် ရွေးချယ်မှု Dropdown အား ယနေ့နှစ်အလိုက် Dynamic ဖြည့်ပေးခြင်း
+  // Populate dynamic years in select dropdown
   populateReportYears();
 
   const yearSelect = document.getElementById("report-year-select");
@@ -32,7 +32,6 @@ window.renderReportView = async function(isSilent = false) {
   }
 
   try {
-    // Fetch aggregated matrix report data from backend API
     const res = await window.fetchReportDataAPI("4GB", currentReportYear, currentReportMode);
     if (res && res.success && res.data) {
       rawReportData = res.data;
@@ -53,15 +52,15 @@ window.renderReportView = async function(isSilent = false) {
 
 window.loadReportView = window.renderReportView;
 
-// 💡 ခုနှစ်အသစ်များ ရောက်တိုင်း Auto ခုနှစ်စာရင်း ထုတ်ပေးသည့် Helper
+// Populate Dynamic Year Options in Selector
 function populateReportYears() {
   const yearSelect = document.getElementById("report-year-select");
   if (!yearSelect || yearSelect.options.length > 1) return;
 
-  const thisYear = new Date().getFullYear(); // e.g. 2026
-  const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2, thisYear - 3]; // [2027, 2026, 2025, 2024, 2023]
+  const thisYear = new Date().getFullYear();
+  const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2, thisYear - 3];
 
-  yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === thisYear ? 'selected' : ''}>${y}</option>`).join('');
+  yearSelect.innerHTML = years.map(y => `<option value="${y}" ${String(y) === String(currentReportYear) ? 'selected' : ''}>${y}</option>`).join('');
 }
 
 // -------------------------------------------------------------------
@@ -74,11 +73,11 @@ window.switchReportMode = function(mode) {
   const btnSummary = document.getElementById("btn-report-summary");
 
   if (mode === 'Annual') {
-    if (btnAnnual) btnAnnual.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (btnSummary) btnSummary.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnAnnual) btnAnnual.className = 'px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm';
+    if (btnSummary) btnSummary.className = 'px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer';
   } else {
-    if (btnSummary) btnSummary.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (btnAnnual) btnAnnual.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnSummary) btnSummary.className = 'px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm';
+    if (btnAnnual) btnAnnual.className = 'px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer';
   }
 
   window.renderReportView(false);
@@ -104,12 +103,12 @@ function applyReportFilters() {
   renderReportTableBody(query);
 }
 
-// 🎯 ခုနှစ်အလိုက် ခေါင်းစဉ်များ (Jan-26 / Jan-27 / Jan-28) Auto ပြောင်းပေးမည့် Function
+// Render Dynamic Table Header (Jan-26 vs Jan)
 function renderReportTableHeader() {
   const thead = document.getElementById("report-table-header");
   if (!thead) return;
 
-  const shortYear = String(currentReportYear).slice(-2); // '26' or '27' or '28'
+  const shortYear = String(currentReportYear).slice(-2);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let headerHtml = `
@@ -239,4 +238,31 @@ window.exportReportCSV = function() {
   let csv = "\uFEFF"; // UTF-8 BOM
 
   const monthHeaders = months.map(m => (currentReportMode === 'Annual') ? `${m}-${shortYear}` : m);
-  csv += ["Head", "Category", "Sub Category", ...monthHeaders, "Total"].map(v => `"${v}"`).joi
+  csv += ["Head", "Category", "Sub Category", ...monthHeaders, "Total"].map(v => `"${v}"`).join(",") + "\n";
+
+  const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
+
+  // Income Rows
+  (incomeRows || []).forEach(r => {
+    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
+    csv += rowVals.join(",") + "\n";
+  });
+
+  csv += [esc("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
+
+  // Expense Rows
+  (expenseRows || []).forEach(r => {
+    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
+    csv += rowVals.join(",") + "\n";
+  });
+
+  csv += [esc("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
+
+  csv += [esc("လက်ကျန်"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `4GB_Report_${currentReportMode}_${currentReportYear}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.click();
+};
