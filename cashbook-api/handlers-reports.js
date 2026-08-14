@@ -1,9 +1,10 @@
 // ===================================================================
 // cashbook-api/handlers-reports.js
-// Handles General Fund Summary Report (/api/report) querying D1 'cashbooks'
+// Handles Annual & Summary Expense Matrix Report for 4GB (ကျောင်းရန်ပုံငွေ)
 // ===================================================================
 
 export async function handleReportRequests(request, env, corsHeaders) {
+  const url = new URL(request.url);
   const method = request.method;
 
   if (method !== 'GET') {
@@ -14,80 +15,136 @@ export async function handleReportRequests(request, env, corsHeaders) {
   }
 
   try {
-    const TITLES = {
-      '1CB': 'အထွေထွေ ရန်ပုံငွေ (Bank)',
-      '2CB': 'ဆွမ်းပဒေသာပင် (Bank)',
-      '3CB': 'တစ်ဦးတည်းစာရင်း (Bank)',
-      '4GB': 'ကျောင်းရန်ပုံငွေ စာအုပ်',
-      '5FB': 'ဆွမ်းပဒေသာပင် စာအုပ်',
-      '6HB': 'ဓမ္မာရုံငွေစာရင်း စာအုပ်',
-      '7PB': 'စေတီငွေစာရင်း စာအုပ်',
-      '8EB': 'လျှပ်စစ်ပဒေသာပင် စာအုပ်',
-      '9MB': 'ဆေးပဒေသာပင် စာအုပ်',
-      '10GB': 'အထွေထွေရန်ပုံငွေစာအုပ်'
+    const sheet = url.searchParams.get('sheet') || '4GB';
+    const year = url.searchParams.get('year') || new Date().getFullYear().toString();
+    const mode = url.searchParams.get('mode') || 'Annual'; // 'Annual' or 'Summary'
+
+    // -----------------------------------------------------------------
+    // 1. Defined Structure for 4GB Report (Matching User Spreadsheet)
+    // -----------------------------------------------------------------
+    const INCOME_ROWS = [
+      { type: 'ဝင်ငွေ', category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်' },
+      { type: 'ဝင်ငွေ', category: 'ဆွမ်းအလှူ', subcategory: 'အရုဏ်ဆွမ်း' },
+      { type: 'ဝင်ငွေ', category: 'ဆွမ်းအလှူ', subcategory: 'နေ့ဆွမ်း' },
+      { type: 'ဝင်ငွေ', category: 'ဆွမ်းအလှူ', subcategory: 'တနေ့တာဆွမ်း' },
+      { type: 'ဝင်ငွေ', category: 'အထွေထွေ', subcategory: 'လမ်းအလှူ' },
+      { type: 'ဝင်ငွေ', category: 'အထွေထွေ', subcategory: 'အခြားအလှူ' }
+    ];
+
+    const EXPENSE_ROWS = [
+      { type: 'ထွက်ငွေ', category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'မီးဖိုချောင်အသုံးစရိတ်' },
+      { type: 'ထွက်ငွေ', category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'သင်္ကန်းတရားစခန်း အသုံးစရိတ်' },
+      { type: 'ထွက်ငွေ', category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ကျောင်းပစ္စည်းဝယ်ယူခြင်း' },
+      { type: 'ထွက်ငွေ', category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ဆ/ဥ ပြုပြင်စရိတ်' },
+      { type: 'ထွက်ငွေ', category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်' },
+      { type: 'ထွက်ငွေ', category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား' }
+    ];
+
+    // -----------------------------------------------------------------
+    // 2. Query D1 Database for 4GB Transactions
+    // -----------------------------------------------------------------
+    let sql = `
+      SELECT 
+        type,
+        category,
+        subcategory,
+        strftime('%m', date) as month_num,
+        SUM(amount) as total_amount
+      FROM cashbooks
+      WHERE sheet_code = ?
+    `;
+    const queryParams = [sheet];
+
+    if (mode === 'Annual') {
+      sql += ` AND strftime('%Y', date) = ?`;
+      queryParams.push(year);
+    }
+
+    sql += ` GROUP BY type, category, subcategory, month_num`;
+
+    const { results } = await env.DB.prepare(sql).bind(...queryParams).all();
+
+    // Map month totals: key = `${type}_${category}_${subcategory}_${monthNum}`
+    const dataMap = {};
+    (results || []).forEach(row => {
+      const type = String(row.type || '').trim();
+      const cat = String(row.category || '').trim();
+      const subcat = String(row.subcategory || '').trim();
+      const mNum = parseInt(row.month_num) || 0; // 1 to 12
+      const amt = parseFloat(row.total_amount) || 0;
+
+      const key = `${type}_${cat}_${subcat}_${mNum}`;
+      dataMap[key] = (dataMap[key] || 0) + amt;
+    });
+
+    // Helper to build 12-month row array
+    const buildRowData = (rowSpec, srNo) => {
+      const months = Array(12).fill(0);
+      let rowTotal = 0;
+
+      for (let m = 1; m <= 12; m++) {
+        const key = `${rowSpec.type}_${rowSpec.category}_${rowSpec.subcategory}_${m}`;
+        const val = dataMap[key] || 0;
+        months[m - 1] = val;
+        rowTotal += val;
+      }
+
+      return {
+        srNo,
+        type: rowSpec.type,
+        category: rowSpec.category,
+        subcategory: rowSpec.subcategory,
+        months,
+        total: rowTotal
+      };
     };
 
-    const ALL_KNOWN_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
+    // Build Income Rows
+    const incomeDataRows = INCOME_ROWS.map((spec, idx) => buildRowData(spec, idx + 1));
+    const incomeTotals = Array(12).fill(0);
+    let grandIncomeTotal = 0;
 
-    // D1 Database ထဲမှ စာအုပ်တစ်အုပ်ချင်းစီ၏ ဝင်ငွေပေါင်း၊ ထွက်ငွေပေါင်း၊ လက်ကျန်ငွေကို SQL ဖြင့် တွက်ချက်ခြင်း
-    const { results } = await env.DB.prepare(`
-      SELECT 
-        sheet_code,
-        SUM(CASE WHEN type = 'ဝင်ငွေ' THEN amount ELSE 0 END) as total_income,
-        SUM(CASE WHEN type = 'ထွက်ငွေ' THEN amount ELSE 0 END) as total_expense,
-        SUM(CASE WHEN type = 'ဝင်ငွေ' THEN amount ELSE -amount END) as balance
-      FROM cashbooks
-      GROUP BY sheet_code
-    `).all();
-
-    const sheetDataMap = {};
-    (results || []).forEach(row => {
-      sheetDataMap[row.sheet_code] = {
-        income: parseFloat(row.total_income) || 0,
-        expense: parseFloat(row.total_expense) || 0,
-        balance: parseFloat(row.balance) || 0
-      };
+    incomeDataRows.forEach(r => {
+      r.months.forEach((amt, mIdx) => {
+        incomeTotals[mIdx] += amt;
+      });
+      grandIncomeTotal += r.total;
     });
 
-    const reportMatrix = [];
+    // Build Expense Rows
+    const expenseDataRows = EXPENSE_ROWS.map((spec, idx) => buildRowData(spec, idx + 1));
+    const expenseTotals = Array(12).fill(0);
+    let grandExpenseTotal = 0;
 
-    // Row 0: Matrix Header Row
-    reportMatrix.push(["စဉ်", "အကြောင်းအရာ / စာအုပ်အမည်", "ဝင်ငွေပေါင်း (MMK)", "ထွက်ငွေပေါင်း (MMK)", "လက်ကျန်ငွေ (MMK)"]);
-
-    let grandIncome = 0;
-    let grandExpense = 0;
-    let grandBalance = 0;
-
-    // စာအုပ်တစ်အုပ်ချင်းစီ၏ ဒေတာများကို Matrix ထဲသို့ စိစစ်ထည့်သွင်းခြင်း
-    ALL_KNOWN_SHEETS.forEach((sheet, idx) => {
-      const title = TITLES[sheet] || sheet;
-      const data = sheetDataMap[sheet] || { income: 0, expense: 0, balance: 0 };
-
-      grandIncome += data.income;
-      grandExpense += data.expense;
-      grandBalance += data.balance;
-
-      reportMatrix.push([
-        idx + 1,
-        title,
-        data.income,
-        data.expense,
-        data.balance
-      ]);
+    expenseDataRows.forEach(r => {
+      r.months.forEach((amt, mIdx) => {
+        expenseTotals[mIdx] += amt;
+      });
+      grandExpenseTotal += r.total;
     });
 
-    // Last Row: စုစုပေါင်း လက်ကျန်ငွေ Row
-    reportMatrix.push([
-      "-",
-      "စုစုပေါင်း လက်ကျန်ငွေ",
-      grandIncome,
-      grandExpense,
-      grandBalance
-    ]);
+    // Calculate Net Balance per month
+    const balanceTotals = Array(12).fill(0);
+    for (let m = 0; m < 12; m++) {
+      balanceTotals[m] = incomeTotals[m] - expenseTotals[m];
+    }
+    const grandNetBalance = grandIncomeTotal - grandExpenseTotal;
 
     return new Response(JSON.stringify({
       success: true,
-      data: reportMatrix
+      sheet,
+      year,
+      mode,
+      data: {
+        incomeRows: incomeDataRows,
+        incomeTotals,
+        grandIncomeTotal,
+        expenseRows: expenseDataRows,
+        expenseTotals,
+        grandExpenseTotal,
+        balanceTotals,
+        grandNetBalance
+      }
     }), {
       headers: corsHeaders
     });
@@ -97,7 +154,7 @@ export async function handleReportRequests(request, env, corsHeaders) {
     return new Response(JSON.stringify({
       success: false,
       error: err.message,
-      data: []
+      data: null
     }), {
       status: 500,
       headers: corsHeaders
