@@ -1,33 +1,36 @@
-<!-- view/report-system.html - Annual & Summary Expense Matrix Report (Ultra-Compact Single Row) -->
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report -->
 
-<div id="report-section" class="space-y-4">
+<div id="report-section" class="space-y-5">
   
-  <!-- 💡 ULTRA-COMPACT SINGLE-ROW ACTION BAR (Height ~48px) -->
-  <div class="flex flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-4 py-2.5 rounded-xl gap-3 shadow-xl w-full overflow-x-auto">
+  <!-- 💡 ELEGANT & SPACIOUS ACTION BAR -->
+  <div class="flex flex-col lg:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl w-full">
     
-    <!-- Left: Search Box (Compact 250px Width) -->
-    <div class="relative w-48 sm:w-64 shrink-0">
-      <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-[#080d1a] border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 transition-all font-medium">
+    <!-- Left: Search Box (Glassmorphic) -->
+    <div class="relative w-full lg:w-80 shrink-0">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 font-medium">
     </div>
 
-    <!-- Right: All Controls on the Same Single Line -->
-    <div class="flex items-center gap-2 sm:gap-3 shrink-0 whitespace-nowrap">
+    <!-- Right: All Controls Spacious & Neat -->
+    <div class="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto shrink-0 whitespace-nowrap">
       
       <!-- Annual vs Summary Mode Toggle -->
-      <div class="flex items-center gap-0.5 bg-[#080d1a] border border-amber-500/20 p-0.5 rounded-lg text-xs">
-        <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-2.5 py-1 rounded-md font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1 cursor-pointer">
-          <i class="fa-solid fa-calendar-days text-[11px]"></i> Annual
+      <div class="flex items-center gap-1.5 bg-[#080d1a] border border-amber-500/30 p-1 rounded-xl text-xs">
+        <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm">
+          <i class="fa-solid fa-calendar-days text-xs text-amber-400"></i>
+          <span>Annual</span>
         </button>
-        <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-2.5 py-1 rounded-md font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1 cursor-pointer">
-          <i class="fa-solid fa-chart-column text-[11px]"></i> Summary
+        <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer">
+          <i class="fa-solid fa-chart-column text-xs text-amber-400/70"></i>
+          <span>Summary</span>
         </button>
       </div>
 
       <!-- Year Selector Dropdown -->
-      <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/30 px-2.5 py-1 rounded-lg text-xs font-bold text-amber-200">
-        <label for="report-year-select" class="text-amber-400/80 text-[11px]">ခုနှစ်:</label>
-        <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-extrabold outline-none cursor-pointer text-xs">
+      <div class="flex items-center gap-2 bg-[#080d1a] border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-extrabold text-amber-200 shadow-sm">
+        <i class="fa-solid fa-calendar text-amber-400 text-xs"></i>
+        <label for="report-year-select" class="text-amber-400/90 font-bold">ခုနှစ်:</label>
+        <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-black outline-none cursor-pointer text-xs pr-1">
           <option value="2026" selected>2026</option>
           <option value="2025">2025</option>
           <option value="2024">2024</option>
@@ -36,12 +39,14 @@
       </div>
 
       <!-- Refresh & Export Buttons -->
-      <button onclick="renderReportView()" class="px-3 py-1.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer" title="Refresh">
-        <i class="fa-solid fa-rotate text-xs"></i> Refresh
+      <button onclick="renderReportView()" class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-sm" title="Refresh">
+        <i class="fa-solid fa-rotate text-xs text-amber-400"></i>
+        <span>Refresh</span>
       </button>
       
-      <button onclick="exportReportCSV()" class="px-3 py-1.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer" title="Export CSV">
-        <i class="fa-solid fa-file-export text-xs"></i> Export
+      <button onclick="exportReportCSV()" class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-sm" title="Export CSV">
+        <i class="fa-solid fa-file-export text-xs text-amber-400"></i>
+        <span>Export</span>
       </button>
 
     </div>
