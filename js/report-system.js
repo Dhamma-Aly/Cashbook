@@ -3,7 +3,7 @@
 // ===================================================================
 
 let currentReportMode = 'Annual'; // 'Annual' or 'Summary'
-let currentReportYear = '2026';
+let currentReportYear = new Date().getFullYear().toString(); // Auto Current Year (e.g. '2026')
 let rawReportData = null;
 
 // -------------------------------------------------------------------
@@ -21,10 +21,12 @@ window.renderReportView = async function(isSilent = false) {
     }
   }
 
-  const yearSelect = document.getElementById("report-year-select");
-  if (yearSelect) currentReportYear = yearSelect.value || '2026';
+  // 💡 ခုနှစ် ရွေးချယ်မှု Dropdown အား ယနေ့နှစ်အလိုက် Dynamic ဖြည့်ပေးခြင်း
+  populateReportYears();
 
-  // 💡 Silent Refresh ဖြစ်ပါက Loading Overlay မပြပါ (စကရင် ခါမသွားစေရန်)
+  const yearSelect = document.getElementById("report-year-select");
+  if (yearSelect) currentReportYear = yearSelect.value || new Date().getFullYear().toString();
+
   if (!isSilent && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
@@ -50,6 +52,17 @@ window.renderReportView = async function(isSilent = false) {
 };
 
 window.loadReportView = window.renderReportView;
+
+// 💡 ခုနှစ်အသစ်များ ရောက်တိုင်း Auto ခုနှစ်စာရင်း ထုတ်ပေးသည့် Helper
+function populateReportYears() {
+  const yearSelect = document.getElementById("report-year-select");
+  if (!yearSelect || yearSelect.options.length > 1) return;
+
+  const thisYear = new Date().getFullYear(); // e.g. 2026
+  const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2, thisYear - 3]; // [2027, 2026, 2025, 2024, 2023]
+
+  yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === thisYear ? 'selected' : ''}>${y}</option>`).join('');
+}
 
 // -------------------------------------------------------------------
 // 2. Mode & Year Switchers
@@ -91,12 +104,12 @@ function applyReportFilters() {
   renderReportTableBody(query);
 }
 
-// Render Dynamic Table Header (Jan-26 vs Jan)
+// 🎯 ခုနှစ်အလိုက် ခေါင်းစဉ်များ (Jan-26 / Jan-27 / Jan-28) Auto ပြောင်းပေးမည့် Function
 function renderReportTableHeader() {
   const thead = document.getElementById("report-table-header");
   if (!thead) return;
 
-  const shortYear = String(currentReportYear).slice(-2); // '26'
+  const shortYear = String(currentReportYear).slice(-2); // '26' or '27' or '28'
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let headerHtml = `
@@ -130,9 +143,7 @@ function renderReportTableBody(query) {
 
   let html = '';
 
-  // -----------------------------------------------------------------
-  // A. INCOME SECTION (ဝင်ငွေ)
-  // -----------------------------------------------------------------
+  // A. INCOME SECTION
   let filteredIncome = (incomeRows || []).filter(r => {
     if (!query) return true;
     return [r.type, r.category, r.subcategory].some(v => (v || '').toLowerCase().includes(query));
@@ -154,7 +165,7 @@ function renderReportTableBody(query) {
     });
   }
 
-  // Income Total Row (ဝင်ငွေပေါင်း)
+  // Income Total Row
   html += `
     <tr class="bg-emerald-950/40 border-t-2 border-b-2 border-emerald-500/40 font-extrabold text-emerald-300">
       <td colspan="3" class="py-3 px-4 text-emerald-300 font-black text-xs uppercase tracking-wider">ဝင်ငွေပေါင်း</td>`;
@@ -165,9 +176,7 @@ function renderReportTableBody(query) {
 
   html += `<td class="text-right py-3 px-3 font-mono font-black text-emerald-300 bg-emerald-500/20">${fmt(grandIncomeTotal)}</td></tr>`;
 
-  // -----------------------------------------------------------------
-  // B. EXPENSE SECTION (ထွက်ငွေ)
-  // -----------------------------------------------------------------
+  // B. EXPENSE SECTION
   let filteredExpense = (expenseRows || []).filter(r => {
     if (!query) return true;
     return [r.type, r.category, r.subcategory].some(v => (v || '').toLowerCase().includes(query));
@@ -189,7 +198,7 @@ function renderReportTableBody(query) {
     });
   }
 
-  // Expense Total Row (ထွက်ငွေပေါင်း)
+  // Expense Total Row
   html += `
     <tr class="bg-rose-950/40 border-t-2 border-b-2 border-rose-500/40 font-extrabold text-rose-300">
       <td colspan="3" class="py-3 px-4 text-rose-300 font-black text-xs uppercase tracking-wider">ထွက်ငွေပေါင်း</td>`;
@@ -200,9 +209,7 @@ function renderReportTableBody(query) {
 
   html += `<td class="text-right py-3 px-3 font-mono font-black text-rose-300 bg-rose-500/20">${fmt(grandExpenseTotal)}</td></tr>`;
 
-  // -----------------------------------------------------------------
-  // C. NET BALANCE ROW (လက်ကျန် = ဝင်ငွေပေါင်း - ထွက်ငွေပေါင်း)
-  // -----------------------------------------------------------------
+  // C. NET BALANCE ROW
   html += `
     <tr class="bg-[#080d1a] border-t-2 border-b-2 border-amber-500/50 font-black text-amber-300 text-xs">
       <td colspan="3" class="py-3.5 px-4 text-amber-300 font-black uppercase tracking-wider">လက်ကျန်</td>`;
@@ -231,36 +238,5 @@ window.exportReportCSV = function() {
 
   let csv = "\uFEFF"; // UTF-8 BOM
 
-  // Header Row
   const monthHeaders = months.map(m => (currentReportMode === 'Annual') ? `${m}-${shortYear}` : m);
-  csv += ["Head", "Category", "Sub Category", ...monthHeaders, "Total"].map(v => `"${v}"`).join(",") + "\n";
-
-  const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
-
-  // Income Rows
-  (incomeRows || []).forEach(r => {
-    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
-    csv += rowVals.join(",") + "\n";
-  });
-
-  // Income Total
-  csv += [esc("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
-
-  // Expense Rows
-  (expenseRows || []).forEach(r => {
-    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
-    csv += rowVals.join(",") + "\n";
-  });
-
-  // Expense Total
-  csv += [esc("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
-
-  // Net Balance Total
-  csv += [esc("လက်ကျန်"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
-
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `4GB_Report_${currentReportMode}_${currentReportYear}_${new Date().toISOString().split('T')[0]}.csv`;
-  link.click();
-};
+  csv += ["Head", "Category", "Sub Category", ...monthHeaders, "Total"].map(v => `"${v}"`).joi
