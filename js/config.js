@@ -2,7 +2,6 @@
 // js/config.js - Sāsana ERP System Configuration & API Endpoint Setup
 // ===================================================================
 
-// 🎯 Cloudflare Worker Backend URL
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
 
 window.CONFIG = {
@@ -34,7 +33,7 @@ window.CONFIG = {
   // 👤 Authorized Users / Receivers
   RECEIVERS: ['User 1', 'User 2', 'User 3'],
 
-  // 🔄 TRANSFER TARGET BANK MAPPING (စာအုပ်နှင့် ဘဏ် ချိတ်ဆက်မှု မက်ပင်း)
+  // 🔄 TRANSFER TARGET BANK MAPPING
   TRANSFER_MAPPING: {
     '4GB': { targetBank: '1CB', bankTitle: 'အထွေထွေ ရန်ပုံငွေ (Bank)' },
     '5FB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' },
@@ -43,8 +42,22 @@ window.CONFIG = {
     '10GB': { targetBank: '2CB', bankTitle: 'ဆွမ်းပဒေသာပင် (Bank)' }
   },
 
+  // 📑 Sheet to Category Tree Group Mapping (Dropdown ချိတ်ဆက်ရန်)
+  SHEET_GROUP_MAP: {
+    '1CB': 'BANKS',
+    '2CB': 'BANKS',
+    '3CB': 'BANKS',
+    '4GB': '4GB',
+    '5FB': 'PADETHA_BOOKS',
+    '6HB': 'BUILDING_BOOKS',
+    '7PB': 'BUILDING_BOOKS',
+    '8EB': 'PADETHA_BOOKS',
+    '9MB': 'PADETHA_BOOKS',
+    '10GB': 'PADETHA_BOOKS'
+  },
+
   // ===================================================================
-  // 3-TIER DEPENDENT DROPDOWN TREE (Sheet Group -> Type -> Category -> Subcategory)
+  // 3-TIER DEPENDENT DROPDOWN TREE (Group -> Type -> Category -> Subcategory)
   // ===================================================================
   CATEGORY_TREE: {
     // 🏦 BANKS GROUP (1CB, 2CB, 3CB)
@@ -103,7 +116,7 @@ window.CONFIG = {
     }
   },
 
-  // 🧘 Yogi Categories
+  // 🧘 Yogi Categories & Options
   YOGI_CATEGORIES: ['လူပုဂ္ဂိုလ်', 'ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'ဝေယျာဝိစ္စ'],
   YOGI_GENDERS: ['ကျား', 'မ'],
   YOGI_STATUSES: ['Active', 'Inactive'],
