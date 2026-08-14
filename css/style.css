@@ -1,12 +1,13 @@
-/* css/style.css - Sāsana ERP Custom Responsive CSS & Deep Navy Slate Theme */
+/* css/style.css - Sāsana ERP Custom Responsive CSS, Larger Fonts & Deep Navy Slate Theme */
 
 :root {
   color-scheme: dark;
 }
 
-/* 🇲🇲 Myanmar Webfont */
+/* 🇲🇲 Myanmar Webfont (Slightly Larger Base Font) */
 body.font-myanmar {
   font-family: 'Noto Sans Myanmar', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  font-size: 0.9375rem !important; /* ~15px Base Font */
 }
 
 /* 📱 Dynamic Viewport Height Fix for Mobile Browsers */
@@ -60,7 +61,7 @@ button, a, select, input, textarea {
   -webkit-overflow-scrolling: touch;
 }
 
-/* 🔘 Navigation Buttons Styling */
+/* 🔘 Navigation Buttons Styling (Slightly Larger Font & Clear Padding) */
 .nav-btn {
   transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: #94a3b8 !important;
@@ -68,6 +69,9 @@ button, a, select, input, textarea {
   overflow: hidden;
   text-overflow: ellipsis;
   border-left: 4px solid transparent;
+  font-size: 0.8125rem !important; /* ~13px */
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
 }
 .nav-btn:hover {
   background-color: rgba(30, 41, 59, 0.6) !important;
@@ -80,16 +84,20 @@ button, a, select, input, textarea {
   border-left: 4px solid #f59e0b !important;
 }
 
-/* 📊 KPI Cards Styling (Matches Deep Slate Navy theme) */
+/* 📊 KPI Cards Styling (Matches Deep Slate Navy theme & Larger Font) */
 .stats-card {
   background: linear-gradient(135deg, #0f172a 0%, #080d1a 100%) !important;
   border: 1px solid rgba(245, 158, 11, 0.3) !important;
   border-radius: 0.85rem !important;
   box-shadow: 0 6px 20px -4px rgba(0, 0, 0, 0.8) !important;
-  padding: 0.85rem 1.1rem !important;
+  padding: 0.9rem 1.15rem !important;
   display: flex !important;
   align-items: center !important;
-  gap: 0.85rem !important;
+  gap: 0.9rem !important;
+}
+
+.stats-card h3 {
+  font-size: 1.05rem !important; /* ~17px Larger KPI Numbers */
 }
 
 /* ===================================================================
@@ -128,13 +136,14 @@ button, a, select, input, textarea {
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.9) !important;
 }
 
-/* ✍️ FORM CONTROLS & DARK DROPDOWNS */
+/* ✍️ FORM CONTROLS & DARK DROPDOWNS (Comfortable Touch Target) */
 #entry-modal input, #entry-modal select, #entry-modal textarea,
 #inv-entry-modal input, #inv-entry-modal select, #inv-entry-modal textarea,
 #yogi-entry-modal input, #yogi-entry-modal select, #yogi-entry-modal textarea {
   background-color: #080d1a !important;
   color: #f8fafc !important;
   border-color: rgba(245, 158, 11, 0.3) !important;
+  font-size: 0.8125rem !important; /* ~13px */
 }
 
 select option {
@@ -142,14 +151,32 @@ select option {
   color: #f8fafc !important;
 }
 
-/* 📋 Table Responsiveness & Sticky Headers */
+/* 📐 2-Column Responsive Flex Helper for Modal Forms */
+.form-row-2col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .form-row-2col {
+    flex-direction: row;
+  }
+  .form-row-2col > div {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* 📋 Table Responsiveness & Sticky Headers (100% Clear Myanmar Script) */
 table thead th {
   position: sticky;
   top: 0;
   z-index: 20;
   background-color: #080d1a !important;
-  padding: 12px 16px;
-  font-size: 0.725rem !important;
+  padding: 13px 16px;
+  font-size: 0.775rem !important; /* ~12.5px Header Font */
   text-transform: uppercase;
   color: #fef08a !important;
   border-bottom: 1px solid rgba(245, 158, 11, 0.3) !important;
@@ -157,9 +184,9 @@ table thead th {
 }
 
 table tbody td {
-  padding: 10px 16px;
+  padding: 11px 16px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
-  font-size: 0.8rem !important;
+  font-size: 0.875rem !important; /* ~14px Larger Data Font */
   white-space: nowrap !important;
   color: #f1f5f9 !important;
 }
@@ -212,8 +239,8 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
     transform: translateX(0) !important;
   }
   table tbody td {
-    padding: 8px 12px;
-    font-size: 0.75rem !important;
+    padding: 9px 12px;
+    font-size: 0.8125rem !important; /* ~13px on mobile */
   }
   .stats-card {
     padding: 0.75rem 0.9rem !important;
