@@ -29,9 +29,9 @@ function getTreeGroupKey(sheetCode) {
 }
 
 // -------------------------------------------------------------------
-// 1. Render Bank/Book View Main Entry
+// 1. Render Bank/Book View Main Entry (Flicker-Free Silent Refresh)
 // -------------------------------------------------------------------
-window.renderBankView = async function(sheetKey) {
+window.renderBankView = async function(sheetKey, isSilent = false) {
   let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
   if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
     targetSheet = String(window.currentSheet || '1CB').trim();
@@ -39,10 +39,12 @@ window.renderBankView = async function(sheetKey) {
   window.currentSheetKey = targetSheet;
   ledgerCurrentPage = 1;
 
-  // 💡 စာအုပ် ကူးပြောင်းလိုက်သည်နှင့် ဒေတာဟောင်း ပြမနေစေရန် ဇယားကို ချက်ချင်း Reset လုပ်ပြီး Loading ပြပေးခြင်း
-  const tbody = document.getElementById("table-body");
-  if (tbody) {
-    tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>`;
+  // 💡 Silent Refresh မဟုတ်မှသာ Spinner ပြမည် (စကရင် ခါမသွားစေရန်)
+  if (!isSilent) {
+    const tbody = document.getElementById("table-body");
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>`;
+    }
   }
 
   try {
@@ -63,7 +65,9 @@ window.renderBankView = async function(sheetKey) {
   applyLedgerSearchFilter();
 };
 
-window.loadSheetView = window.renderBankView;
+window.loadSheetView = function(isSilent = false) {
+  window.renderBankView(window.currentSheetKey, isSilent);
+};
 
 // -------------------------------------------------------------------
 // 2. Update KPI Cards
@@ -185,9 +189,7 @@ function renderLedgerTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-// ===================================================================
 // Search & Pagination Controls
-// ===================================================================
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
   applyLedgerSearchFilter();
