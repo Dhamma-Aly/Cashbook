@@ -1,7 +1,5 @@
 // ===================================================================
-// js/Inventory.js - Inventory (11Inv) Logic
-// Backend returns { success, data: [ {entry objects} ], kpis } via
-// GET /api/inventory (see cashbook-api/handlers-inventory.js).
+// js/Inventory.js - Inventory (11Inv) Logic & Management
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -21,9 +19,13 @@ function formatMonthYear(dateStr) {
   return `${m}-${y}`;
 }
 
-window.renderInventoryView = async function() {
+window.renderInventoryView = async function(isSilent = false) {
   currentInvPage = 1;
   window.currentSheetKey = "11Inv";
+
+  if (!isSilent && typeof window.showLoading === 'function') {
+    window.showLoading(true);
+  }
 
   try {
     const res = await window.fetchInventoryDataAPI();
@@ -38,6 +40,10 @@ window.renderInventoryView = async function() {
     console.error("Error fetching inventory data:", error);
     invAllEntries = [];
     updateInventoryKPIs(null);
+  } finally {
+    if (!isSilent && typeof window.showLoading === 'function') {
+      window.showLoading(false);
+    }
   }
 
   applyInventoryFilter();
@@ -86,6 +92,7 @@ function renderInventoryTable() {
   const start = (currentInvPage - 1) * INV_ROWS_PER_PAGE;
   const end = Math.min(start + INV_ROWS_PER_PAGE, total);
   const pageRows = invFilteredEntries.slice(start, end);
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
 
   if (total === 0) {
     tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
@@ -113,8 +120,8 @@ function renderInventoryTable() {
           <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "11Inv - ပစ္စည်းစာရင်း"}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3">
             <div class="flex items-center justify-center gap-2">
-              <button onclick="editInvEntry('${uid}')" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteInvEntry('${uid}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="editInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -157,7 +164,7 @@ window.prevInvPage = function() {
   }
 };
 
-// Modal Openers & Reset
+// Modal Openers
 window.openAddInvModal = function() {
   const modal = document.getElementById("inv-entry-modal");
   const form = document.getElementById("inv-entry-form");
@@ -183,7 +190,7 @@ window.closeInvModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// Save Inventory Submission
+// Save / Edit / Delete Inventory Submissions
 window.saveInventoryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -214,7 +221,7 @@ window.saveInventoryForm = async function(event) {
     book_name: "11Inv - ပစ္စည်းစာရင်း"
   };
 
-  window.showLoading(true);
+  if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const res = await window.saveInventoryEntryAPI(payload, isEdit);
     if (res && res.success) {
@@ -227,7 +234,7 @@ window.saveInventoryForm = async function(event) {
     console.error("Save Inventory Error:", err);
     alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    window.showLoading(false);
+    if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
@@ -264,7 +271,7 @@ window.editInvEntry = function(uid) {
 window.deleteInvEntry = async function(uid) {
   if (!confirm("ဤပစ္စည်းစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
 
-  window.showLoading(true);
+  if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const res = await window.deleteInventoryEntryAPI(uid);
     if (res && res.success) {
@@ -276,7 +283,7 @@ window.deleteInvEntry = async function(uid) {
     console.error("Delete Inventory Error:", err);
     alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    window.showLoading(false);
+    if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
