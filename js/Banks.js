@@ -120,7 +120,15 @@ function renderLedgerTable() {
       const income = parseFloat(entry.income) || 0;
       const expense = parseFloat(entry.expense) || 0;
       const balance = parseFloat(entry.balance) || 0;
+
+      const isTransfer = entry.category === "စာရင်းပြောင်း";
       const isIncome = entry.category === "ဝင်ငွေ";
+
+      // Badge style
+      let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
+      if (isIncome) badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+      if (isTransfer) badgeClass = 'bg-purple-500/10 text-purple-300 border border-purple-500/20';
+
       const monthYearFormatted = formatMonthYear(entry.entry_date || entry.month_year);
 
       const incomeHtml = income ? `<span class="text-emerald-400 font-mono font-bold">${income.toLocaleString()}</span>` : '<span class="text-slate-600">-</span>';
@@ -135,7 +143,7 @@ function renderLedgerTable() {
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3">${srNo}</td>
           <td class="font-mono text-xs text-slate-300">${entry.entry_date || "-"}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${isIncome ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'}">${entry.category || "-"}</span></td>
+          <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${entry.category || "-"}</span></td>
           <td class="font-semibold text-amber-200">${entry.subcategory || "-"}</td>
           <td class="font-mono text-xs text-amber-300/80">${entry.voucher_no || "-"}</td>
           <td class="whitespace-normal max-w-xs text-slate-200">${entry.description || "-"}</td>
@@ -192,10 +200,10 @@ window.nextPage = function() {
 };
 
 // ===================================================================
-// 4. 🔄 3-TIER DEPENDENT DROPDOWN CASCADING HANDLERS
+// 4. 🔄 3-TIER DEPENDENT DROPDOWN CASCADING & AUTO-FILL HANDLERS
 // ===================================================================
 
-// A. Type (ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း) ပြောင်းလဲသည့်အခါ Category Dropdown ပြောင်းပေးရန်
+// A. Type (ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း) ပြောင်းလဲသည့်အခါ
 window.onEntryTypeChange = function(selectedType) {
   const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   const groupKey = getTreeGroupKey(sheet);
@@ -214,9 +222,18 @@ window.onEntryTypeChange = function(selectedType) {
       if (subSelect) subSelect.innerHTML = '';
     }
   }
+
+  // 💡 "စာရင်းပြောင်း" ရွေးချယ်ပါက အကြောင်းအရာ (Description) Auto ဖြည့်ပေးခြင်း
+  if (selectedType === 'စာရင်းပြောင်း') {
+    const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet];
+    const descInput = document.getElementById("entry-description");
+    if (descInput && transferMap) {
+      descInput.value = `${transferMap.bankTitle} ဘဏ်အပ်နှံခြင်း`;
+    }
+  }
 };
 
-// B. Category (ခေါင်းစဉ်) ပြောင်းလဲသည့်အခါ Sub-category (ခေါင်းစဉ်ခွဲ) Dropdown ပြောင်းပေးရန်
+// B. Category (ခေါင်းစဉ်) ပြောင်းလဲသည့်အခါ
 window.onEntryCategoryChange = function(selectedCategory) {
   const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   const groupKey = getTreeGroupKey(sheet);
@@ -279,7 +296,7 @@ document.addEventListener('change', (e) => {
 });
 
 // ===================================================================
-// 6. Save Entry Form Submission
+// 6. Save Entry Form Submission (Transfer Financial Logic Fixed)
 // ===================================================================
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -297,8 +314,11 @@ window.saveEntryForm = async function(event) {
   const receiver = document.getElementById("entry-receiver").value;
   const description = document.getElementById("entry-description").value.trim();
 
+  // 💡 Financial Calculation Logic:
+  // "ဝင်ငွေ" ➔ Income
+  // "ထွက်ငွေ" သို့မဟုတ် "စာရင်းပြောင်း" ➔ Expense (Credit/ထွက်ငွေ)
   const income = category === "ဝင်ငွေ" ? amount : 0;
-  const expense = category === "ထွက်ငွေ" ? amount : 0;
+  const expense = (category === "ထွက်ငွေ" || category === "စာရင်းပြောင်း") ? amount : 0;
   const month_year = formatMonthYear(entry_date);
 
   let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
@@ -321,6 +341,7 @@ window.saveEntryForm = async function(event) {
     receiver,
     income,
     expense,
+    amount, // Total amount
     month_year,
     book_name: bookName
   };
@@ -373,7 +394,7 @@ window.editEntry = function(uid) {
   }
 
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
-  document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
+  document.getElementById("entry-amount").value = (entry.income || entry.expense || entry.amount || 0);
   
   const recSelect = document.getElementById("entry-receiver");
   if (recSelect) recSelect.value = entry.receiver || "";
