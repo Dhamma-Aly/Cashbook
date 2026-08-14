@@ -1,7 +1,6 @@
 // ===================================================================
 // js/yogi.js - Frontend Logic for Yogi Management (12Yogi & 13Yogi)
-// Features Flicker-Free Sync, 2-Way Active <-> Inactive Toggle,
-// Dynamic Sequential Indexing (1, 2, 3...), Auto-Age, and Auto-Gender
+// Features Smart NRC Parser, Auto-Age, Auto-Gender & 2-Way Checkout
 // ===================================================================
 
 let currentYogiSheet = '12Yogi';
@@ -10,6 +9,23 @@ let allYogiEntries = [];
 let filteredYogiEntries = [];
 let yogiCurrentPage = 1;
 const yogiRowsPerPage = 15;
+
+// Helper: Smart NRC Splitter (e.g., "12/ရကန(နိုင်)123456" -> { state: "12", township: "ရကန", type: "(နိုင်)", number: "123456" })
+function parseNrcString(nrcStr) {
+  const result = { state: '12', township: '', type: '(နိုင်)', number: '' };
+  if (!nrcStr) return result;
+
+  const match = String(nrcStr).match(/^(\d{1,2})\/([^\(\d]+)(\([^\)]+\))?(\d+)/);
+  if (match) {
+    result.state = match[1] || '12';
+    result.township = match[2] || '';
+    result.type = match[3] || '(နိုင်)';
+    result.number = match[4] || '';
+  } else {
+    result.number = nrcStr;
+  }
+  return result;
+}
 
 // -------------------------------------------------------------------
 // 1. Core View Renderer
@@ -93,10 +109,7 @@ function applyYogiFilters() {
   const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
 
   filteredYogiEntries = allYogiEntries.filter(entry => {
-    // Status Filter (Active / Inactive)
     const matchesStatus = (entry.status || 'Active') === currentYogiStatus;
-
-    // Search Term Filter
     const matchesSearch = !searchTerm ||
       (entry.name || '').toLowerCase().includes(searchTerm) ||
       (entry.father_name || '').toLowerCase().includes(searchTerm) ||
@@ -112,7 +125,7 @@ function applyYogiFilters() {
 }
 
 // -------------------------------------------------------------------
-// 5. Render 14-Column Table Data with Dynamic Sequential Indexing (1, 2, 3...)
+// 5. Render 14-Column Table Data
 // -------------------------------------------------------------------
 function renderYogiTable() {
   const tbody = document.getElementById('yogi-table-body');
@@ -135,10 +148,11 @@ function renderYogiTable() {
   const startIndex = (yogiCurrentPage - 1) * yogiRowsPerPage;
   const endIndex = Math.min(startIndex + yogiRowsPerPage, totalEntries);
   const pageEntries = filteredYogiEntries.slice(startIndex, endIndex);
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
 
   let html = '';
   pageEntries.forEach((entry, idx) => {
-    const srNo = startIndex + idx + 1; // Dynamic Sequential Indexing
+    const srNo = startIndex + idx + 1;
     const uid = entry.uniqueId || entry.id || '';
     const isCheckout = (entry.status === 'Inactive');
     const nrcVal = entry.full_nrc || entry.nrc || '-';
@@ -161,24 +175,21 @@ function renderYogiTable() {
         <td class="truncate max-w-[220px] text-slate-300" title="${entry.address || ''}">${entry.address || '-'}</td>
         <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-2 py-1.5 border-l border-amber-500/20">
           <div class="flex items-center justify-center gap-1.5">
-            <!-- Edit Button -->
-            <button onclick="openEditYogiModal('${uid}')" class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer" title="ပြင်ဆင်မည်">
+            <button onclick="openEditYogiModal('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer"'} title="ပြင်ဆင်မည်">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
 
-            <!-- 🔄 2-Way Togglable Action Button -->
             ${!isCheckout ? `
-              <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer" title="စခန်းထွက်ပေးမည် (Inactive သို့ ပို့မည်)">
+              <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer"'} title="စခန်းထွက်ပေးမည်">
                 <i class="fa-solid fa-arrow-right-from-bracket"></i>
               </button>
             ` : `
-              <button onclick="reactivateYogiPrompt('${uid}', '${entry.name}')" class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer" title="စခန်းတွင်း ပြန်လည်ဝင်မည် (Active သို့ ပြန်ပို့မည်)">
+              <button onclick="reactivateYogiPrompt('${uid}', '${entry.name}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
                 <i class="fa-solid fa-arrow-right-to-bracket"></i>
               </button>
             `}
 
-            <!-- Delete Button -->
-            <button onclick="deleteYogiPrompt('${uid}')" class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer" title="ဖျက်မည်">
+            <button onclick="deleteYogiPrompt('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer"'} title="ဖျက်မည်">
               <i class="fa-solid fa-trash"></i>
             </button>
           </div>
@@ -218,7 +229,7 @@ window.prevYogiPage = function() {
 };
 
 window.nextYogiPage = function() {
-  const maxPage = Math.ceil(filteredYogiEntries.length / yogiRowsPerPage);
+  const maxPage = Math.max(1, Math.ceil(filteredYogiEntries.length / yogiRowsPerPage));
   if (yogiCurrentPage < maxPage) {
     yogiCurrentPage++;
     renderYogiTable();
@@ -226,7 +237,7 @@ window.nextYogiPage = function() {
 };
 
 // -------------------------------------------------------------------
-// 7. Modal Form Opener, Edits, and Event Listeners
+// 7. Modal Form Opener & Edit Handlers
 // -------------------------------------------------------------------
 window.openAddYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
@@ -239,11 +250,9 @@ window.openAddYogiModal = function() {
   const titleEl = document.getElementById('yogi-modal-title');
   if (titleEl) titleEl.textContent = 'ယောဂီ အသစ် သွင်းယူရန်';
 
-  // Set default start date to Today
   const startDateInput = document.getElementById('yogi-start-date');
   if (startDateInput) startDateInput.value = new Date().toISOString().split('T')[0];
 
-  // Default Category Selection
   const catSelect = document.getElementById('yogi-category');
   if (catSelect) {
     catSelect.value = 'လူပုဂ္ဂိုလ်';
@@ -269,11 +278,12 @@ window.openEditYogiModal = function(uid) {
   document.getElementById('yogi-name').value = entry.name || '';
   document.getElementById('yogi-father-name').value = entry.father_name || '';
 
-  // Set 4-Part NRC
-  document.getElementById('yogi-nrc-state').value = entry.nrc_state || '12';
-  document.getElementById('yogi-nrc-township').value = entry.nrc_township || '';
-  document.getElementById('yogi-nrc-type').value = entry.nrc_type || '(နိုင်)';
-  document.getElementById('yogi-nrc-number').value = entry.nrc_number || '';
+  // Smart 4-Part NRC Splitter
+  const parsedNrc = parseNrcString(entry.full_nrc || entry.nrc || '');
+  document.getElementById('yogi-nrc-state').value = entry.nrc_state || parsedNrc.state || '12';
+  document.getElementById('yogi-nrc-township').value = entry.nrc_township || parsedNrc.township || '';
+  document.getElementById('yogi-nrc-type').value = entry.nrc_type || parsedNrc.type || '(နိုင်)';
+  document.getElementById('yogi-nrc-number').value = entry.nrc_number || parsedNrc.number || '';
 
   document.getElementById('yogi-dob').value = entry.dob || '';
   document.getElementById('yogi-age').value = entry.age || '';
@@ -285,7 +295,7 @@ window.openEditYogiModal = function(uid) {
   modal.classList.remove('hidden');
 };
 
-// 💡 Category-driven Auto Gender Rule
+// Category / Gender Rules
 window.onYogiCategoryChange = function(category) {
   const genderSelect = document.getElementById('yogi-gender');
   if (!genderSelect) return;
@@ -300,21 +310,12 @@ window.onYogiCategoryChange = function(category) {
   }
 };
 
-// Event listener for category change
-document.addEventListener('change', (e) => {
-  if (e.target && e.target.id === 'yogi-category') {
-    window.onYogiCategoryChange(e.target.value);
-  }
-});
-
-// Auto Age Calculation on DoB Change
 window.onYogiDoBChange = function(dobString) {
   const age = calcAgeFromDoB(dobString);
   const ageInput = document.getElementById('yogi-age');
   if (ageInput) ageInput.value = age > 0 ? age : '';
 };
 
-// Auto Gender Selection on Name Input
 window.onYogiNameChange = function(nameString) {
   const catVal = document.getElementById('yogi-category') ? document.getElementById('yogi-category').value : '';
   
@@ -386,7 +387,7 @@ window.saveYogiEntryForm = async function(event) {
     yogi_phone: phone,
     home_phone,
     address,
-    status: 'Active'
+    status: currentYogiStatus || 'Active'
   };
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
@@ -410,8 +411,6 @@ window.saveYogiEntryForm = async function(event) {
 // -------------------------------------------------------------------
 // 9. 🔄 2-Way Active <-> Inactive Action Workflows
 // -------------------------------------------------------------------
-
-// A. Checkout Yogi (Active -> Inactive)
 window.checkoutYogiPrompt = async function(uniqueId, name) {
   const todayStr = new Date().toISOString().split('T')[0];
   const confirmCheckout = confirm(`ယောဂီ "${name}" အား ယနေ့ (${todayStr}) ရက်စွဲဖြင့် Inactive စာရင်း သို့ ပြောင်းလဲပါမည်လော။`);
@@ -434,7 +433,6 @@ window.checkoutYogiPrompt = async function(uniqueId, name) {
   }
 };
 
-// B. Reactivate Yogi (Inactive -> Active)
 window.reactivateYogiPrompt = async function(uniqueId, name) {
   const confirmReactivate = confirm(`ယောဂီ "${name}" အား Active (စခန်းတွင်း/အမြဲနေဆဲ) စာရင်းသို့ ပြန်လည်ပြောင်းလဲပါမည်လော။`);
 
@@ -456,7 +454,6 @@ window.reactivateYogiPrompt = async function(uniqueId, name) {
   }
 };
 
-// C. Delete Yogi
 window.deleteYogiPrompt = async function(uniqueId) {
   if (!confirm('ဤယောဂီစာရင်းကို ပယ်ဖျက်ရန် သေချာပါသလား။')) return;
 
@@ -476,7 +473,7 @@ window.deleteYogiPrompt = async function(uniqueId) {
 };
 
 // -------------------------------------------------------------------
-// 10. Smart Helpers: Age Calculation & Auto-Gender Detection
+// 10. Smart Helpers: Age & Gender
 // -------------------------------------------------------------------
 function calcAgeFromDoB(dobString) {
   if (!dobString) return 0;
@@ -526,7 +523,7 @@ window.exportYogiCSV = function() {
     return;
   }
 
-  let csv = '\uFEFF'; // UTF-8 BOM
+  let csv = '\uFEFF';
   csv += 'စဉ်,စတင်ရက်စွဲ,စခန်းထွက်ရက်စွဲ,အမျိုးအစား,အမည်,အဘအမည်,မှတ်ပုံတင်,မွေးသက္ကရာဇ်,အသက်,ကျား/မ,ယောဂီဖုန်း,အိမ်ဖုန်း,နေရပ်လိပ်စာ,အခြေအနေ\n';
 
   filteredYogiEntries.forEach((row, idx) => {
