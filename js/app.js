@@ -163,43 +163,11 @@ window.openAddModal = function() {
   }
 };
 
-window.openAddEntryModal = function() {
-  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
-  if (!modal) return;
-
-  const form = document.getElementById('entry-form');
-  if (form) form.reset();
-
-  const idInput = document.getElementById("entry-id");
-  if (idInput) idInput.value = "";
-
-  const titleEl = document.getElementById("entry-modal-title");
-  if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
-
-  const dateInput = document.getElementById("entry-date");
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
-
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
-
-  if (isBank) {
-    const catSelect = document.getElementById("entry-category");
-    if (catSelect) catSelect.value = "စာရင်းဖွင့်";
-    if (typeof window.onBankCategoryChange === 'function') window.onBankCategoryChange("စာရင်းဖွင့်");
-  } else {
-    const typeSelect = document.getElementById("entry-type");
-    if (typeSelect) typeSelect.value = "ဝင်ငွေ";
-    if (typeof window.onBookTypeChange === 'function') window.onBookTypeChange("ဝင်ငွေ");
-  }
-
-  modal.classList.remove('hidden');
-};
+// 💡 NOTE: window.openAddEntryModal ကို ဤနေရာတွင် ထပ်မံ define မလုပ်တော့ပါ။
+// (js/Banks.js ထဲက ဗားရှင်းက form.reset() + entry-id clear ကို အပြည့်အစုံ လုပ်ဆောင်ပေးပြီးသားဖြစ်ပြီး
+//  Banks.js က app.js ထက် စောစွာ load ဖြစ်နေတာမို့ ဤနေရာမှာ ထပ်ရေးထားရင် Banks.js ဗားရှင်းကို overwrite
+//  လုပ်ပစ်ကာ entry-id အဟောင်းမရှင်းဘဲ "Add New" ကို "Edit" အဖြစ် ထင်မှတ်ပြီး ယခင် record ကို overwrite
+//  လုပ်မိနိုင်တဲ့ bug ဖြစ်ပေါ်စေပါတယ်။ ဒီကြောင့် Banks.js ရဲ့ ဗားရှင်းကိုသာ တစ်ခုတည်း ချန်ထားပါသည်။)
 window.openBookEntryModal = window.openAddEntryModal;
 
 window.closeEntryModal = function() {
@@ -209,25 +177,10 @@ window.closeEntryModal = function() {
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
-window.openAddYogiModal = function() {
-  const form = document.getElementById('yogi-entry-form');
-  if (form) form.reset();
-  
-  const idInput = document.getElementById('yogi-uniqueId');
-  if (idInput) idInput.value = '';
-
-  const dateInput = document.getElementById('yogi-start-date');
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
-
-  const modal = document.getElementById('yogi-entry-modal');
-  if (modal) modal.classList.remove('hidden');
-};
+// 💡 NOTE: window.openAddYogiModal ကို ဤနေရာတွင် ထပ်မံ define မလုပ်တော့ပါ။
+// (js/yogi.js ထဲက ဗားရှင်းက form.reset() + yogi-uniqueId clear + modal title + category cascade
+//  ကို အပြည့်အစုံ လုပ်ဆောင်ပေးပြီးသားဖြစ်ပြီး yogi.js က app.js ထက် စောစွာ load ဖြစ်နေတာမို့
+//  ဤနေရာမှာ ထပ်ရေးထားရင် yogi.js ဗားရှင်းကို overwrite လုပ်ပစ်ပါမယ်။)
 
 window.closeYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
