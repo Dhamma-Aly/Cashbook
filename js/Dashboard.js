@@ -1,15 +1,72 @@
 // ===================================================================
-// js/Dashboard.js - Home Dashboard View Renderer
+// js/Dashboard.js - Home Dashboard View Renderer & Tab Controller
 // Renders Fund Summary Breakdown & Yogi Summary Matrix
 // ===================================================================
 
+/**
+ * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ အကျဉ်းချုပ် <-> ယောဂီ ပေါင်းချုပ်)
+ */
+window.switchDashboardTab = function(tabName) {
+  const fundSection = document.getElementById("dash-fund-section");
+  const yogiSection = document.getElementById("dash-yogi-section");
+  const fundTabBtn = document.getElementById("tab-dash-fund");
+  const yogiTabBtn = document.getElementById("tab-dash-yogi");
+  const tabBadge = document.getElementById("dash-tab-badge");
+
+  const activeClasses = ["text-amber-300", "bg-[#1e293b]", "border-amber-500/30", "font-black", "shadow-sm"];
+  const inactiveClasses = ["text-amber-400/60", "font-bold", "hover:text-amber-200"];
+
+  if (tabName === 'fund') {
+    // Show Fund Section
+    if (fundSection) fundSection.classList.remove("hidden");
+    if (yogiSection) yogiSection.classList.add("hidden");
+
+    // Update Tab Buttons UI
+    if (fundTabBtn) {
+      fundTabBtn.classList.add(...activeClasses);
+      fundTabBtn.classList.remove(...inactiveClasses);
+    }
+    if (yogiTabBtn) {
+      yogiTabBtn.classList.remove(...activeClasses);
+      yogiTabBtn.classList.add(...inactiveClasses);
+    }
+
+    // Update Badge
+    if (tabBadge) tabBadge.textContent = "(ပမာဏ - MMK)";
+
+  } else if (tabName === 'yogi') {
+    // Show Yogi Section
+    if (fundSection) fundSection.classList.add("hidden");
+    if (yogiSection) yogiSection.classList.remove("hidden");
+
+    // Update Tab Buttons UI
+    if (yogiTabBtn) {
+      yogiTabBtn.classList.add(...activeClasses);
+      yogiTabBtn.classList.remove(...inactiveClasses);
+    }
+    if (fundTabBtn) {
+      fundTabBtn.classList.remove(...activeClasses);
+      fundTabBtn.classList.add(...inactiveClasses);
+    }
+
+    // Update Badge
+    if (tabBadge) tabBadge.textContent = "စခန်းတွင်း Active ယောဂီများ";
+  }
+};
+
+/**
+ * 📊 Main Dashboard View Render Function
+ */
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
 
-  // Fetch template if not injected
+  // 1. Template Inject ပြုလုပ်ခြင်း
   if (container && !document.getElementById("home-bank-table")) {
     try {
-      const fetchFn = window.fetchTemplate || (async (p) => { const r = await fetch(p); return await r.text(); });
+      const fetchFn = window.fetchTemplate || (async (p) => { 
+        const r = await fetch(p); 
+        return await r.text(); 
+      });
       container.innerHTML = await fetchFn("view/Dashboard.html");
     } catch (e) {
       console.warn("Could not fetch view/Dashboard.html:", e);
@@ -17,40 +74,53 @@ window.renderDashboardView = async function() {
   }
 
   const ALL_KNOWN_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
-  const BANK_SHEETS = ['1CB', '2CB', '3CB'];
   const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
 
+  // Table & KPI Renderer
   const renderHomeData = (raw) => {
     const bankTableElem = document.getElementById("home-bank-table");
     const yogiTableElem = document.getElementById("home-yogi-table");
 
-    const kpis = (raw && raw.kpis) || { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 };
-    const fundSummary = (raw && raw.fundSummary) || {};
-    const yogiSummary = (raw && raw.yogiSummary) || {};
+    // Format safe data
+    const data = (raw && raw.data) ? raw.data : (raw || {});
+    const kpis = data.kpis || { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 };
+    const fundSummary = data.fundSummary || {};
+    const yogiSummary = data.yogiSummary || {};
 
     // ---------------------------------------------------------------
     // 1. TOP KPIS
     // ---------------------------------------------------------------
     const setKpi = (id, val) => {
       const el = document.getElementById(id);
-      if (el) el.textContent = `${(val || 0).toLocaleString()} MMK`;
+      if (el) el.textContent = `${Number(val || 0).toLocaleString()} MMK`;
     };
     setKpi("kpi-home-fund", kpis.totalFund);
     setKpi("kpi-home-bank", kpis.totalBank);
     setKpi("kpi-home-cash", kpis.totalCash);
     
     const countEl = document.getElementById("kpi-home-count");
-    if (countEl) countEl.textContent = (kpis.totalCount || 0).toLocaleString();
+    if (countEl) countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
 
     // ---------------------------------------------------------------
     // 2. FUND SUMMARY TABLE (ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်)
     // ---------------------------------------------------------------
     if (bankTableElem) {
-      const titles = (window.CONFIG && window.CONFIG.SHEET_TITLES) || {};
+      const titles = (window.CONFIG && window.CONFIG.SHEET_TITLES) || {
+        '1CB': 'ပင်မ ရန်ပုံငွေစာအုပ် (1CB)',
+        '2CB': 'အထွေထွေ အလှူငွေစာအုပ် (2CB)',
+        '3CB': 'အဆောက်အဦ ရန်ပုံငွေစာအုပ် (3CB)',
+        '4GB': 'ဆွမ်း ရန်ပုံငွေစာအုပ် (4GB)',
+        '5FB': 'ဆေး ရန်ပုံငွေစာအုပ် (5FB)',
+        '6HB': 'ပညာဒါန ရန်ပုံငွေ (6HB)',
+        '7PB': 'သာသနာပြု ရန်ပုံငွေ (7PB)',
+        '8EB': 'မီး ရန်ပုံငွေစာအုပ် (8EB)',
+        '9MB': 'ရေ ရန်ပုံငွေစာအုပ် (9MB)',
+        '10GB': 'အခြား ရန်ပုံငွေ (10GB)'
+      };
 
       let fundHtml = `
       <div class="overflow-x-auto">
-        <table class="table-lg w-full text-left border-collapse min-w-[750px] text-xs">
+        <table class="w-full text-left border-collapse min-w-[750px] text-xs">
           <thead>
             <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 font-extrabold uppercase tracking-wider">
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
@@ -70,11 +140,11 @@ window.renderDashboardView = async function() {
         const item = fundSummary[sheet] || { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 };
         const name = titles[sheet] || sheet;
 
-        const bb = item.bankBalance || 0;
-        const u1 = item.user1Balance || 0;
-        const u2 = item.user2Balance || 0;
-        const u3 = item.user3Balance || 0;
-        const tot = item.totalBalance || 0;
+        const bb = Number(item.bankBalance || 0);
+        const u1 = Number(item.user1Balance || 0);
+        const u2 = Number(item.user2Balance || 0);
+        const u3 = Number(item.user3Balance || 0);
+        const tot = Number(item.totalBalance || (bb + u1 + u2 + u3));
 
         sumBank += bb;
         sumU1 += u1;
@@ -82,7 +152,7 @@ window.renderDashboardView = async function() {
         sumU3 += u3;
         sumTotal += tot;
 
-        const fmt = (v) => v ? v.toLocaleString() : '';
+        const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
         fundHtml += `
         <tr class="hover:bg-amber-500/5 transition-colors">
@@ -92,7 +162,7 @@ window.renderDashboardView = async function() {
           <td class="text-right font-mono text-slate-300 py-3 px-4">${fmt(u1)}</td>
           <td class="text-right font-mono text-slate-300 py-3 px-4">${fmt(u2)}</td>
           <td class="text-right font-mono text-slate-300 py-3 px-4">${fmt(u3)}</td>
-          <td class="text-right font-mono font-black text-amber-300 py-3 px-4 bg-amber-500/5">${fmt(tot)}</td>
+          <td class="text-right font-mono font-black text-amber-300 py-3 px-4 bg-amber-500/5">${tot.toLocaleString()}</td>
         </tr>`;
       });
 
@@ -121,7 +191,7 @@ window.renderDashboardView = async function() {
 
       let yogiHtml = `
       <div class="overflow-x-auto">
-        <table class="table-lg w-full text-left border-collapse min-w-[650px] text-xs">
+        <table class="w-full text-left border-collapse min-w-[650px] text-xs">
           <!-- Resident Yogi Section -->
           <thead>
             <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 font-extrabold uppercase tracking-wider">
@@ -138,19 +208,23 @@ window.renderDashboardView = async function() {
 
       YOGI_CATS.forEach((cat, idx) => {
         const item = residentData[cat] || { male: 0, female: 0, total: 0 };
-        resMale += item.male;
-        resFemale += item.female;
-        resTotal += item.total;
+        const m = Number(item.male || 0);
+        const f = Number(item.female || 0);
+        const t = Number(item.total || (m + f));
 
-        const fmt = (v) => v ? v.toLocaleString() : '';
+        resMale += m;
+        resFemale += f;
+        resTotal += t;
+
+        const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
         yogiHtml += `
         <tr class="hover:bg-amber-500/5 transition-colors">
           <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
           <td class="font-bold text-amber-200 py-2.5 px-4">${cat}</td>
-          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(item.male)}</td>
-          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(item.female)}</td>
-          <td class="text-center font-mono font-extrabold text-amber-300 py-2.5 px-4 bg-amber-500/5">${fmt(item.total)}</td>
+          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
+          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
+          <td class="text-center font-mono font-extrabold text-amber-300 py-2.5 px-4 bg-amber-500/5">${fmt(t)}</td>
         </tr>`;
       });
 
@@ -181,19 +255,23 @@ window.renderDashboardView = async function() {
 
       YOGI_CATS.forEach((cat, idx) => {
         const item = retreatData[cat] || { male: 0, female: 0, total: 0 };
-        retMale += item.male;
-        retFemale += item.female;
-        retTotal += item.total;
+        const m = Number(item.male || 0);
+        const f = Number(item.female || 0);
+        const t = Number(item.total || (m + f));
 
-        const fmt = (v) => v ? v.toLocaleString() : '';
+        retMale += m;
+        retFemale += f;
+        retTotal += t;
+
+        const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
         yogiHtml += `
         <tr class="hover:bg-amber-500/5 transition-colors">
           <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
           <td class="font-bold text-amber-200 py-2.5 px-4">${cat}</td>
-          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(item.male)}</td>
-          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(item.female)}</td>
-          <td class="text-center font-mono font-extrabold text-amber-300 py-2.5 px-4 bg-amber-500/5">${fmt(item.total)}</td>
+          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
+          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
+          <td class="text-center font-mono font-extrabold text-amber-300 py-2.5 px-4 bg-amber-500/5">${fmt(t)}</td>
         </tr>`;
       });
 
@@ -226,7 +304,9 @@ window.renderDashboardView = async function() {
     }
   };
 
-  // Safe Data Fetching
+  // ---------------------------------------------------------------
+  // Safe Data Fetching & Execution
+  // ---------------------------------------------------------------
   try {
     const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
     if (typeof fetchFunc === 'function') {
@@ -241,6 +321,6 @@ window.renderDashboardView = async function() {
   }
 };
 
-// Safety Aliases
+// Global Aliases
 window.loadDashboardView = window.renderDashboardView;
 window.renderHomeView = window.renderDashboardView;
