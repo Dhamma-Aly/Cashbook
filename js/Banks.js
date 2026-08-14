@@ -22,6 +22,9 @@ function formatMonthYear(dateStr) {
 // 🎯 Helper: Get Category Tree Group Key based on Sheet Code
 function getTreeGroupKey(sheetCode) {
   const sheet = String(sheetCode || '1CB').trim();
+  if (window.CONFIG?.SHEET_GROUP_MAP?.[sheet]) {
+    return window.CONFIG.SHEET_GROUP_MAP[sheet];
+  }
   if (['1CB', '2CB', '3CB'].includes(sheet)) return 'BANKS';
   if (sheet === '4GB') return '4GB';
   if (['6HB', '7PB'].includes(sheet)) return 'BUILDING_BOOKS';
@@ -29,7 +32,7 @@ function getTreeGroupKey(sheetCode) {
 }
 
 // -------------------------------------------------------------------
-// 1. Render Bank/Book View Main Entry (Flushes Old Memory Dataset)
+// 1. Render Bank/Book View Main Entry
 // -------------------------------------------------------------------
 window.renderBankView = async function(sheetKey, isSilent = false) {
   let targetSheet = String(sheetKey || window.currentSheet || window.currentSheetKey || '1CB').trim();
@@ -41,11 +44,10 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
   window.currentSheet = targetSheet;
   ledgerCurrentPage = 1;
 
-  // 🚨 CRITICAL FIX: စာအုပ်ဟောင်း၏ မန်မိုရီဒေတာများကို ချက်ချင်း ရှင်းထုတ်ခြင်း
+  // Clear memory cache for clean sheet transition
   bankAllEntries = [];
   bankFilteredEntries = [];
 
-  // Silent Refresh မဟုတ်မှသာ Spinner ပြမည်
   if (!isSilent) {
     const tbody = document.getElementById("table-body");
     if (tbody) {
@@ -103,7 +105,7 @@ function applyLedgerSearchFilter() {
     bankFilteredEntries = bankAllEntries.filter(e => {
       const my = formatMonthYear(e.entry_date || e.month_year);
       return [
-        e.entry_date, e.category, e.subcategory, e.voucher_no, 
+        e.entry_date, e.category, e.subcategory, e.subcategory_detail, e.voucher_no, 
         e.description, e.receiver, e.book_name, e.income, e.expense, my
       ].some(v => (v || "").toString().toLowerCase().includes(query));
     });
@@ -124,6 +126,7 @@ function renderLedgerTable() {
   const start = (ledgerCurrentPage - 1) * LEDGER_ROWS_PER_PAGE;
   const end = Math.min(start + LEDGER_ROWS_PER_PAGE, total);
   const pageRows = bankFilteredEntries.slice(start, end);
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
 
   let tableHTML = "";
 
@@ -140,7 +143,6 @@ function renderLedgerTable() {
       const isTransfer = entry.category === "စာရင်းပြောင်း";
       const isIncome = entry.category === "ဝင်ငွေ";
 
-      // Badge style
       let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
       if (isIncome) badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
       if (isTransfer) badgeClass = 'bg-purple-500/10 text-purple-300 border border-purple-500/20';
@@ -171,8 +173,8 @@ function renderLedgerTable() {
           <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "-"}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3">
             <div class="flex items-center justify-center gap-2">
-              <button onclick="editEntry('${uid}')" class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer" title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteEntry('${uid}')" class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -195,32 +197,30 @@ function renderLedgerTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-// Search & Pagination Controls
+// 💡 Fix: Function Name Match with HTML Search & Pagination
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
-  applyBankSearchFilter();
+  applyLedgerSearchFilter();
 };
 
 window.prevPage = function() {
   if (ledgerCurrentPage > 1) {
     ledgerCurrentPage--;
-    renderBankTable();
+    renderLedgerTable();
   }
 };
 
 window.nextPage = function() {
-  const maxPage = Math.max(1, Math.ceil(bankFilteredEntries.length / BANK_ROWS_PER_PAGE));
+  const maxPage = Math.max(1, Math.ceil(bankFilteredEntries.length / LEDGER_ROWS_PER_PAGE));
   if (ledgerCurrentPage < maxPage) {
     ledgerCurrentPage++;
-    renderBankTable();
+    renderLedgerTable();
   }
 };
 
-// ===================================================================
-// 4. 🔄 3-TIER DEPENDENT DROPDOWN CASCADING & AUTO-FILL HANDLERS
-// ===================================================================
-
-// A. Type (ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း) ပြောင်းလဲသည့်အခါ
+// -------------------------------------------------------------------
+// 4. 🔄 3-TIER DEPENDENT DROPDOWN CASCADING HANDLERS
+// -------------------------------------------------------------------
 window.onEntryTypeChange = function(selectedType) {
   const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   const groupKey = getTreeGroupKey(sheet);
@@ -240,7 +240,7 @@ window.onEntryTypeChange = function(selectedType) {
     }
   }
 
-  // "စာရင်းပြောင်း" ရွေးချယ်ပါက အကြောင်းအရာ (Description) Auto ဖြည့်ပေးခြင်း
+  // Transfer Description Auto-fill
   if (selectedType === 'စာရင်းပြောင်း') {
     const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet];
     const descInput = document.getElementById("entry-description");
@@ -250,7 +250,6 @@ window.onEntryTypeChange = function(selectedType) {
   }
 };
 
-// B. Category (ခေါင်းစဉ်) ပြောင်းလဲသည့်အခါ
 window.onEntryCategoryChange = function(selectedCategory) {
   const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   const groupKey = getTreeGroupKey(sheet);
@@ -267,54 +266,13 @@ window.onEntryCategoryChange = function(selectedCategory) {
   }
 };
 
-// Backward-compatibility aliases
+// Aliases
 window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
-// ===================================================================
-// 5. Add / Edit Modal Openers & Dynamic Initialization
-// ===================================================================
-window.openAddEntryModal = function() {
-  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
-  if (!modal) return;
-
-  const form = document.getElementById('entry-form');
-  if (form) form.reset();
-
-  const idInput = document.getElementById("entry-id");
-  if (idInput) idInput.value = "";
-
-  const titleEl = document.getElementById("entry-modal-title");
-  if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
-
-  // Default Today Date
-  const dateInput = document.getElementById("entry-date");
-  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
-
-  // Default Type to "ဝင်ငွေ" and populate dependent dropdowns
-  const typeSelect = document.getElementById("entry-type");
-  if (typeSelect) {
-    typeSelect.value = "ဝင်ငွေ";
-    window.onEntryTypeChange("ဝင်ငွေ");
-  }
-
-  modal.classList.remove('hidden');
-};
-
-// Event listeners for Type and Category change
-document.addEventListener('change', (e) => {
-  if (e.target) {
-    if (e.target.id === 'entry-type') {
-      window.onEntryTypeChange(e.target.value);
-    } else if (e.target.id === 'entry-category') {
-      window.onEntryCategoryChange(e.target.value);
-    }
-  }
-});
-
-// ===================================================================
-// 6. Save Entry Form Submission (Transfer Financial Logic Fixed)
-// ===================================================================
+// -------------------------------------------------------------------
+// 5. Save / Edit / Delete Actions
+// -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -326,21 +284,16 @@ window.saveEntryForm = async function(event) {
   const subcatEl = document.getElementById("entry-subcategory");
   const extraNote = subcatEl ? subcatEl.value : ""; // ခေါင်းစဉ်ခွဲ
   
-  const voucher_no = document.getElementById("entry-voucher").value;
+  const voucher_no = document.getElementById("entry-voucher").value.trim();
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
   const receiver = document.getElementById("entry-receiver").value;
   const description = document.getElementById("entry-description").value.trim();
 
-  // Financial Calculation Logic:
   const income = category === "ဝင်ငွေ" ? amount : 0;
   const expense = (category === "ထွက်ငွေ" || category === "စာရင်းပြောင်း") ? amount : 0;
   const month_year = formatMonthYear(entry_date);
 
   let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  if (sheet_name === 'true' || sheet_name === 'false' || sheet_name === '1' || sheet_name === '1.0') {
-    sheet_name = String(window.currentSheet || '1CB').trim();
-  }
-
   const bookName = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[sheet_name]) || sheet_name;
 
   const isEdit = !!uniqueId;
@@ -361,11 +314,11 @@ window.saveEntryForm = async function(event) {
     book_name: bookName
   };
 
-  window.showLoading(true);
+  if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const res = await window.saveCashbookEntryAPI(payload, isEdit);
     if (res && res.success) {
-      window.closeEntryModal();
+      if (typeof window.closeEntryModal === 'function') window.closeEntryModal();
       await window.renderBankView(sheet_name);
     } else {
       alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
@@ -374,13 +327,10 @@ window.saveEntryForm = async function(event) {
     console.error("Save Entry Error:", err);
     alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    window.showLoading(false);
+    if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-// ===================================================================
-// 7. Edit & Delete Actions
-// ===================================================================
 window.editEntry = function(uid) {
   const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
@@ -408,6 +358,11 @@ window.editEntry = function(uid) {
     window.onEntryCategoryChange(entry.subcategory);
   }
 
+  const subcatSelect = document.getElementById("entry-subcategory");
+  if (subcatSelect && entry.subcategory_detail) {
+    subcatSelect.value = entry.subcategory_detail;
+  }
+
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
   document.getElementById("entry-amount").value = (entry.income || entry.expense || entry.amount || 0);
   
@@ -420,7 +375,7 @@ window.editEntry = function(uid) {
 window.deleteEntry = async function(uid) {
   if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
 
-  window.showLoading(true);
+  if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const res = await window.deleteCashbookEntryAPI(uid);
     if (res && res.success) {
@@ -432,13 +387,13 @@ window.deleteEntry = async function(uid) {
     console.error("Delete Entry Error:", err);
     alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
   } finally {
-    window.showLoading(false);
+    if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-// ===================================================================
-// 8. Export to CSV
-// ===================================================================
+// -------------------------------------------------------------------
+// 6. Export to CSV
+// -------------------------------------------------------------------
 window.exportCSV = function() {
   if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
