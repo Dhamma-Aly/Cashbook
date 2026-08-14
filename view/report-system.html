@@ -1,111 +1,79 @@
-<!-- view/report-system.html - Report + System Settings fragment (Deep Navy Slate Theme) -->
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report (4GB EXCLUSIVE) -->
 
-<!-- ===== Report: "ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်" (12Rep!A1:P15) ===== -->
-<div id="report-section" class="space-y-5 hidden">
-  <div
-    class="flex flex-col sm:flex-row justify-between items-center bg-gradient-to-r from-[#0f172a] to-[#080d1a] border border-amber-500/30 p-4 rounded-xl gap-4 shadow-lg">
-    <h3 class="text-sm font-black text-amber-300 uppercase tracking-widest flex items-center gap-3">
-      <i class="fa-solid fa-chart-pie text-amber-400 text-lg"></i> 
-      <span>ရိပ်သာ အထွေထွေရန်ပုံငွေစာရင်း အကျဉ်းချုပ်</span>
-    </h3>
-    <button onclick="loadSheetView()"
-      class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer">
-      <i class="fa-solid fa-rotate"></i> Refresh
-    </button>
+<div id="report-section" class="space-y-5">
+  
+  <!-- Action Bar (Search + Mode Toggles + Year Select + Refresh/Export Buttons) -->
+  <div class="flex flex-col lg:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl">
+    
+    <!-- Search Box (Translucent Glassmorphism) -->
+    <div class="w-full lg:w-1/3 relative">
+      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ခေါင်းစဉ်၊ ခေါင်းစဉ်ခွဲဖြင့် ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
+    </div>
+
+    <!-- Center Mode Toggles & Year Selector -->
+    <div class="flex flex-wrap items-center gap-2.5">
+      <!-- Annual vs Summary Mode Toggle -->
+      <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/20 p-1 rounded-xl text-xs">
+        <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-calendar-days text-xs"></i> Annual
+        </button>
+        <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
+          <i class="fa-solid fa-chart-column text-xs"></i> Summary
+        </button>
+      </div>
+
+      <!-- Year Selector Dropdown -->
+      <div class="flex items-center gap-1.5 bg-[#080d1a] border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-200">
+        <label for="report-year-select" class="text-amber-400/80">ခုနှစ်:</label>
+        <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-extrabold outline-none cursor-pointer">
+          <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Right Action Buttons -->
+    <div class="flex items-center gap-2.5 justify-end w-full lg:w-auto shrink-0 whitespace-nowrap">
+      <button onclick="renderReportView()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+      <button onclick="exportReportCSV()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+    </div>
   </div>
 
-  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl relative">
-    <table class="table-lg w-full text-left border-collapse min-w-[1700px] text-sm">
-      <tbody id="report-table-body">
+  <!-- 📊 16-Column Annual & Summary Matrix Table Container -->
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-2xl overflow-x-auto shadow-2xl relative">
+    <table id="report-matrix-table" class="table-lg w-full text-left border-collapse min-w-[1600px] text-xs">
+      <thead id="report-table-header">
+        <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 uppercase font-extrabold">
+          <th class="w-20 py-3.5 px-3">Head</th>
+          <th class="min-w-[160px] py-3.5 px-3">Category</th>
+          <th class="min-w-[180px] py-3.5 px-3">Sub Category</th>
+          <th class="text-right w-24 py-3.5 px-2">Jan-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Feb-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Mar-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Apr-26</th>
+          <th class="text-right w-24 py-3.5 px-2">May-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Jun-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Jul-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Aug-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Sep-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Oct-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Nov-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Dec-26</th>
+          <th class="text-right w-28 py-3.5 px-3 bg-amber-500/10 text-amber-300 font-black">Total</th>
+        </tr>
+      </thead>
+      <tbody id="report-table-body" class="divide-y divide-amber-500/10">
         <tr>
-          <td class="text-center py-16 text-amber-400/80 font-medium tracking-wide">
+          <td colspan="16" class="text-center py-16 text-amber-400 font-bold">
             <i class="fa-solid fa-dharmachakra fa-spin text-xl mr-3 text-amber-400/60"></i>
-            ဒေတာများ ဆွဲယူနေပါသည်...
+            အစီရင်ခံစာ ဒေတာများ ဆွဲယူနေပါသည်...
           </td>
         </tr>
       </tbody>
     </table>
   </div>
-</div>
 
-<!-- ===== System Settings ===== -->
-<div id="system-section" class="hidden space-y-8 my-4">
-
-  <!-- 🙏 "Be Mindful" reflection -->
-  <div class="flex items-center justify-center gap-4">
-    <div class="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent w-20"></div>
-    <h3 class="text-center text-xs font-black text-amber-400/90 uppercase tracking-[0.2em] flex items-center gap-2.5">
-      <i class="fa-solid fa-dharmachakra text-amber-400"></i> Mindfulness Reflection
-    </h3>
-    <div class="h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent w-20"></div>
-  </div>
-
-  <div
-    class="mindful-card max-w-2xl mx-auto bg-gradient-to-b from-[#0f172a] to-[#080d1a] border border-amber-500/30 rounded-2xl shadow-2xl px-6 py-10 relative overflow-hidden group">
-    
-    <!-- Background Accent Icon -->
-    <i class="fa-solid fa-dharmachakra text-amber-500/5 text-[200px] absolute -bottom-12 -right-12 pointer-events-none transform rotate-12 transition-transform duration-700 group-hover:rotate-45"></i>
-
-    <div class="relative z-10 text-center flex flex-col items-center">
-      
-      <!-- List of 6 Senses (Zen Muted Theme Layout) -->
-      <div class="w-full max-w-md mx-auto space-y-2.5 mb-8">
-        
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every sight</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲမြင်မြင် ...</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every sound</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲကြားကြား ...</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every smell</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘယ်လိုအနံ့ပဲရရ ...</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every taste</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲစားစား ...</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every touch</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာနဲ့ပဲထိတွေ့ထိတွေ့ ...</span>
-        </div>
-
-        <div class="flex items-center justify-center gap-3 py-1 group/row">
-          <span class="flex-1 text-right text-[11px] uppercase tracking-widest text-amber-200/50 font-bold group-hover/row:text-amber-200/80 transition-colors">In every thought</span>
-          <span class="w-1.5 h-1.5 rounded-full bg-amber-500/50 group-hover/row:bg-amber-400 transition-colors shrink-0"></span>
-          <span class="flex-1 text-left text-[15px] text-amber-300/90 font-medium group-hover/row:text-amber-100 transition-colors">ဘာပဲတွေးတွေး ...</span>
-        </div>
-
-      </div>
-
-      <!-- Main Conclusion Title -->
-      <h2 class="mindful-title text-3xl md:text-4xl font-black text-gold-gradient uppercase tracking-wider pb-1">
-        STAY MINDFUL
-      </h2>
-      <p class="text-sm md:text-base text-amber-300/90 font-medium tracking-wide">
-        အမြဲသတိ ထားပါလေ
-      </p>
-
-      <!-- Divider -->
-      <div class="w-20 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent my-5"></div>
-
-      <!-- Pali Quote -->
-      <div class="space-y-1">
-        <p class="text-xs text-amber-200/60 italic font-mono tracking-wide">"Appamādena sampādetha"</p>
-        <p class="text-[10px] text-amber-500/50 uppercase tracking-widest font-bold">— The Buddha —</p>
-      </div>
-
-    </div>
-  </div>
 </div>
