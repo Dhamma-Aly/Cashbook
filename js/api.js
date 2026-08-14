@@ -77,12 +77,14 @@ window.saveCashbookEntryAPI = async function(entryData, isEdit = false) {
     body: JSON.stringify(entryData)
   });
 };
+window.saveEntryAPI = window.saveCashbookEntryAPI;
 
 window.deleteCashbookEntryAPI = async function(uniqueId) {
   return await safeApiRequest(`/api/entries?uniqueId=${encodeURIComponent(uniqueId)}`, {
     method: 'DELETE'
   });
 };
+window.deleteEntryAPI = window.deleteCashbookEntryAPI;
 
 // -------------------------------------------------------------------
 // 2. Home Dashboard Summary API
@@ -159,8 +161,9 @@ window.deleteInventoryEntryAPI = async function(uniqueId) {
 };
 
 // -------------------------------------------------------------------
-// 5. Summary Report API (14Rep)
+// 5. Summary Report API (14Rep) - Year Query ထည့်သွင်းထားပါသည်
 // -------------------------------------------------------------------
-window.fetchReportDataAPI = async function() {
-  return await safeApiRequest('/api/report');
+window.fetchReportDataAPI = async function(year = '2026') {
+  const ep = year ? `/api/report?year=${encodeURIComponent(year)}` : '/api/report';
+  return await safeApiRequest(ep);
 };
