@@ -1,36 +1,34 @@
-<!-- view/report-system.html - Annual & Summary Expense Matrix Report -->
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report (Guaranteed 100% Single Row) -->
 
-<div id="report-section" class="space-y-5">
+<div id="report-section" class="space-y-4">
   
-  <!-- 💡 ELEGANT & SPACIOUS ACTION BAR -->
-  <div class="flex flex-col lg:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl w-full">
+  <!-- 💡 ULTRA-COMPACT SINGLE-ROW ACTION BAR (Height ~46px - Zero Line Wrapping) -->
+  <div style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; width: 100% !important; background-color: #0f172a !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; padding: 8px 16px !important; border-radius: 12px !important; overflow-x: auto !important; box-sizing: border-box !important;">
     
-    <!-- Left: Search Box (Glassmorphic) -->
-    <div class="relative w-full lg:w-80 shrink-0">
-      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 font-medium">
+    <!-- Left: Search Box (Compact 220px Fixed Width) -->
+    <div style="position: relative !important; width: 220px !important; flex-shrink: 0 !important;">
+      <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 12px !important; top: 50% !important; transform: translateY(-50%) !important; color: #94a3b8 !important; font-size: 11px !important; pointer-events: none !important;"></i>
+      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ရှာဖွေရန်..." style="width: 100% !important; height: 34px !important; padding-left: 32px !important; padding-right: 10px !important; font-size: 11px !important; border-radius: 8px !important; background-color: rgba(8, 13, 26, 0.8) !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #f8fafc !important; outline: none !important;">
     </div>
 
-    <!-- Right: All Controls Spacious & Neat -->
-    <div class="flex flex-wrap items-center justify-end gap-3 w-full lg:w-auto shrink-0 whitespace-nowrap">
+    <!-- Right: All Controls on the Same Single Line -->
+    <div style="display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important; white-space: nowrap !important;">
       
       <!-- Annual vs Summary Mode Toggle -->
-      <div class="flex items-center gap-1.5 bg-[#080d1a] border border-amber-500/30 p-1 rounded-xl text-xs">
-        <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-4 py-2 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-2 cursor-pointer shadow-sm">
-          <i class="fa-solid fa-calendar-days text-xs text-amber-400"></i>
-          <span>Annual</span>
+      <div style="display: flex !important; align-items: center !important; gap: 4px !important; background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; padding: 3px !important; border-radius: 8px !important; font-size: 11px !important;">
+        <button id="btn-report-annual" onclick="switchReportMode('Annual')" style="padding: 5px 12px !important; border-radius: 6px !important; font-weight: 800 !important; color: #fbbf24 !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;">
+          <i class="fa-solid fa-calendar-days" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Annual
         </button>
-        <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-4 py-2 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer">
-          <i class="fa-solid fa-chart-column text-xs text-amber-400/70"></i>
-          <span>Summary</span>
+        <button id="btn-report-summary" onclick="switchReportMode('Summary')" style="padding: 5px 12px !important; border-radius: 6px !important; font-weight: 700 !important; color: rgba(251, 191, 36, 0.6) !important; background: transparent !important; border: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;">
+          <i class="fa-solid fa-chart-column" style="font-size: 11px !important;"></i> Summary
         </button>
       </div>
 
       <!-- Year Selector Dropdown -->
-      <div class="flex items-center gap-2 bg-[#080d1a] border border-amber-500/30 px-3.5 py-2 rounded-xl text-xs font-extrabold text-amber-200 shadow-sm">
-        <i class="fa-solid fa-calendar text-amber-400 text-xs"></i>
-        <label for="report-year-select" class="text-amber-400/90 font-bold">ခုနှစ်:</label>
-        <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-black outline-none cursor-pointer text-xs pr-1">
+      <div style="display: flex !important; align-items: center !important; gap: 6px !important; background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; padding: 5px 10px !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; color: #fef08a !important;">
+        <i class="fa-solid fa-calendar" style="color: #fbbf24 !important; font-size: 11px !important;"></i>
+        <label for="report-year-select" style="color: rgba(251, 191, 36, 0.9) !important; font-weight: 700 !important;">ခုနှစ်:</label>
+        <select id="report-year-select" onchange="onReportYearChange(this.value)" style="background: transparent !important; color: #fbbf24 !important; font-weight: 900 !important; border: none !important; outline: none !important; cursor: pointer !important; font-size: 11px !important;">
           <option value="2026" selected>2026</option>
           <option value="2025">2025</option>
           <option value="2024">2024</option>
@@ -39,14 +37,12 @@
       </div>
 
       <!-- Refresh & Export Buttons -->
-      <button onclick="renderReportView()" class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-sm" title="Refresh">
-        <i class="fa-solid fa-rotate text-xs text-amber-400"></i>
-        <span>Refresh</span>
+      <button onclick="renderReportView()" style="padding: 6px 14px !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #fef08a !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;" title="Refresh">
+        <i class="fa-solid fa-rotate" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Refresh
       </button>
       
-      <button onclick="exportReportCSV()" class="px-4 py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-xl text-xs font-extrabold transition-all flex items-center gap-2 cursor-pointer shadow-sm" title="Export CSV">
-        <i class="fa-solid fa-file-export text-xs text-amber-400"></i>
-        <span>Export</span>
+      <button onclick="exportReportCSV()" style="padding: 6px 14px !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #fef08a !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;" title="Export CSV">
+        <i class="fa-solid fa-file-export" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Export
       </button>
 
     </div>
