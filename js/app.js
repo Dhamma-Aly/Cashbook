@@ -1,5 +1,5 @@
 // ===================================================================
-// js/app.js - Main Application Controller & View Router 
+// js/app.js - Main Application Controller & View Router  
 // Handles global routing, live sync, and modal control delegations
 // ===================================================================
 
