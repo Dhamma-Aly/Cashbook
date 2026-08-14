@@ -4,8 +4,8 @@
 
 const LEDGER_ROWS_PER_PAGE = 30;
 let ledgerCurrentPage = 1;
-let ledgerAllEntries = [];      // Full dataset for active sheet (latest first)
-let ledgerFilteredEntries = []; // After search filter
+let bankAllEntries = [];      // Dataset for active sheet (latest first)
+let bankFilteredEntries = []; // After search filter
 
 // Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
 function formatMonthYear(dateStr) {
@@ -29,17 +29,23 @@ function getTreeGroupKey(sheetCode) {
 }
 
 // -------------------------------------------------------------------
-// 1. Render Bank/Book View Main Entry (Flicker-Free Silent Refresh)
+// 1. Render Bank/Book View Main Entry (Flushes Old Memory Dataset)
 // -------------------------------------------------------------------
 window.renderBankView = async function(sheetKey, isSilent = false) {
-  let targetSheet = String(sheetKey || window.currentSheetKey || window.currentSheet || '1CB').trim();
+  let targetSheet = String(sheetKey || window.currentSheet || window.currentSheetKey || '1CB').trim();
   if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
     targetSheet = String(window.currentSheet || '1CB').trim();
   }
+  
   window.currentSheetKey = targetSheet;
+  window.currentSheet = targetSheet;
   ledgerCurrentPage = 1;
 
-  // 💡 Silent Refresh မဟုတ်မှသာ Spinner ပြမည် (စကရင် ခါမသွားစေရန်)
+  // 🚨 CRITICAL FIX: စာအုပ်ဟောင်း၏ မန်မိုရီဒေတာများကို ချက်ချင်း ရှင်းထုတ်ခြင်း
+  bankAllEntries = [];
+  bankFilteredEntries = [];
+
+  // Silent Refresh မဟုတ်မှသာ Spinner ပြမည်
   if (!isSilent) {
     const tbody = document.getElementById("table-body");
     if (tbody) {
@@ -50,15 +56,15 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
   try {
     const res = await window.fetchSheetData(window.currentSheetKey);
     if (res && res.success) {
-      ledgerAllEntries = (res.data || []).slice().reverse();
+      bankAllEntries = (res.data || []).slice().reverse();
       updateLedgerKPIs(res.kpis);
     } else {
-      ledgerAllEntries = [];
+      bankAllEntries = [];
       updateLedgerKPIs(null);
     }
   } catch (error) {
     console.error("Error fetching ledger data:", error);
-    ledgerAllEntries = [];
+    bankAllEntries = [];
     updateLedgerKPIs(null);
   }
 
@@ -66,7 +72,7 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
 };
 
 window.loadSheetView = function(isSilent = false) {
-  window.renderBankView(window.currentSheetKey, isSilent);
+  window.renderBankView(window.currentSheet || window.currentSheetKey, isSilent);
 };
 
 // -------------------------------------------------------------------
@@ -92,9 +98,9 @@ function applyLedgerSearchFilter() {
   const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
   if (!query) {
-    ledgerFilteredEntries = ledgerAllEntries;
+    bankFilteredEntries = bankAllEntries;
   } else {
-    ledgerFilteredEntries = ledgerAllEntries.filter(e => {
+    bankFilteredEntries = bankAllEntries.filter(e => {
       const my = formatMonthYear(e.entry_date || e.month_year);
       return [
         e.entry_date, e.category, e.subcategory, e.voucher_no, 
@@ -110,14 +116,14 @@ function renderLedgerTable() {
   const tbody = document.getElementById("table-body");
   if (!tbody) return;
 
-  const total = ledgerFilteredEntries.length;
+  const total = bankFilteredEntries.length;
   const maxPage = Math.max(1, Math.ceil(total / LEDGER_ROWS_PER_PAGE));
   if (ledgerCurrentPage > maxPage) ledgerCurrentPage = maxPage;
   if (ledgerCurrentPage < 1) ledgerCurrentPage = 1;
 
   const start = (ledgerCurrentPage - 1) * LEDGER_ROWS_PER_PAGE;
   const end = Math.min(start + LEDGER_ROWS_PER_PAGE, total);
-  const pageRows = ledgerFilteredEntries.slice(start, end);
+  const pageRows = bankFilteredEntries.slice(start, end);
 
   let tableHTML = "";
 
@@ -192,21 +198,21 @@ function renderLedgerTable() {
 // Search & Pagination Controls
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
-  applyLedgerSearchFilter();
+  applyBankSearchFilter();
 };
 
 window.prevPage = function() {
   if (ledgerCurrentPage > 1) {
     ledgerCurrentPage--;
-    renderLedgerTable();
+    renderBankTable();
   }
 };
 
 window.nextPage = function() {
-  const maxPage = Math.max(1, Math.ceil(ledgerFilteredEntries.length / LEDGER_ROWS_PER_PAGE));
+  const maxPage = Math.max(1, Math.ceil(bankFilteredEntries.length / BANK_ROWS_PER_PAGE));
   if (ledgerCurrentPage < maxPage) {
     ledgerCurrentPage++;
-    renderLedgerTable();
+    renderBankTable();
   }
 };
 
@@ -234,7 +240,7 @@ window.onEntryTypeChange = function(selectedType) {
     }
   }
 
-  // 💡 "စာရင်းပြောင်း" ရွေးချယ်ပါက အကြောင်းအရာ (Description) Auto ဖြည့်ပေးခြင်း
+  // "စာရင်းပြောင်း" ရွေးချယ်ပါက အကြောင်းအရာ (Description) Auto ဖြည့်ပေးခြင်း
   if (selectedType === 'စာရင်းပြောင်း') {
     const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet];
     const descInput = document.getElementById("entry-description");
@@ -325,9 +331,7 @@ window.saveEntryForm = async function(event) {
   const receiver = document.getElementById("entry-receiver").value;
   const description = document.getElementById("entry-description").value.trim();
 
-  // 💡 Financial Calculation Logic:
-  // "ဝင်ငွေ" ➔ Income
-  // "ထွက်ငွေ" သို့မဟုတ် "စာရင်းပြောင်း" ➔ Expense (Credit/ထွက်ငွေ)
+  // Financial Calculation Logic:
   const income = category === "ဝင်ငွေ" ? amount : 0;
   const expense = (category === "ထွက်ငွေ" || category === "စာရင်းပြောင်း") ? amount : 0;
   const month_year = formatMonthYear(entry_date);
@@ -352,7 +356,7 @@ window.saveEntryForm = async function(event) {
     receiver,
     income,
     expense,
-    amount, // Total amount
+    amount,
     month_year,
     book_name: bookName
   };
@@ -378,7 +382,7 @@ window.saveEntryForm = async function(event) {
 // 7. Edit & Delete Actions
 // ===================================================================
 window.editEntry = function(uid) {
-  const entry = ledgerAllEntries.find(e => String(e.uniqueId) === String(uid));
+  const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
 
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
@@ -436,7 +440,7 @@ window.deleteEntry = async function(uid) {
 // 8. Export to CSV
 // ===================================================================
 window.exportCSV = function() {
-  if (!ledgerFilteredEntries || ledgerFilteredEntries.length === 0) {
+  if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
     return;
   }
@@ -444,7 +448,7 @@ window.exportCSV = function() {
   let csv = "\uFEFF";
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,အကြောင်းအရာ,လက်ခံသူ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,လနှစ်,စာအုပ်အမည်\n";
 
-  ledgerFilteredEntries.forEach((e, idx) => {
+  bankFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
     const my = formatMonthYear(e.entry_date || e.month_year);
     csv += [
