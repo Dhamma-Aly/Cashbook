@@ -9,14 +9,14 @@
   // 🚨 Version Check: Version အသစ်တင်လိုက်ပါက Session အဟောင်းများကို Auto ရှင်းထုတ်မည်
   const CURRENT_APP_VERSION = "v3.0_D1_AUTH";
   if (localStorage.getItem("sasana_app_version") !== CURRENT_APP_VERSION) {
-    localStorage.clear(); // Session အဟောင်းများ အားလုံး ရှင်းလင်းမည်
+    localStorage.clear();
     localStorage.setItem("sasana_app_version", CURRENT_APP_VERSION);
   }
 
-  // 1. Get Current User Name (Token ရှိမှသာ အမည် ပြန်ပေးမည်၊ Logout ဖြစ်ပါက null ပြန်မည်)
+  // 1. Get Current User Name
   window.getCurrentUser = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
-    if (!token) return null; // 🚨 Logout ထွက်ထားပါက null သီးသန့် ပြန်ပေးမည်
+    if (!token) return null;
     return localStorage.getItem("sasana_user_name") || localStorage.getItem("yogi_user_name") || null;
   };
 
@@ -54,10 +54,7 @@
 
     if (isValid) {
       window.showWorkspace();
-
-      if (typeof window.initApp === "function") {
-        window.initApp();
-      }
+      // 💡 Note: initApp() ကို app.js ရဲ့ DOMContentLoaded ကပဲ တစ်ကြိမ်တည်း ခေါ်သုံးပါမည်
       return true;
     } else {
       window.showLoginOverlay();
@@ -65,7 +62,7 @@
     }
   };
 
-  // 5. Login Submission Handler (Queries Cloudflare D1 API)
+  // 5. Login Submission Handler
   window.handleLoginSubmit = async function (event) {
     if (event && event.preventDefault) event.preventDefault();
 
@@ -89,12 +86,10 @@
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      // Config URL ကို ယူမည်
       const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL)
         || (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
         || "https://cashbook-api.dhammaaly.workers.dev";
 
-      // Cloudflare D1 Worker API သို့ Login Request ပို့မည်
       const res = await fetch(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -107,7 +102,6 @@
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
       if (res.ok && json.success && json.token) {
-        // Session သိမ်းဆည်းမည်
         const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
         const expiresAt = Date.now() + expiresInMs;
 
@@ -118,17 +112,14 @@
         localStorage.setItem("sasana_user_role", userObj.role || "Staff");
         localStorage.setItem("sasana_token_expires_at", String(expiresAt));
 
-        // Legacy Support
         localStorage.setItem("yogi_auth_token", json.token);
         localStorage.setItem("yogi_user_name", userObj.username);
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (passwordInput) passwordInput.value = "";
 
-        // UI ပြောင်းလဲမည်
         window.showWorkspace();
 
-        // App & Live Sync စတင်မည်
         if (typeof window.initApp === "function") {
           window.initApp();
         } else if (typeof window.switchTab === "function") {
@@ -157,7 +148,7 @@
     }
   };
 
-  // 6. Direct Fail-Proof Logout Handler (၁၀၀% စိတ်ချရသော Logout)
+  // 6. Direct Fail-Proof Logout Handler
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
       localStorage.clear();
