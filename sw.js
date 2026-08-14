@@ -1,8 +1,8 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (V3.0 Final Clean Precache)
+// sw.js - Sāsana ERP PWA Service Worker (Robust Resilient Precache)
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v3.0-final-cache';
+const CACHE_NAME = 'sasana-erp-v3.0-bulletproof-cache';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -25,17 +25,25 @@ const ASSETS_TO_CACHE = [
   './view/report-system.html'
 ];
 
-// Install Event
+// 1. Install Event: Individual Safe Caching (Never throws red console errors)
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(ASSETS_TO_CACHE).catch(err => console.warn('PWA Precache Error:', err));
+      return Promise.allSettled(
+        ASSETS_TO_CACHE.map(url =>
+          fetch(url).then(response => {
+            if (response && response.status === 200) {
+              return cache.put(url, response);
+            }
+          }).catch(err => console.warn(`[PWA Skip File]: ${url}`, err))
+        )
+      );
     })
   );
 });
 
-// Activate Event
+// 2. Activate Event: Clean old legacy caches
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -46,24 +54,17 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event Handler
+// 3. Fetch Event Handler: Bypass API requests and serve static assets smoothly
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass API Requests
-  if (url.pathname.includes('/api/')) {
-    event.respondWith(
-      fetch(event.request).catch(() => new Response(JSON.stringify({ success: false, error: 'Network Error' }), {
-        headers: { 'Content-Type': 'application/json' }
-      }))
-    );
-    return;
-  }
+  // Bypass API requests to Cloudflare Worker
+  if (url.pathname.includes('/api/')) return;
 
-  // 2. Cache/Network Strategy
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       if (cachedResponse) {
+        // Return cached asset & update in background
         fetch(event.request).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse));
@@ -79,9 +80,6 @@ self.addEventListener('fetch', event => {
         }
         return networkResponse;
       });
-    }).catch(err => {
-      console.warn('PWA Fetch fallback error:', err);
-      return fetch(event.request);
-    })
+    }).catch(() => fetch(event.request))
   );
 });
