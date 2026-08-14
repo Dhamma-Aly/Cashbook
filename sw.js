@@ -1,5 +1,5 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (V3.0 Final Cache Fix)
+// sw.js - Sāsana ERP PWA Service Worker (V3.0 Final Clean Precache)
 // ===================================================================
 
 const CACHE_NAME = 'sasana-erp-v3.0-final-cache';
@@ -14,20 +14,18 @@ const ASSETS_TO_CACHE = [
   './js/auth.js',
   './js/Dashboard.js',
   './js/Banks.js',
-  './js/Books.js',
   './js/Inventory.js',
   './js/yogi.js',
   './js/report-system.js',
   './js/app.js',
   './view/Dashboard.html',
   './view/Banks.html',
-  './view/Books.html',
   './view/Inventory.html',
   './view/yogi.html',
   './view/report-system.html'
 ];
 
-// Install Event - Precache all view templates and core assets
+// Install Event
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -37,7 +35,7 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activate Event - Clean old legacy caches
+// Activate Event
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
@@ -48,11 +46,11 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch Event Handler (Bypass /api/ calls & Cache-First for Views)
+// Fetch Event Handler
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // 1. Bypass API Requests (Always go to Cloudflare Worker API)
+  // 1. Bypass API Requests
   if (url.pathname.includes('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() => new Response(JSON.stringify({ success: false, error: 'Network Error' }), {
@@ -62,11 +60,10 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // 2. Static Assets & HTML View Templates Cache Strategy
+  // 2. Cache/Network Strategy
   event.respondWith(
     caches.match(event.request).then(cachedResponse => {
       if (cachedResponse) {
-        // Return cached asset & update cache in background
         fetch(event.request).then(networkResponse => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then(cache => cache.put(event.request, networkResponse));
