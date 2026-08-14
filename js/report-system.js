@@ -7,9 +7,9 @@ let currentReportYear = '2026';
 let rawReportData = null;
 
 // -------------------------------------------------------------------
-// 1. Core View Renderer
+// 1. Core View Renderer (Flicker-Free Silent Refresh Support)
 // -------------------------------------------------------------------
-window.renderReportView = async function() {
+window.renderReportView = async function(isSilent = false) {
   const container = document.getElementById("view-container");
 
   if (container && !document.getElementById("report-matrix-table")) {
@@ -24,7 +24,10 @@ window.renderReportView = async function() {
   const yearSelect = document.getElementById("report-year-select");
   if (yearSelect) currentReportYear = yearSelect.value || '2026';
 
-  if (typeof window.showLoading === 'function') window.showLoading(true);
+  // 💡 Silent Refresh ဖြစ်ပါက Loading Overlay မပြပါ (စကရင် ခါမသွားစေရန်)
+  if (!isSilent && typeof window.showLoading === 'function') {
+    window.showLoading(true);
+  }
 
   try {
     // Fetch aggregated matrix report data from backend API
@@ -38,7 +41,9 @@ window.renderReportView = async function() {
     console.error("Report Fetch Error:", err);
     rawReportData = null;
   } finally {
-    if (typeof window.showLoading === 'function') window.showLoading(false);
+    if (!isSilent && typeof window.showLoading === 'function') {
+      window.showLoading(false);
+    }
   }
 
   applyReportFilters();
@@ -56,19 +61,19 @@ window.switchReportMode = function(mode) {
   const btnSummary = document.getElementById("btn-report-summary");
 
   if (mode === 'Annual') {
-    if (btnAnnual) btnAnnual.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (btnSummary) btnSummary.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnAnnual) btnAnnual.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnSummary) btnSummary.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   } else {
-    if (btnSummary) btnSummary.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
-    if (btnAnnual) btnAnnual.className = 'px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnSummary) btnSummary.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (btnAnnual) btnAnnual.className = 'px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
   }
 
-  window.renderReportView();
+  window.renderReportView(false);
 };
 
 window.onReportYearChange = function(year) {
   currentReportYear = year;
-  window.renderReportView();
+  window.renderReportView(false);
 };
 
 window.onReportSearchInput = function() {
@@ -149,7 +154,7 @@ function renderReportTableBody(query) {
     });
   }
 
-  // Income Total Row (ဝင်ငွေပေါင်း - Light Emerald Highlight)
+  // Income Total Row (ဝင်ငွေပေါင်း)
   html += `
     <tr class="bg-emerald-950/40 border-t-2 border-b-2 border-emerald-500/40 font-extrabold text-emerald-300">
       <td colspan="3" class="py-3 px-4 text-emerald-300 font-black text-xs uppercase tracking-wider">ဝင်ငွေပေါင်း</td>`;
@@ -184,7 +189,7 @@ function renderReportTableBody(query) {
     });
   }
 
-  // Expense Total Row (ထွက်ငွေပေါင်း - Light Rose Highlight)
+  // Expense Total Row (ထွက်ငွေပေါင်း)
   html += `
     <tr class="bg-rose-950/40 border-t-2 border-b-2 border-rose-500/40 font-extrabold text-rose-300">
       <td colspan="3" class="py-3 px-4 text-rose-300 font-black text-xs uppercase tracking-wider">ထွက်ငွေပေါင်း</td>`;
