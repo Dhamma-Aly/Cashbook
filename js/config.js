@@ -1,5 +1,5 @@
 // ===================================================================
-// js/config.js - Sāsana ERP System Configuration & API Endpoint Setup 
+// js/config.js - Sāsana ERP System Configuration & API Endpoint Setup  
 // ===================================================================
 
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
