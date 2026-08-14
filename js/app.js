@@ -1,5 +1,5 @@
 // ===================================================================
-// js/app.js - Main Application Controller & View Router  
+// js/app.js - Main Application Controller & View Router 
 // Handles global routing, live sync, and modal control delegations
 // ===================================================================
 
@@ -55,6 +55,7 @@ window.closeMobileSidebar = function() {
 window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
+    // Modal တစ်ခုခု ပွင့်နေပါက (သို့) Page Hidden ဖြစ်နေပါက Silent Refresh မလုပ်ပါ
     const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
@@ -82,7 +83,7 @@ window.refreshCurrentTabSilent = function() {
 };
 
 // ===================================================================
-// 3. View Router & Navigation (Case-Insensitive Fallback Enabled)
+// 3. View Router & Navigation (Target Sheet Explicit Router)
 // ===================================================================
 window.switchTab = async function(sheetName) {
   window.currentSheet = sheetName;
@@ -106,7 +107,10 @@ window.switchTab = async function(sheetName) {
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
     } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheetName)) {
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
-      if (typeof window.loadSheetView === 'function') window.loadSheetView();
+      // 💡 နှိပ်လိုက်သော စာအုပ်အမည် (sheetName) ကို renderBankView ထဲသို့ တိုက်ရိုက် ပို့ပေးခြင်း
+      if (typeof window.renderBankView === 'function') {
+        window.renderBankView(sheetName);
+      }
     } else if (sheetName === '11Inv') {
       container.innerHTML = await window.fetchTemplate('view/Inventory.html');
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView();
@@ -123,19 +127,16 @@ window.switchTab = async function(sheetName) {
   }
 };
 
-// 💡 Case-Insensitive Smart Template Fetcher
 window.fetchTemplate = async function(path) {
   try {
     let targetPath = path.startsWith('./') ? path : `./${path}`;
     let res = await fetch(targetPath);
 
-    // Fallback 1: Try lowercase filename (e.g. view/banks.html)
     if (!res.ok) {
       const lowerPath = targetPath.toLowerCase();
       res = await fetch(lowerPath);
     }
     
-    // Fallback 2: Try views/ folder
     if (!res.ok && targetPath.includes('view/')) {
       const fallbackPath = targetPath.replace('view/', 'views/');
       res = await fetch(fallbackPath);
@@ -163,11 +164,43 @@ window.openAddModal = function() {
   }
 };
 
-// 💡 NOTE: window.openAddEntryModal ကို ဤနေရာတွင် ထပ်မံ define မလုပ်တော့ပါ။
-// (js/Banks.js ထဲက ဗားရှင်းက form.reset() + entry-id clear ကို အပြည့်အစုံ လုပ်ဆောင်ပေးပြီးသားဖြစ်ပြီး
-//  Banks.js က app.js ထက် စောစွာ load ဖြစ်နေတာမို့ ဤနေရာမှာ ထပ်ရေးထားရင် Banks.js ဗားရှင်းကို overwrite
-//  လုပ်ပစ်ကာ entry-id အဟောင်းမရှင်းဘဲ "Add New" ကို "Edit" အဖြစ် ထင်မှတ်ပြီး ယခင် record ကို overwrite
-//  လုပ်မိနိုင်တဲ့ bug ဖြစ်ပေါ်စေပါတယ်။ ဒီကြောင့် Banks.js ရဲ့ ဗားရှင်းကိုသာ တစ်ခုတည်း ချန်ထားပါသည်။)
+window.openAddEntryModal = function() {
+  const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
+  if (!modal) return;
+
+  const form = document.getElementById('entry-form');
+  if (form) form.reset();
+
+  const idInput = document.getElementById("entry-id");
+  if (idInput) idInput.value = "";
+
+  const titleEl = document.getElementById("entry-modal-title");
+  if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
+
+  const dateInput = document.getElementById("entry-date");
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
+  if (isBank) {
+    const catSelect = document.getElementById("entry-category");
+    if (catSelect) catSelect.value = "စာရင်းဖွင့်";
+    if (typeof window.onBankCategoryChange === 'function') window.onBankCategoryChange("စာရင်းဖွင့်");
+  } else {
+    const typeSelect = document.getElementById("entry-type");
+    if (typeSelect) typeSelect.value = "ဝင်ငွေ";
+    if (typeof window.onBookTypeChange === 'function') window.onBookTypeChange("ဝင်ငွေ");
+  }
+
+  modal.classList.remove('hidden');
+};
 window.openBookEntryModal = window.openAddEntryModal;
 
 window.closeEntryModal = function() {
@@ -177,10 +210,25 @@ window.closeEntryModal = function() {
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
-// 💡 NOTE: window.openAddYogiModal ကို ဤနေရာတွင် ထပ်မံ define မလုပ်တော့ပါ။
-// (js/yogi.js ထဲက ဗားရှင်းက form.reset() + yogi-uniqueId clear + modal title + category cascade
-//  ကို အပြည့်အစုံ လုပ်ဆောင်ပေးပြီးသားဖြစ်ပြီး yogi.js က app.js ထက် စောစွာ load ဖြစ်နေတာမို့
-//  ဤနေရာမှာ ထပ်ရေးထားရင် yogi.js ဗားရှင်းကို overwrite လုပ်ပစ်ပါမယ်။)
+window.openAddYogiModal = function() {
+  const form = document.getElementById('yogi-entry-form');
+  if (form) form.reset();
+  
+  const idInput = document.getElementById('yogi-uniqueId');
+  if (idInput) idInput.value = '';
+
+  const dateInput = document.getElementById('yogi-start-date');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  const modal = document.getElementById('yogi-entry-modal');
+  if (modal) modal.classList.remove('hidden');
+};
 
 window.closeYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
