@@ -11,7 +11,26 @@ window.autoRefreshTimer = window.autoRefreshTimer || null;
 const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
 
 document.addEventListener('DOMContentLoaded', () => {
-  if (typeof window.initApp === 'function') window.initApp();
+  if (typeof window.initApp === 'function') {
+    window.initApp();
+  }
+
+  // 📱 Mobile Menu Button & Overlay များအား Event Listener တိုက်ရိုက် ချိတ်ဆက်ပေးခြင်း (Android/iOS Touch ပိုမိုမြန်ဆန်စေရန်)
+  const mobileBtn = document.getElementById('mobile-menu-btn');
+  if (mobileBtn) {
+    mobileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.toggleMobileSidebar();
+    });
+  }
+
+  const overlay = document.getElementById('sidebar-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.closeMobileSidebar();
+    });
+  }
 });
 
 window.initApp = function() {
@@ -26,21 +45,24 @@ window.initApp = function() {
 };
 
 // ===================================================================
-// 1. 📱 Mobile Sidebar Responsive Controls (FIXED FOR ANDROID)
+// 1. 📱 Mobile Sidebar Responsive Controls (FIXED FOR ANDROID & iOS)
 // ===================================================================
 window.toggleMobileSidebar = function() {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
 
-  // style.css ရှိ .mobile-open class ပါ/မပါ စစ်ဆေးခြင်း
-  const isOpen = sidebar.classList.contains('mobile-open');
+  // Sidebar ပိတ်ထားသလား စစ်ဆေးခြင်း (Tailwind -translate-x-full ဖြင့်)
+  const isClosed = sidebar.classList.contains('-translate-x-full');
 
-  if (!isOpen) {
-    // ဖွင့်မည် (style.css နှင့် tailwind နှစ်ခုစလုံးအတွက် class ထည့်ခြင်း)
-    sidebar.classList.add('mobile-open');
+  if (isClosed) {
+    // ဖွင့်မည်
     sidebar.classList.remove('-translate-x-full');
-    if (overlay) overlay.classList.remove('hidden');
+    sidebar.classList.add('translate-x-0', 'mobile-open');
+    if (overlay) {
+      overlay.classList.remove('hidden');
+      overlay.classList.add('block');
+    }
   } else {
     // ပိတ်မည်
     window.closeMobileSidebar();
@@ -52,11 +74,12 @@ window.closeMobileSidebar = function() {
   const overlay = document.getElementById('sidebar-overlay');
 
   if (sidebar) {
-    sidebar.classList.remove('mobile-open');
     sidebar.classList.add('-translate-x-full');
+    sidebar.classList.remove('translate-x-0', 'mobile-open');
   }
   if (overlay) {
     overlay.classList.add('hidden');
+    overlay.classList.remove('block');
   }
 };
 
@@ -99,16 +122,26 @@ window.refreshCurrentTabSilent = function() {
 // ===================================================================
 window.switchTab = async function(sheetName) {
   window.currentSheet = sheetName;
-  window.closeMobileSidebar(); // Menu ရွေးပြီးပါက Sidebar ကို အလိုအလျောက် ပိတ်မည်
+  
+  // ဖုန်း screen (Screen width < 768px) ဖြစ်ပါက Menu ရွေးပြီးလျှင် Sidebar ကို အလိုအလျောက် ပိတ်မည်
+  if (window.innerWidth < 768) {
+    window.closeMobileSidebar();
+  }
 
   const titleEl = document.getElementById('page-title');
   if (titleEl && window.CONFIG && window.CONFIG.SHEET_TITLES) {
     titleEl.textContent = window.CONFIG.SHEET_TITLES[sheetName] || sheetName;
   }
 
-  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  // Active Navigation Styling
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.classList.remove('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
+  });
+  
   const activeBtn = document.getElementById(`btn-${sheetName}`);
-  if (activeBtn) activeBtn.classList.add('active');
+  if (activeBtn) {
+    activeBtn.classList.add('active', 'nav-btn-active');
+  }
 
   const container = document.getElementById('view-container');
   if (!container) return;
