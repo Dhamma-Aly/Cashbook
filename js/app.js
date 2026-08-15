@@ -1,6 +1,6 @@
 // ===================================================================
 // js/app.js - Main Application Controller & View Router 
-// Handles global routing, live sync, and modal control delegations
+// Handles global routing, mobile sidebar, live sync, and modal delegations
 // ===================================================================
 
 // Safe Global Variable Assignments
@@ -26,18 +26,23 @@ window.initApp = function() {
 };
 
 // ===================================================================
-// 1. Mobile Sidebar Responsive Controls
+// 1. 📱 Mobile Sidebar Responsive Controls (FIXED FOR ANDROID)
 // ===================================================================
 window.toggleMobileSidebar = function() {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
 
-  const isHidden = sidebar.classList.contains('-translate-x-full');
-  if (isHidden) {
+  // style.css ရှိ .mobile-open class ပါ/မပါ စစ်ဆေးခြင်း
+  const isOpen = sidebar.classList.contains('mobile-open');
+
+  if (!isOpen) {
+    // ဖွင့်မည် (style.css နှင့် tailwind နှစ်ခုစလုံးအတွက် class ထည့်ခြင်း)
+    sidebar.classList.add('mobile-open');
     sidebar.classList.remove('-translate-x-full');
     if (overlay) overlay.classList.remove('hidden');
   } else {
+    // ပိတ်မည်
     window.closeMobileSidebar();
   }
 };
@@ -45,8 +50,14 @@ window.toggleMobileSidebar = function() {
 window.closeMobileSidebar = function() {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
-  if (sidebar) sidebar.classList.add('-translate-x-full');
-  if (overlay) overlay.classList.add('hidden');
+
+  if (sidebar) {
+    sidebar.classList.remove('mobile-open');
+    sidebar.classList.add('-translate-x-full');
+  }
+  if (overlay) {
+    overlay.classList.add('hidden');
+  }
 };
 
 // ===================================================================
@@ -70,6 +81,7 @@ window.refreshCurrentTabSilent = function() {
       if (typeof window.renderYogiView === 'function') window.renderYogiView(true);
     } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheet)) {
       if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
+      else if (typeof window.renderBankView === 'function') window.renderBankView(sheet, true);
     } else if (sheet === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
     } else if (sheet === 'Home') {
@@ -87,7 +99,7 @@ window.refreshCurrentTabSilent = function() {
 // ===================================================================
 window.switchTab = async function(sheetName) {
   window.currentSheet = sheetName;
-  window.closeMobileSidebar();
+  window.closeMobileSidebar(); // Menu ရွေးပြီးပါက Sidebar ကို အလိုအလျောက် ပိတ်မည်
 
   const titleEl = document.getElementById('page-title');
   if (titleEl && window.CONFIG && window.CONFIG.SHEET_TITLES) {
@@ -107,9 +119,10 @@ window.switchTab = async function(sheetName) {
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
     } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheetName)) {
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
-      // 💡 နှိပ်လိုက်သော စာအုပ်အမည် (sheetName) ကို renderBankView ထဲသို့ တိုက်ရိုက် ပို့ပေးခြင်း
       if (typeof window.renderBankView === 'function') {
         window.renderBankView(sheetName);
+      } else if (typeof window.loadSheetView === 'function') {
+        window.loadSheetView(sheetName);
       }
     } else if (sheetName === '11Inv') {
       container.innerHTML = await window.fetchTemplate('view/Inventory.html');
@@ -186,17 +199,13 @@ window.openAddEntryModal = function() {
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBank = ['1CB', '2CB', '3CB'].includes(currentSheet);
-
-  if (isBank) {
-    const catSelect = document.getElementById("entry-category");
-    if (catSelect) catSelect.value = "စာရင်းဖွင့်";
-    if (typeof window.onBankCategoryChange === 'function') window.onBankCategoryChange("စာရင်းဖွင့်");
-  } else {
-    const typeSelect = document.getElementById("entry-type");
-    if (typeSelect) typeSelect.value = "ဝင်ငွေ";
-    if (typeof window.onBookTypeChange === 'function') window.onBookTypeChange("ဝင်ငွေ");
+  // 💡 3-Tier Cascading Dropdown ကို Default အနေဖြင့် "ဝင်ငွေ" ဖြင့် စတင် Trigger ပြုလုပ်ခြင်း
+  const typeSelect = document.getElementById("entry-type");
+  if (typeSelect) {
+    typeSelect.value = "ဝင်ငွေ";
+    if (typeof window.onEntryTypeChange === 'function') {
+      window.onEntryTypeChange("ဝင်ငွေ");
+    }
   }
 
   modal.classList.remove('hidden');
@@ -210,12 +219,16 @@ window.closeEntryModal = function() {
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
+// Yogi Modal Controls
 window.openAddYogiModal = function() {
   const form = document.getElementById('yogi-entry-form');
   if (form) form.reset();
   
   const idInput = document.getElementById('yogi-uniqueId');
   if (idInput) idInput.value = '';
+
+  const modalTitle = document.getElementById('yogi-modal-title');
+  if (modalTitle) modalTitle.textContent = "ယောဂီ အသစ် သွင်းယူရန်";
 
   const dateInput = document.getElementById('yogi-start-date');
   if (dateInput) {
@@ -232,6 +245,35 @@ window.openAddYogiModal = function() {
 
 window.closeYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
+  if (modal) modal.classList.add('hidden');
+};
+
+// Inventory Modal Controls
+window.openAddInvModal = function() {
+  const form = document.getElementById('inv-entry-form');
+  if (form) form.reset();
+
+  const idInput = document.getElementById('inv-id');
+  if (idInput) idInput.value = '';
+
+  const modalTitle = document.getElementById('inv-modal-title');
+  if (modalTitle) modalTitle.textContent = "ပစ္စည်းအသစ် သွင်းယူရန်";
+
+  const dateInput = document.getElementById('inv-date');
+  if (dateInput) {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  const modal = document.getElementById('inv-entry-modal');
+  if (modal) modal.classList.remove('hidden');
+};
+
+window.closeInvModal = function() {
+  const modal = document.getElementById('inv-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 
