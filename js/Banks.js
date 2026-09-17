@@ -1,8 +1,9 @@
 // ===================================================================
 // js/Banks.js - Bank & Book Ledger Table Renderer & Cascading Controller
+// Fixed: Description Text Overflow & Burmese Word-Break Issue
 // ===================================================================
 
-const LEDGER_ROWS_PER_PAGE = 30;
+const LEDGER_ROWS_PER_PAGE = 20;
 let ledgerCurrentPage = 1;
 let bankAllEntries = [];      // Dataset for active sheet (latest first)
 let bankFilteredEntries = []; // After search filter
@@ -93,7 +94,7 @@ function updateLedgerKPIs(kpis) {
 }
 
 // -------------------------------------------------------------------
-// 3. Search Filter & Table Rendering
+// 3. Search Filter & Table Rendering (FIXED OVERFLOW)
 // -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
@@ -154,24 +155,29 @@ function renderLedgerTable() {
       const balanceHtml = `<span class="text-amber-300 font-mono font-black">${balance.toLocaleString()}</span>`;
       
       const receiverBadge = entry.receiver 
-        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px]">${entry.receiver}</span>` 
+        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${entry.receiver}</span>` 
         : '<span class="text-slate-600">-</span>';
+
+      // 🎯 အကြောင်းအရာကို သူများကော်လံပေါ် မကျော်စေရန် Word-Break Wrapper ဖြင့် ထိန်းညှိခြင်း
+      const descHtml = entry.description 
+        ? `<div class="max-w-[280px] min-w-[200px] break-words whitespace-normal text-slate-200 text-xs leading-relaxed" style="word-break: break-word; overflow-wrap: anywhere;">${entry.description}</div>`
+        : '<span class="text-slate-600 font-mono">-</span>';
 
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
-          <td class="text-center font-bold text-amber-500/70 py-3">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300">${entry.entry_date || "-"}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${entry.category || "-"}</span></td>
-          <td class="font-semibold text-amber-200">${entry.subcategory || "-"}</td>
-          <td class="font-mono text-xs text-amber-300/80">${entry.voucher_no || "-"}</td>
-          <td class="whitespace-normal max-w-xs text-slate-200">${entry.description || "-"}</td>
-          <td>${receiverBadge}</td>
-          <td class="text-right py-3">${incomeHtml}</td>
-          <td class="text-right py-3">${expenseHtml}</td>
-          <td class="text-right py-3">${balanceHtml}</td>
-          <td class="font-mono text-xs text-sky-200 font-bold">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "-"}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] px-3">
+          <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
+          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.entry_date || "-"}</td>
+          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${entry.category || "-"}</span></td>
+          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.subcategory || "-"}</td>
+          <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
+          <td class="py-3 px-3">${descHtml}</td>
+          <td class="whitespace-nowrap px-2">${receiverBadge}</td>
+          <td class="text-right py-3 whitespace-nowrap px-2">${incomeHtml}</td>
+          <td class="text-right py-3 whitespace-nowrap px-2">${expenseHtml}</td>
+          <td class="text-right py-3 whitespace-nowrap px-2">${balanceHtml}</td>
+          <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
+          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || "-"}</td>
+          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
               <button onclick="deleteEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
