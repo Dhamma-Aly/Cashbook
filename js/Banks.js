@@ -1,6 +1,6 @@
 // ===================================================================
 // js/Banks.js - Bank & Book Ledger Table Renderer & Cascading Controller
-// Features: Bulletproof 4GB Double-Entry (User <-> User & User <-> Bank)
+// Fixed: User 2 Incoming Transfer correctly recorded as INCOME (ဝင်ငွေ)
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -30,9 +30,6 @@ function getTreeGroupKey(sheetCode) {
   return 'PADETHA_BOOKS';
 }
 
-// -------------------------------------------------------------------
-// 1. Render Bank/Book View Main Entry
-// -------------------------------------------------------------------
 window.renderBankView = async function(sheetKey, isSilent = false) {
   let targetSheet = String(sheetKey || window.currentSheet || window.currentSheetKey || '1CB').trim();
   if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
@@ -75,9 +72,6 @@ window.loadSheetView = function(isSilent = false) {
   window.renderBankView(window.currentSheet || window.currentSheetKey, isSilent);
 };
 
-// -------------------------------------------------------------------
-// 2. Update KPI Cards
-// -------------------------------------------------------------------
 function updateLedgerKPIs(kpis) {
   const k = kpis || { totalIncome: 0, totalExpense: 0, balance: 0, count: 0 };
   const setText = (id, val) => {
@@ -90,9 +84,6 @@ function updateLedgerKPIs(kpis) {
   setText("kpi-count", (k.count || 0).toLocaleString());
 }
 
-// -------------------------------------------------------------------
-// 3. Search Filter & Table Rendering
-// -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
   const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -139,13 +130,14 @@ function renderLedgerTable() {
       const balance = parseFloat(entry.balance) || 0;
 
       const isTransfer = entry.category === "စာရင်းပြောင်း" || (entry.subcategory && entry.subcategory.includes("လွှဲပြောင်း"));
-      const isIncome = entry.category === "ဝင်ငွေ" || income > 0;
+      const isIncome = income > 0;
 
       let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
       if (isIncome && !isTransfer) badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
       if (isTransfer) {
-        badgeClass = income > 0 
-          ? 'bg-purple-500/15 text-purple-200 border border-purple-400/30' 
+        // 🎯 ဝင်ငွေဆိုပါက အစိမ်း/ခရမ်းရောင်၊ ထွက်ငွေဆိုပါက ခရမ်းရောင်ဖြင့် ခွဲခြားပြသခြင်း
+        badgeClass = isIncome 
+          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40' 
           : 'bg-purple-500/10 text-purple-300 border border-purple-500/20';
       }
 
@@ -205,7 +197,6 @@ function renderLedgerTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-// Search & Pagination Controls
 window.onLedgerSearchInput = function() {
   ledgerCurrentPage = 1;
   applyLedgerSearchFilter();
@@ -227,7 +218,7 @@ window.nextPage = function() {
 };
 
 // -------------------------------------------------------------------
-// 4. 🔄 3-TIER & 4GB DYNAMIC TARGET HELPERS
+// 4. 4GB DYNAMIC TARGET HELPERS
 // -------------------------------------------------------------------
 function update4GBTransferTargets() {
   const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
@@ -355,7 +346,7 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// 5. Save Form (BULLETPROOF DOUBLE-ENTRY DISPATCH)
+// 5. Save Form (USER 2 ဝင်ငွေ တိကျစွာ ခွဲထုတ်သိမ်းဆည်းမှု)
 // -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -378,7 +369,7 @@ window.saveEntryForm = async function(event) {
 
   window.showLoading(true);
   try {
-    // 🌟 4GB စာရင်းပြောင်း ဖြစ်ပါက Frontend မှ တိုက်ရိုက် အဝင်/အထွက် ၂ ကြောင်း ခွဲထုတ်ပေးပို့ခြင်း
+    // 🌟 4GB စာရင်းပြောင်း ဖြစ်ပါက Frontend မှ တိုက်ရိုက် အထွက် နှင့် အဝင် (၂) ကြောင်း ခွဲထုတ်ပေးပို့ခြင်း
     if (sheet_name === '4GB' && type === 'စာရင်းပြောင်း' && !isEdit) {
       const target = subcategory; // User 2, User 3 သို့မဟုတ် 1CB
 
@@ -408,12 +399,12 @@ window.saveEntryForm = async function(event) {
           book_name: bookName
         };
 
-        // ၂။ User 2 ဝင်ငွေ (Debit) in 4GB
+        // ၂။ User 2 ဝင်ငွေ (Debit) in 4GB 🎯 (အဝင်အစစ်ဖြစ်ကြောင်း သတ်မှတ်ခြင်း)
         const payload2 = {
           sheet_name: '4GB',
           entry_date,
           category: 'ဝင်ငွေ',
-          subcategory: 'စာရင်းပြောင်း',
+          subcategory: 'လွှဲပြောင်းရရှိ',
           subcategory_detail: `${receiver} ထံမှ လွှဲပြောင်းရရှိ`,
           voucher_no,
           description: recipientDesc,
@@ -558,7 +549,7 @@ window.editEntry = function(uid) {
 };
 
 window.deleteEntry = async function(uid) {
-  if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
+  if (!confirm("ဤစာရင်းကို ဖျက်ရန် သေချာပါသလား?\n(စာရင်းပြောင်းထားသော ချိတ်ဆက်စာကြောင်း ရှိပါက တစ်ပါတည်း အတူတကွ ပျက်သွားပါမည်)")) return;
 
   window.showLoading(true);
   try {
