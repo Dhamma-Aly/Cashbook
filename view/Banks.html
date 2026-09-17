@@ -103,7 +103,7 @@
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
     <!-- Modal Header -->
-    <div style="padding: 14px 20px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; shrink: 0;">
+    <div style="padding: 14px 20px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; flex-shrink: 0 !important;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 32px; height: 32px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
           <i class="fa-solid fa-file-circle-plus"></i>
@@ -122,7 +122,7 @@
       
       <input type="hidden" id="entry-id" value="">
 
-      <!-- Row 1: Date & Type (Type ပြောင်းပါက Category Auto ပြောင်းပါမည်) -->
+      <!-- Row 1: Date & Type -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
@@ -134,12 +134,12 @@
           <select id="entry-type" onchange="onEntryTypeChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ဝင်ငွေ">ဝင်ငွေ (Income)</option>
             <option value="ထွက်ငွေ">ထွက်ငွေ (Expense)</option>
-            <option value="စာရင်းပြောင်း">စာရင်းပြောင်း</option>
+            <option value="စာရင်းပြောင်း">စာရင်းပြောင်း (Transfer)</option>
           </select>
         </div>
       </div>
 
-      <!-- Row 2: Category & Subcategory (Category ပြောင်းပါက Subcategory Auto ပြောင်းပါမည်) -->
+      <!-- Row 2: Category & Subcategory / Target -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ် (Category)</label>
@@ -151,8 +151,9 @@
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
-          <select id="entry-subcategory" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
+          <!-- 🎯 Dynamic Label for Subcategory or Target -->
+          <label id="label-entry-subcategory" style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
+          <select id="entry-subcategory" onchange="if(typeof onEntrySubcategoryChange === 'function') onEntrySubcategoryChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="စာရင်းဖွင့်လက်ကျန်">စာရင်းဖွင့်လက်ကျန်</option>
           </select>
         </div>
@@ -171,11 +172,10 @@
         </div>
       </div>
 
-      <!-- Row 4: Receiver Dropdown -->
+      <!-- Row 4: Receiver Dropdown (Sender/User) -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">လက်ခံသူ / တာဝန်ခံ (User/Receiver)</label>
-        <select id="entry-receiver" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
-          <option value="">-- တာဝန်ခံ ရွေးချယ်ပါ (Optional) --</option>
+        <select id="entry-receiver" onchange="if(typeof onEntryReceiverChange === 'function') onEntryReceiverChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
           <option value="User 1">User 1</option>
           <option value="User 2">User 2</option>
           <option value="User 3">User 3</option>
