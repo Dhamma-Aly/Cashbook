@@ -1,7 +1,6 @@
 // ===================================================================
 // cashbook-api/handlers-banks.js
-// Handles Bank Accounts & Cashbook Fund Entries querying D1 'cashbooks' table
-// Includes Advanced Double-Entry Transfer Logic with linked_id for 4GB
+// Fixed: 4GB Internal User-to-User Transfer & Subcategory Mapping
 // ===================================================================
 
 // Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
@@ -43,7 +42,7 @@ export async function handleBankRequests(request, env, corsHeaders) {
   const method = request.method;
 
   // -----------------------------------------------------------------
-  // 1. GET /api/entries?sheet=1CB
+  // 1. GET /api/entries?sheet=4GB (Subcategory Mapping Fixed)
   // -----------------------------------------------------------------
   if (method === 'GET') {
     let sheet = String(url.searchParams.get('sheet') || '1CB').trim();
@@ -72,13 +71,19 @@ export async function handleBankRequests(request, env, corsHeaders) {
         totalExpense += expense;
         runningBalance += (income - expense);
 
+        // 🎯 FIX: စာရင်းပြောင်းဖြစ်ပါက Subcategory နေရာတွင် "User 2 သို့ လွှဲပြောင်း" စသည့် စာသားအမှန်ကို ဖော်ပြပေးမည်
+        let subcatDisplay = row.subcategory || row.category || '-';
+        if (isTransfer && row.subcategory) {
+          subcatDisplay = row.subcategory;
+        }
+
         return {
           id: row.id,
           uniqueId: `CB-${row.id}`,
           sheet_name: row.sheet_code,
           entry_date: row.date,
           category: isTransfer ? 'စာရင်းပြောင်း' : row.type, 
-          subcategory: row.category,                        
+          subcategory: subcatDisplay,                       
           subcategory_detail: row.subcategory || '',
           voucher_no: row.voucher_no || '',
           description: row.description || '',
@@ -113,7 +118,7 @@ export async function handleBankRequests(request, env, corsHeaders) {
   }
 
   // -----------------------------------------------------------------
-  // 2. POST /api/entries (စာရင်း အသစ်သွင်းခြင်း + 4GB Double-Entry Auto Transfer)
+  // 2. POST /api/entries (4GB Double-Entry Auto Transfer Fixed)
   // -----------------------------------------------------------------
   if (method === 'POST') {
     try {
@@ -138,59 +143,61 @@ export async function handleBankRequests(request, env, corsHeaders) {
       // 🌟 SPECIAL CASE: ကျောင်းရန်ပုံငွေ စာအုပ် (4GB) ၏ စာရင်းပြောင်း စနစ်
       // -------------------------------------------------------------
       if (sheet_code === '4GB' && isTransfer) {
-        const target = String(body.transfer_target || subcategory || body.extraNote || '').trim();
+        // 🎯 FIX: Dropdown ရော Description ထဲမှာပါ ရေးထားသည့် စာသားအားလုံးကို ပေါင်းပြီး Target ရှာဖွေခြင်း
+        const combinedText = `${body.transfer_target || ''} ${subcategory || ''} ${body.extraNote || ''} ${description || ''}`.trim();
 
-        // A. Target သည် အခြား User ဖြစ်နေပါက (User 1 -> User 2 / User 3)
-        if (target.includes('User 1') || target.includes('User 2') || target.includes('User 3')) {
-          let targetUser = 'User 2';
-          if (target.includes('User 1')) targetUser = 'User 1';
-          else if (target.includes('User 3')) targetUser = 'User 3';
+        let targetUser = null;
+        if (combinedText.includes('User 2') || combinedText.includes('User2')) targetUser = 'User 2';
+        else if (combinedText.includes('User 3') || combinedText.includes('User3')) targetUser = 'User 3';
+        else if (combinedText.includes('User 1') || combinedText.includes('User1')) targetUser = 'User 1';
 
+        // A. အကယ်၍ အခြား User ထံ လွှဲပြောင်းခြင်း ဖြစ်ပါက (User 1 -> User 2 / User 3)
+        if (targetUser && targetUser !== receiver) {
           const senderDesc = description || `${targetUser} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`;
           const recipientDesc = `${receiver} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`;
 
           // ၁။ Sender Row ထည့်သွင်းခြင်း (User 1 ထွက်ငွေ / Credit)
           const res1 = await env.DB.prepare(`
             INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year)
-            VALUES (?, ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?)
-          `).bind('4GB', date, `${targetUser} သို့ လွှဲပြောင်း`, voucher_no, amount, receiver, senderDesc, month_year).run();
+            VALUES ('4GB', ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?)
+          `).bind(date, `${targetUser} သို့ လွှဲပြောင်း`, voucher_no, amount, receiver, senderDesc, month_year).run();
 
           const row1Id = res1.meta.last_row_id;
 
-          // ၂။ Recipient Row ထည့်သွင်းခြင်း (User 2 ဝင်ငွေ / Debit) - linked_id ချိတ်ဆက်မည်
+          // ၂။ Recipient Row ထည့်သွင်းခြင်း (User 2 ဝင်ငွေ / Debit) - linked_id ဖြင့် တိုက်ရိုက်တွဲမည်
           const res2 = await env.DB.prepare(`
             INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year, linked_id)
-            VALUES (?, ?, 'ဝင်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?, ?)
-          `).bind('4GB', date, `${receiver} ထံမှ လွှဲပြောင်းရရှိ`, voucher_no, amount, targetUser, recipientDesc, month_year, row1Id).run();
+            VALUES ('4GB', ?, 'ဝင်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?, ?)
+          `).bind(date, `${receiver} ထံမှ လွှဲပြောင်းရရှိ`, voucher_no, amount, targetUser, recipientDesc, month_year, row1Id).run();
 
           const row2Id = res2.meta.last_row_id;
 
-          // Sender Row တွင်လည်း Recipient Row ၏ ID အား linked_id ပြန်ထည့်ခြင်း
+          // Row 1 တွင်လည်း Row 2 ၏ ID အား linked_id ပြန်ထည့်ခြင်း
           await env.DB.prepare(`UPDATE cashbooks SET linked_id = ? WHERE id = ?`).bind(row2Id, row1Id).run();
 
           return new Response(JSON.stringify({ 
             success: true, 
-            message: `4GB Internal Transfer successful: ${receiver} -> ${targetUser}` 
+            message: `4GB Internal Transfer: ${receiver} -> ${targetUser} created successfully` 
           }), { headers: corsHeaders });
         }
 
-        // B. Target သည် အထွေထွေရန်ပုံငွေ ဘဏ် (1CB) ဖြစ်နေပါက
+        // B. အကယ်၍ အထွေထွေရန်ပုံငွေ ဘဏ် (1CB) သို့ လွှဲပြောင်းခြင်း ဖြစ်ပါက
         const bankDesc = description || `အထွေထွေ ရန်ပုံငွေ (Bank) သို့ ဘဏ်အပ်နှံခြင်း`;
         const bankIncomeDesc = `ကျောင်းရန်ပုံငွေ (4GB) [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
 
         // ၁။ 4GB ထွက်ငွေ
         const res1 = await env.DB.prepare(`
           INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year)
-          VALUES (?, ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?)
-        `).bind('4GB', date, voucher_no, amount, receiver, bankDesc, month_year).run();
+          VALUES ('4GB', ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?)
+        `).bind(date, voucher_no, amount, receiver, bankDesc, month_year).run();
 
         const row1Id = res1.meta.last_row_id;
 
         // ၂။ 1CB Bank ဝင်ငွေ
         const res2 = await env.DB.prepare(`
           INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year, linked_id)
-          VALUES (?, ?, 'ဝင်ငွေ', 'ဘဏ်အပ်ငွေ', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?, ?)
-        `).bind('1CB', date, voucher_no, amount, receiver, bankIncomeDesc, month_year, row1Id).run();
+          VALUES ('1CB', ?, 'ဝင်ငွေ', 'ဘဏ်အပ်ငွေ', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?, ?)
+        `).bind(date, voucher_no, amount, receiver, bankIncomeDesc, month_year, row1Id).run();
 
         const row2Id = res2.meta.last_row_id;
         await env.DB.prepare(`UPDATE cashbooks SET linked_id = ? WHERE id = ?`).bind(row2Id, row1Id).run();
@@ -202,7 +209,7 @@ export async function handleBankRequests(request, env, corsHeaders) {
       }
 
       // -------------------------------------------------------------
-      // 🏛️ STANDARD CASE: အခြား စာအုပ်များ၏ ပုံမှန် ထည့်သွင်းမှု / ဘဏ်သို့ လွှဲပြောင်းမှု
+      // 🏛️ STANDARD CASE: အခြား စာအုပ်များ၏ ပုံမှန် ထည့်သွင်းမှု
       // -------------------------------------------------------------
       const recordType = isTransfer ? 'ထွက်ငွေ' : type;
       const recordCategory = isTransfer ? 'စာရင်းပြောင်း' : category;
@@ -306,7 +313,6 @@ export async function handleBankRequests(request, env, corsHeaders) {
         });
       }
 
-      // 💡 linked_id ရှိ/မရှိ အရင်စစ်ဆေးခြင်း
       const { results } = await env.DB.prepare(
         `SELECT id, linked_id FROM cashbooks WHERE id = ? LIMIT 1`
       ).bind(id).all();
@@ -314,10 +320,8 @@ export async function handleBankRequests(request, env, corsHeaders) {
       if (results && results.length > 0) {
         const linkedId = results[0].linked_id;
 
-        // မူရင်း စာကြောင်းကို ဖျက်ခြင်း
         await env.DB.prepare(`DELETE FROM cashbooks WHERE id = ?`).bind(id).run();
 
-        // ချိတ်ဆက်ထားသော ဒုတိယစာကြောင်း (linked entry) ရှိပါက အတူတကွ ဖျက်ပေးခြင်း
         if (linkedId) {
           await env.DB.prepare(`DELETE FROM cashbooks WHERE id = ?`).bind(linkedId).run();
         }
