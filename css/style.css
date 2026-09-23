@@ -161,13 +161,21 @@ button, a, select, input, textarea {
   border: 1px solid #334155 !important;
   border-radius: 0.65rem !important;
   font-size: 0.8125rem !important;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  color-scheme: dark;
 }
 
 #entry-modal input:focus, #entry-modal select:focus, #entry-modal textarea:focus,
 #inv-entry-modal input:focus, #inv-entry-modal select:focus, #inv-entry-modal textarea:focus,
 #yogi-entry-modal input:focus, #yogi-entry-modal select:focus, #yogi-entry-modal textarea:focus,
-#login-form input:focus, #login-form select:focus {
+#login-form select:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3) !important;
+  outline: none !important;
+}
+
+/* Normal input focus (non-autofill) */
+#login-form input:not(:-webkit-autofill):focus {
   border-color: #f59e0b !important;
   box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3) !important;
   outline: none !important;
@@ -219,10 +227,9 @@ table tbody td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
   font-size: 0.8125rem !important;
   color: #f1f5f9 !important;
-  white-space: nowrap; /* Default: prevent unnecessary column wrapping */
+  white-space: nowrap;
 }
 
-/* 🎯 FIX: Description / Multi-line Cells are allowed to wrap cleanly */
 table tbody td.whitespace-normal,
 table tbody td .whitespace-normal {
   white-space: normal !important;
@@ -290,11 +297,11 @@ table th.sticky, table td.sticky, th.right-0, td.right-0 {
 }
 
 /* ===================================================================
-   🛡️ Browser Password Autofill Yellow Background Removal Fix
+   🛡️ Browser Password Autofill Complete Fix (Focus & Normal)
    =================================================================== */
+/* ကာဆာ မချထားခင် အခြေအနေ */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
+input:-webkit-autofill:hover,
 input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 1000px #050811 inset !important;
   box-shadow: 0 0 0 1000px #050811 inset !important;
@@ -303,3 +310,15 @@ input:-webkit-autofill:active {
   transition: background-color 5000s ease-in-out 0s;
 }
 
+/* 🎯 FIX: ကာဆာ ချလိုက်ချိန် (:focus) တွင် အဝါရောင်မထွက်စေရန် Inset Mask နှင့် Focus Ring ကို တွဲဖက်ထားခြင်း */
+#login-form input:-webkit-autofill:focus,
+input:-webkit-autofill:focus,
+input:focus:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 0 1000px #050811 inset !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 0 1000px #050811 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  border-color: #f59e0b !important;
+  caret-color: #f8fafc !important;
+  outline: none !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
