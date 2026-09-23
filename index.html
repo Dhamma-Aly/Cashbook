@@ -27,57 +27,82 @@
 </head>
 <body class="bg-[#020617] font-myanmar flex h-screen overflow-hidden text-slate-100">
 
-  <!-- LOGIN OVERLAY -->
-  <div id="login-overlay" class="fixed inset-0 bg-[#020617]/95 z-[100] flex items-center justify-center p-4">
-    <div class="relative w-full max-w-md bg-[#0f172a] border border-amber-500/30 backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.9)] text-center overflow-hidden space-y-6">
+  <!-- 🌟 LOGIN OVERLAY (Golden Education Inspired Clean & Modern UI) -->
+  <div id="login-overlay" class="fixed inset-0 bg-[#020617]/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+    <div class="relative w-full max-w-[420px] bg-[#090d16] border border-slate-800/90 rounded-3xl p-6 sm:p-8 shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden">
       
-      <div class="absolute -top-12 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <!-- Subtle Ambient Glow -->
+      <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-48 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div class="text-center">
-        <div class="inline-flex items-center justify-center p-4 rounded-2xl bg-gradient-to-b from-amber-500/20 to-amber-700/5 border border-amber-500/40 shadow-inner mb-3">
-          <i class="fa-solid fa-dharmachakra text-4xl text-amber-400"></i>
+      <!-- 1. Header Section -->
+      <div class="text-center relative z-10">
+        <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#0e1424] border border-slate-700/80 shadow-md shadow-black/50 mb-3.5">
+          <i class="fa-solid fa-dharmachakra text-2xl text-amber-400"></i>
         </div>
-        <h2 class="text-lg sm:text-xl font-black text-gold-gradient filter drop-shadow">
+        <h2 class="text-lg sm:text-xl font-extrabold text-amber-400 tracking-tight">
           ဓမ္မအလင်းရောင်တောရရိပ်သာ
         </h2>
-        <p class="text-[11px] font-extrabold uppercase tracking-widest text-amber-200/80 pt-1 pb-3 border-b border-amber-500/20">
+        <p class="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 mt-1">
           ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်
         </p>
       </div>
 
-      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left">
+      <!-- Top Divider Line -->
+      <div class="w-full h-px bg-slate-800/90 my-5"></div>
+
+      <!-- 2. Form Section -->
+      <form id="login-form" onsubmit="handleLoginSubmit(event)" class="space-y-4 text-xs text-left relative z-10">
+        
+        <!-- Username / Role Selection -->
         <div>
-          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">အသုံးပြုသူ အမည် (USERNAME)</label>
-          <select id="login-username" required class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-xs text-amber-100 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all font-bold cursor-pointer">
-            <option value="" disabled selected>-- အသုံးပြုသူအမည် ရွေးချယ်ပါ --</option>
-            <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
-            <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
-            <option value="Account">Account (ငွေစာရင်းကိုင်)</option>
-            <option value="Staff">Staff (ဝန်ထမ်း)</option>
-            <option value="Viewer">Viewer (ကြည့်ရှုသူ)</option>
-          </select>
+          <label class="block font-bold text-[11px] text-slate-300 uppercase tracking-wider mb-2">
+            အသုံးပြုသူ အမည် (USERNAME / ROLE)
+          </label>
+          <div class="relative">
+            <select id="login-username" required class="w-full h-11 px-3.5 bg-[#050811] border border-slate-700/80 rounded-xl text-xs text-slate-100 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-semibold cursor-pointer appearance-none">
+              <option value="" disabled selected>-- Select Username / Role --</option>
+              <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
+              <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
+              <option value="Account">Account (ငွေစာရင်းကိုင်)</option>
+              <option value="Staff">Staff (ဝန်ထမ်း)</option>
+              <option value="Viewer">Viewer (ကြည့်ရှုသူ)</option>
+            </select>
+            <div class="absolute inset-y-0 right-0 flex items-center pr-3.5 pointer-events-none text-slate-400 text-xs">
+              <i class="fa-solid fa-chevron-down text-[10px]"></i>
+            </div>
+          </div>
         </div>
 
+        <!-- Password Input -->
         <div>
-          <label class="block font-bold text-[11px] text-amber-300/80 uppercase tracking-wider mb-1.5">လျှို့ဝှက်နံပါတ် (PASSWORD)</label>
-          <input type="password" id="login-password" required placeholder="••••••••" class="w-full p-3 bg-[#080d1a] border border-amber-500/30 rounded-xl text-xs text-amber-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-500/20 transition-all">
+          <label class="block font-bold text-[11px] text-slate-300 uppercase tracking-wider mb-2">
+            လျှို့ဝှက်နံပါတ် (PASSWORD)
+          </label>
+          <input type="password" id="login-password" required placeholder="Type password..." class="w-full h-11 px-3.5 bg-[#050811] border border-slate-700/80 rounded-xl text-xs text-slate-100 placeholder:text-slate-600 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium">
         </div>
 
+        <!-- Error Container -->
         <div id="login-error" class="hidden text-rose-400 font-semibold text-[11px] bg-rose-950/40 border border-rose-500/40 p-2.5 rounded-xl text-center"></div>
 
-        <button type="submit" class="w-full py-3.5 mt-2 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-black rounded-xl transition-all duration-300 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-xs tracking-wider cursor-pointer">
-          <span>စနစ်သို့ ဝင်ရောက်မည်</span>
-          <i class="fa-solid fa-arrow-right-to-bracket text-sm"></i>
+        <!-- CTA Login Button -->
+        <button type="submit" class="w-full h-11 mt-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black rounded-xl transition-all duration-200 shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2 text-xs tracking-wider cursor-pointer active:scale-[0.99]">
+          <span>စနစ်သို့ ဝင်ရောက်မည် (Enter System)</span>
+          <i class="fa-solid fa-arrow-right-to-bracket text-xs"></i>
         </button>
       </form>
 
-      <div class="pt-4 border-t border-amber-500/20 flex items-center justify-between text-[11px] text-amber-400/70">
+      <!-- Bottom Divider Line -->
+      <div class="w-full h-px bg-slate-800/90 my-5"></div>
+
+      <!-- 3. Footer Section -->
+      <div class="flex items-center justify-between text-[11px] relative z-10">
         <div class="flex items-center gap-2">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span class="font-medium text-amber-200/80">System Ready</span>
+          <span class="font-bold text-slate-200">System Ready</span>
         </div>
-        <span class="font-mono">v3.0 Sāsana ERP</span>
+        <span class="font-mono font-medium text-slate-400">v3.0 Sāsana ERP</span>
       </div>
+
     </div>
   </div>
 
@@ -192,7 +217,7 @@
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
 
-  <!-- Consolidated Scripts (Books.js removed) -->
+  <!-- Consolidated Scripts -->
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
   <script src="js/auth.js" defer></script>
