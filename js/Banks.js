@@ -1,6 +1,6 @@
 // ===================================================================
 // js/Banks.js - Bank & Book Ledger Table Renderer & Cascading Controller
-// Fixed: User 2 Incoming Transfer correctly recorded as INCOME (ဝင်ငွေ)
+// Fixed: 1CB, 2CB, 3CB Bank Books auto-assigned & displayed as "Bank"
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -107,6 +107,9 @@ function renderLedgerTable() {
   const tbody = document.getElementById("table-body");
   if (!tbody) return;
 
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
   const total = bankFilteredEntries.length;
   const maxPage = Math.max(1, Math.ceil(total / LEDGER_ROWS_PER_PAGE));
   if (ledgerCurrentPage > maxPage) ledgerCurrentPage = maxPage;
@@ -135,7 +138,6 @@ function renderLedgerTable() {
       let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
       if (isIncome && !isTransfer) badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
       if (isTransfer) {
-        // 🎯 ဝင်ငွေဆိုပါက အစိမ်း/ခရမ်းရောင်၊ ထွက်ငွေဆိုပါက ခရမ်းရောင်ဖြင့် ခွဲခြားပြသခြင်း
         badgeClass = isIncome 
           ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/40' 
           : 'bg-purple-500/10 text-purple-300 border border-purple-500/20';
@@ -146,8 +148,10 @@ function renderLedgerTable() {
       const expenseHtml = expense ? `<span class="text-rose-400 font-mono font-bold">${expense.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
       const balanceHtml = `<span class="text-amber-300 font-mono font-black">${balance.toLocaleString()}</span>`;
       
-      const receiverBadge = entry.receiver 
-        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${entry.receiver}</span>` 
+      // 💡 FIX 1: Bank စာအုပ်များ ဖြစ်ပါက လက်ခံသူနေရာတွင် "Bank" အလိုအလျောက် သတ်မှတ်ပြသခြင်း
+      const displayReceiver = isBankSheet ? "Bank" : (entry.receiver || "-");
+      const receiverBadge = displayReceiver !== "-"
+        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
       const descHtml = entry.description 
@@ -346,24 +350,30 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// 5. Save Form (USER 2 ဝင်ငွေ တိကျစွာ ခွဲထုတ်သိမ်းဆည်းမှု)
+// 5. Save Form (Bank စာအုပ်များအတွက် receiver: "Bank" တိကျစွာ သတ်မှတ်သိမ်းဆည်းမှု)
 // -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
   const uniqueId = document.getElementById("entry-id").value;
   const entry_date = document.getElementById("entry-date").value;
-  const type = document.getElementById("entry-type").value; // ဝင်ငွေ / ထွက်ငွေ / စာရင်းပြောင်း
+  const type = document.getElementById("entry-type").value;
   const category = document.getElementById("entry-category").value;
   const subcatEl = document.getElementById("entry-subcategory");
   const subcategory = subcatEl ? subcatEl.value : "";
   const voucher_no = document.getElementById("entry-voucher").value.trim();
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
-  const receiver = document.getElementById("entry-receiver").value || "User 1";
+  
+  let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBankSheet = ['1CB', '2CB', '3CB'].includes(sheet_name);
+
+  // 💡 FIX 2: Bank စာအုပ်ဖြစ်ပါက လက်ခံသူအား ပုံသေ "Bank" ဟု တိုက်ရိုက်ယူခြင်း
+  const rawReceiver = document.getElementById("entry-receiver")?.value || "User 1";
+  const receiver = isBankSheet ? "Bank" : rawReceiver;
+
   const description = document.getElementById("entry-description").value.trim();
   const month_year = formatMonthYear(entry_date);
 
-  let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
   const bookName = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[sheet_name]) || sheet_name;
   const isEdit = !!uniqueId;
 
@@ -371,9 +381,8 @@ window.saveEntryForm = async function(event) {
   try {
     // 🌟 4GB စာရင်းပြောင်း ဖြစ်ပါက Frontend မှ တိုက်ရိုက် အထွက် နှင့် အဝင် (၂) ကြောင်း ခွဲထုတ်ပေးပို့ခြင်း
     if (sheet_name === '4GB' && type === 'စာရင်းပြောင်း' && !isEdit) {
-      const target = subcategory; // User 2, User 3 သို့မဟုတ် 1CB
+      const target = subcategory;
 
-      // A. User အချင်းချင်း လွှဲပြောင်းမှု (User 1 -> User 2 / User 3)
       if (target.includes('User 1') || target.includes('User 2') || target.includes('User 3')) {
         let targetUser = 'User 2';
         if (target.includes('User 1')) targetUser = 'User 1';
@@ -382,7 +391,7 @@ window.saveEntryForm = async function(event) {
         const senderDesc = description || `${targetUser} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`;
         const recipientDesc = `${receiver} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`;
 
-        // ၁။ User 1 ထွက်ငွေ (Credit) in 4GB
+        // ၁။ User ထွက်ငွေ in 4GB
         const payload1 = {
           sheet_name: '4GB',
           entry_date,
@@ -399,7 +408,7 @@ window.saveEntryForm = async function(event) {
           book_name: bookName
         };
 
-        // ၂။ User 2 ဝင်ငွေ (Debit) in 4GB 🎯 (အဝင်အစစ်ဖြစ်ကြောင်း သတ်မှတ်ခြင်း)
+        // ၂။ Target User ဝင်ငွေ in 4GB
         const payload2 = {
           sheet_name: '4GB',
           entry_date,
@@ -446,7 +455,7 @@ window.saveEntryForm = async function(event) {
           book_name: bookName
         };
 
-        // ၂။ 1CB Bank ဝင်ငွေ
+        // ၂။ 1CB Bank ဝင်ငွေ 🎯 (လက်ခံသူကို 'Bank' အဖြစ် အတိအကျ သတ်မှတ်ခြင်း)
         const payload2 = {
           sheet_name: '1CB',
           entry_date,
@@ -455,7 +464,7 @@ window.saveEntryForm = async function(event) {
           subcategory_detail: 'ဘဏ်အပ်နှံခြင်း',
           voucher_no,
           description: bankIncomeDesc,
-          receiver: receiver,
+          receiver: 'Bank', // 💡 Fixed: 1CB တွင် လက်ခံသူမှာ အမြဲတမ်း 'Bank' ဖြစ်သည်
           income: amount,
           expense: 0,
           amount: amount,
@@ -485,7 +494,7 @@ window.saveEntryForm = async function(event) {
       subcategory_detail: subcategory,
       voucher_no,
       description,
-      receiver,
+      receiver: receiver, // 💡 Fixed: Bank စာအုပ်ဆိုလျှင် 'Bank' အလိုအလျောက် ဖြစ်မည်
       income,
       expense,
       amount,
@@ -512,6 +521,9 @@ window.editEntry = function(uid) {
   const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
   if (!entry) return;
 
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (modal) modal.classList.remove('hidden');
 
@@ -523,8 +535,26 @@ window.editEntry = function(uid) {
   document.getElementById("entry-id").value = entry.uniqueId || "";
   document.getElementById("entry-date").value = entry.entry_date || "";
   
+  // 💡 FIX 3: Edit ဖွင့်သည့်အခါ Bank စာအုပ်ဖြစ်ပါက 'Bank' ဟု ပုံသေထားပြီး Lock ချခြင်း
   const recSelect = document.getElementById("entry-receiver");
-  if (recSelect) recSelect.value = entry.receiver || "User 1";
+  if (recSelect) {
+    if (isBankSheet) {
+      let hasBankOpt = Array.from(recSelect.options).some(opt => opt.value === 'Bank');
+      if (!hasBankOpt) {
+        const opt = document.createElement('option');
+        opt.value = 'Bank';
+        opt.textContent = 'Bank';
+        recSelect.prepend(opt);
+      }
+      recSelect.value = "Bank";
+      recSelect.style.pointerEvents = 'none';
+      recSelect.style.opacity = '0.85';
+    } else {
+      recSelect.value = entry.receiver || "User 1";
+      recSelect.style.pointerEvents = 'auto';
+      recSelect.style.opacity = '1';
+    }
+  }
 
   const typeSelect = document.getElementById("entry-type");
   if (typeSelect) {
@@ -573,15 +603,22 @@ window.exportCSV = function() {
     return;
   }
 
+  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+
   let csv = "\uFEFF";
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,အကြောင်းအရာ,လက်ခံသူ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
     const my = formatMonthYear(e.entry_date || e.month_year);
+
+    // 💡 FIX 4: Export ထုတ်ယူသည့်အခါတွင်လည်း Bank စာအုပ်များအတွက် "Bank" ဟု ထွက်စေခြင်း
+    const receiverText = isBankSheet ? "Bank" : (e.receiver || "");
+
     csv += [
       idx + 1, esc(e.entry_date), esc(e.category), esc(e.subcategory), esc(e.voucher_no),
-      esc(e.description), esc(e.receiver), e.income || 0, e.expense || 0, e.balance || 0,
+      esc(e.description), esc(receiverText), e.income || 0, e.expense || 0, e.balance || 0,
       esc(my), esc(e.book_name)
     ].join(",") + "\n";
   });
