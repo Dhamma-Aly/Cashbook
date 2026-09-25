@@ -32,7 +32,7 @@ window.CONFIG = {
   },
 
   // 👤 Authorized Users / Receivers
-  RECEIVERS: ['User 1', 'User 2', 'User 3'],
+  RECEIVERS: ['User 1', 'User 2', 'User 3','Bank'],
 
   // 🔄 TRANSFER TARGET BANK MAPPING
   TRANSFER_MAPPING: {
