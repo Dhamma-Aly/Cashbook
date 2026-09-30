@@ -9,7 +9,7 @@ const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  './avicon.svg',
+  './favicon.svg',
   './css/style.css',
   './css/tailwind.build.css',
   './js/config.js',
