@@ -1,9 +1,49 @@
 // ===================================================================
 // cashbook-api/handlers-banks.js
-// Fixed: 4GB Internal User-to-User Transfer & Subcategory Mapping
+// Handles 10 Individual Bank & Ledger Tables with Transfers & Running Balance
 // ===================================================================
 
-// Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
+// ၁။ Sheet Code မှ D1 Table Name အတိအကျသို့ ချိတ်ဆက်ပေးသော Mapping
+const TABLE_MAP = {
+  '1CB': '1CB Bank (General)',
+  '2CB': '2CB Bank (Meal)',
+  '3CB': '3CB Bank (UZ)',
+  '4GB': '1General Book',
+  '5FB': '2Meal Book',
+  '6HB': '3Hall Book',
+  '7PB': '4Pagoda Book',
+  '8EB': '5Electronic Book',
+  '9MB': '6Medical Book',
+  '10GB': '7Other Book',
+
+  // Table နာမည်အပြည့်အစုံဖြင့် တိုက်ရိုက်ခေါ်ပါကလည်း လက်ခံပေးခြင်း
+  '1CB Bank (General)': '1CB Bank (General)',
+  '2CB Bank (Meal)': '2CB Bank (Meal)',
+  '3CB Bank (UZ)': '3CB Bank (UZ)',
+  '1General Book': '1General Book',
+  '2Meal Book': '2Meal Book',
+  '3Hall Book': '3Hall Book',
+  '4Pagoda Book': '4Pagoda Book',
+  '5Electronic Book': '5Electronic Book',
+  '6Medical Book': '6Medical Book',
+  '7Other Book': '7Other Book'
+};
+
+// ၂။ စာအုပ်များမှ ဘဏ်သို့ လွှဲပြောင်းရာတွင် ပို့ဆောင်ရမည့် ပစ်မှတ် ဘဏ်စာရင်းများ
+const TRANSFER_TARGET_BANKS = {
+  '4GB': '1CB Bank (General)',
+  '1General Book': '1CB Bank (General)',
+  '5FB': '2CB Bank (Meal)',
+  '2Meal Book': '2CB Bank (Meal)',
+  '8EB': '2CB Bank (Meal)',
+  '5Electronic Book': '2CB Bank (Meal)',
+  '9MB': '2CB Bank (Meal)',
+  '6Medical Book': '2CB Bank (Meal)',
+  '10GB': '2CB Bank (Meal)',
+  '7Other Book': '2CB Bank (Meal)'
+};
+
+// Helper: Format YYYY-MM-DD to MMM-YY (e.g. Mar-26)
 function formatMonthYear(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
@@ -15,90 +55,62 @@ function formatMonthYear(dateStr) {
   return `${m}-${y}`;
 }
 
-// 🎯 Target Bank Mapping for Book Transfers
-const TRANSFER_TARGET_BANKS = {
-  '4GB': '1CB',
-  '5FB': '2CB',
-  '8EB': '2CB',
-  '9MB': '2CB',
-  '10GB': '2CB'
-};
-
-const SHEET_TITLES = {
-  '1CB': 'အထွေထွေ ရန်ပုံငွေ (Bank)',
-  '2CB': 'ဆွမ်းပဒေသာပင် (Bank)',
-  '3CB': 'တစ်ဦးတည်းစာရင်း (Bank)',
-  '4GB': 'ကျောင်းရန်ပုံငွေ စာအုပ်',
-  '5FB': 'ဆွမ်းပဒေသာပင် စာအုပ်',
-  '6HB': 'ဓမ္မာရုံငွေစာရင်း စာအုပ်',
-  '7PB': 'စေတီငွေစာရင်း စာအုပ်',
-  '8EB': 'လျှပ်စစ်ပဒေသာပင် စာအုပ်',
-  '9MB': 'ဆေးပဒေသာပင် စာအုပ်',
-  '10GB': 'အထွေထွေရန်ပုံငွေစာအုပ်'
-};
-
 export async function handleBankRequests(request, env, corsHeaders) {
   const url = new URL(request.url);
   const method = request.method;
 
   // -----------------------------------------------------------------
-  // 1. GET /api/entries?sheet=4GB (Subcategory Mapping Fixed)
+  // 1. GET /api/entries?sheet=1CB သို့မဟုတ် ?book=1CB Bank (General)
   // -----------------------------------------------------------------
   if (method === 'GET') {
-    let sheet = String(url.searchParams.get('sheet') || '1CB').trim();
-
-    if (sheet === 'true' || sheet === 'false' || sheet === '1' || sheet === '1.0') sheet = '1CB';
-    if (sheet === '2' || sheet === '2.0') sheet = '2CB';
-    if (sheet === '3' || sheet === '3.0') sheet = '3CB';
+    const rawSheet = url.searchParams.get('sheet') || url.searchParams.get('book') || '1CB';
+    const tableName = TABLE_MAP[rawSheet.trim()] || '1CB Bank (General)';
 
     try {
+      // သက်ဆိုင်ရာ Table ထဲမှ စာရင်းများကို ရက်စွဲအလိုက် ဆွဲထုတ်ခြင်း
       const { results } = await env.DB.prepare(
-        `SELECT * FROM cashbooks WHERE sheet_code = ? ORDER BY date ASC, id ASC`
-      ).bind(sheet).all();
+        `SELECT * FROM "${tableName}" ORDER BY date ASC, id ASC`
+      ).all();
 
       let runningBalance = 0;
       let totalIncome = 0;
       let totalExpense = 0;
 
       const formattedEntries = (results || []).map(row => {
-        const isTransfer = row.category === 'စာရင်းပြောင်း' || row.type === 'စာရင်းပြောင်း';
-        const isIncome = row.type === 'ဝင်ငွေ';
-
-        const income = isIncome ? row.amount : 0;
-        const expense = !isIncome ? row.amount : 0;
+        const income = parseFloat(row.income) || 0;
+        const expense = parseFloat(row.expense) || 0;
 
         totalIncome += income;
         totalExpense += expense;
         runningBalance += (income - expense);
 
-        // 🎯 FIX: စာရင်းပြောင်းဖြစ်ပါက Subcategory နေရာတွင် "User 2 သို့ လွှဲပြောင်း" စသည့် စာသားအမှန်ကို ဖော်ပြပေးမည်
-        let subcatDisplay = row.subcategory || row.category || '-';
-        if (isTransfer && row.subcategory) {
-          subcatDisplay = row.subcategory;
-        }
-
         return {
           id: row.id,
-          uniqueId: `CB-${row.id}`,
-          sheet_name: row.sheet_code,
+          no: row.no || row.id,
+          uniqueId: row.unique_id || `CB-${row.id}`,
+          unique_id: row.unique_id || `CB-${row.id}`,
+          sheet_name: rawSheet,
+          date: row.date,
           entry_date: row.date,
-          category: isTransfer ? 'စာရင်းပြောင်း' : row.type, 
-          subcategory: subcatDisplay,                       
-          subcategory_detail: row.subcategory || '',
+          category: row.title || (income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ'),
+          title: row.title || '',
+          subcategory: row.sub_title || '-',
+          sub_title: row.sub_title || '',
+          subcategory_detail: row.sub_title || '',
           voucher_no: row.voucher_no || '',
           description: row.description || '',
           receiver: row.receiver || '',
           income: income,
           expense: expense,
           balance: runningBalance,
-          linked_id: row.linked_id || null,
-          month_year: formatMonthYear(row.date),            
-          book_name: SHEET_TITLES[row.sheet_code] || row.sheet_code
+          month_year: row.month_year || formatMonthYear(row.date),
+          book_name: row.book_name || tableName
         };
       });
 
       return new Response(JSON.stringify({
         success: true,
+        book: tableName,
         data: formattedEntries,
         kpis: {
           totalIncome,
@@ -118,127 +130,146 @@ export async function handleBankRequests(request, env, corsHeaders) {
   }
 
   // -----------------------------------------------------------------
-  // 2. POST /api/entries (4GB Double-Entry Auto Transfer Fixed)
+  // 2. POST /api/entries (စာရင်းအသစ် ထည့်သွင်းခြင်းနှင့် စာရင်းပြောင်း စနစ်)
   // -----------------------------------------------------------------
   if (method === 'POST') {
     try {
       const body = await request.json();
+      const rawSheet = String(body.sheet_name || body.sheet_code || body.book || '1CB').trim();
+      const tableName = TABLE_MAP[rawSheet] || '1CB Bank (General)';
 
-      let sheet_code = String(body.sheet_name || body.sheet_code || '1CB').trim();
-      if (sheet_code === 'true' || sheet_code === 'false' || sheet_code === '1' || sheet_code === '1.0') sheet_code = '1CB';
-
-      const date = body.entry_date || new Date().toISOString().split('T')[0];
-      const type = body.category || 'ဝင်ငွေ';          
-      const category = body.subcategory || 'စာရင်းဖွင့်'; 
-      const subcategory = body.subcategory_detail || body.extraNote || '';
+      const date = body.entry_date || body.date || new Date().toISOString().split('T')[0];
+      const category = body.category || body.title || 'ဝင်ငွေ';
+      const subcategory = body.subcategory || body.sub_title || body.subcategory_detail || '';
       const voucher_no = body.voucher_no || '';
-      const amount = parseFloat(body.income || body.expense || body.amount || 0);
       const receiver = body.receiver || 'User 1';
-      let   description = body.description || '';
+      let description = body.description || '';
       const month_year = formatMonthYear(date);
+      const unique_id = body.unique_id || body.uniqueId || crypto.randomUUID();
 
-      const isTransfer = type === 'စာရင်းပြောင်း' || category === 'စာရင်းပြောင်း';
+      const isTransfer = category === 'စာရင်းပြောင်း' || body.type === 'စာရင်းပြောင်း';
+      let income = parseFloat(body.income || 0);
+      let expense = parseFloat(body.expense || 0);
+
+      // Amount တစ်ခုတည်း ပို့လာပါက category အလိုက် ဝင်ငွေ/ထွက်ငွေ ခွဲခြင်း
+      if (body.amount && !income && !expense) {
+        const amt = parseFloat(body.amount);
+        if (category === 'ထွက်ငွေ' || isTransfer) expense = amt;
+        else income = amt;
+      }
 
       // -------------------------------------------------------------
-      // 🌟 SPECIAL CASE: ကျောင်းရန်ပုံငွေ စာအုပ် (4GB) ၏ စာရင်းပြောင်း စနစ်
+      // 🌟 အထူးကိစ္စ ၁: ကျောင်းရန်ပုံငွေ (4GB) တွင် User အချင်းချင်း လွှဲပြောင်းမှု
       // -------------------------------------------------------------
-      if (sheet_code === '4GB' && isTransfer) {
-        // 🎯 FIX: Dropdown ရော Description ထဲမှာပါ ရေးထားသည့် စာသားအားလုံးကို ပေါင်းပြီး Target ရှာဖွေခြင်း
-        const combinedText = `${body.transfer_target || ''} ${subcategory || ''} ${body.extraNote || ''} ${description || ''}`.trim();
-
+      if ((rawSheet === '4GB' || tableName === '1General Book') && isTransfer) {
+        const combinedText = `${body.transfer_target || ''} ${subcategory} ${description}`.trim();
         let targetUser = null;
         if (combinedText.includes('User 2') || combinedText.includes('User2')) targetUser = 'User 2';
         else if (combinedText.includes('User 3') || combinedText.includes('User3')) targetUser = 'User 3';
         else if (combinedText.includes('User 1') || combinedText.includes('User1')) targetUser = 'User 1';
 
-        // A. အကယ်၍ အခြား User ထံ လွှဲပြောင်းခြင်း ဖြစ်ပါက (User 1 -> User 2 / User 3)
+        // User အချင်းချင်း လွှဲပြောင်းခြင်း ဖြစ်ပါက (User 1 -> User 2 / 3)
         if (targetUser && targetUser !== receiver) {
           const senderDesc = description || `${targetUser} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`;
           const recipientDesc = `${receiver} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`;
+          const transferAmt = expense || income;
 
-          // ၁။ Sender Row ထည့်သွင်းခြင်း (User 1 ထွက်ငွေ / Credit)
-          const res1 = await env.DB.prepare(`
-            INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year)
-            VALUES ('4GB', ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?)
-          `).bind(date, `${targetUser} သို့ လွှဲပြောင်း`, voucher_no, amount, receiver, senderDesc, month_year).run();
+          // ၁။ ပို့သူ (ထွက်ငွေ)
+          await env.DB.prepare(`
+            INSERT INTO "1General Book" (date, title, sub_title, voucher_no, expense, income, receiver, description, month_year, book_name, unique_id)
+            VALUES (?, 'စာရင်းပြောင်း', ?, ?, ?, 0, ?, ?, ?, '1General Book', ?)
+          `).bind(date, `${targetUser} သို့ လွှဲပြောင်း`, voucher_no, transferAmt, receiver, senderDesc, month_year, unique_id).run();
 
-          const row1Id = res1.meta.last_row_id;
-
-          // ၂။ Recipient Row ထည့်သွင်းခြင်း (User 2 ဝင်ငွေ / Debit) - linked_id ဖြင့် တိုက်ရိုက်တွဲမည်
-          const res2 = await env.DB.prepare(`
-            INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year, linked_id)
-            VALUES ('4GB', ?, 'ဝင်ငွေ', 'စာရင်းပြောင်း', ?, ?, ?, ?, ?, ?, ?)
-          `).bind(date, `${receiver} ထံမှ လွှဲပြောင်းရရှိ`, voucher_no, amount, targetUser, recipientDesc, month_year, row1Id).run();
-
-          const row2Id = res2.meta.last_row_id;
-
-          // Row 1 တွင်လည်း Row 2 ၏ ID အား linked_id ပြန်ထည့်ခြင်း
-          await env.DB.prepare(`UPDATE cashbooks SET linked_id = ? WHERE id = ?`).bind(row2Id, row1Id).run();
+          // ၂။ လက်ခံသူ (ဝင်ငွေ)
+          await env.DB.prepare(`
+            INSERT INTO "1General Book" (date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, book_name, unique_id)
+            VALUES (?, 'စာရင်းပြောင်း', ?, ?, ?, 0, ?, ?, ?, '1General Book', ?)
+          `).bind(date, `${receiver} ထံမှ လွှဲပြောင်းရရှိ`, voucher_no, transferAmt, targetUser, recipientDesc, month_year, crypto.randomUUID()).run();
 
           return new Response(JSON.stringify({ 
             success: true, 
-            message: `4GB Internal Transfer: ${receiver} -> ${targetUser} created successfully` 
+            message: `4GB Transfer: ${receiver} -> ${targetUser} created successfully`,
+            unique_id
           }), { headers: corsHeaders });
         }
 
-        // B. အကယ်၍ အထွေထွေရန်ပုံငွေ ဘဏ် (1CB) သို့ လွှဲပြောင်းခြင်း ဖြစ်ပါက
+        // 4GB မှ အထွေထွေဘဏ် (1CB) သို့ ဘဏ်အပ်နှံခြင်း ဖြစ်ပါက
+        const transferAmt = expense || income;
         const bankDesc = description || `အထွေထွေ ရန်ပုံငွေ (Bank) သို့ ဘဏ်အပ်နှံခြင်း`;
         const bankIncomeDesc = `ကျောင်းရန်ပုံငွေ (4GB) [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
 
-        // ၁။ 4GB ထွက်ငွေ
-        const res1 = await env.DB.prepare(`
-          INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year)
-          VALUES ('4GB', ?, 'ထွက်ငွေ', 'စာရင်းပြောင်း', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?)
-        `).bind(date, voucher_no, amount, receiver, bankDesc, month_year).run();
+        // 4GB ထွက်ငွေ
+        await env.DB.prepare(`
+          INSERT INTO "1General Book" (date, title, sub_title, voucher_no, expense, income, receiver, description, month_year, book_name, unique_id)
+          VALUES (?, 'စာရင်းပြောင်း', 'ဘဏ်အပ်နှံခြင်း', ?, ?, 0, ?, ?, ?, '1General Book', ?)
+        `).bind(date, voucher_no, transferAmt, receiver, bankDesc, month_year, unique_id).run();
 
-        const row1Id = res1.meta.last_row_id;
-
-        // ၂။ 1CB Bank ဝင်ငွေ
-        const res2 = await env.DB.prepare(`
-          INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year, linked_id)
-          VALUES ('1CB', ?, 'ဝင်ငွေ', 'ဘဏ်အပ်ငွေ', 'ဘဏ်အပ်နှံခြင်း', ?, ?, ?, ?, ?, ?)
-        `).bind(date, voucher_no, amount, receiver, bankIncomeDesc, month_year, row1Id).run();
-
-        const row2Id = res2.meta.last_row_id;
-        await env.DB.prepare(`UPDATE cashbooks SET linked_id = ? WHERE id = ?`).bind(row2Id, row1Id).run();
+        // 1CB Bank ဝင်ငွေ
+        await env.DB.prepare(`
+          INSERT INTO "1CB Bank (General)" (date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, book_name, unique_id)
+          VALUES (?, 'ဘဏ်အပ်ငွေ', 'ဘဏ်အပ်နှံခြင်း', ?, ?, 0, ?, ?, ?, '1CB Bank (General)', ?)
+        `).bind(date, voucher_no, transferAmt, receiver, bankIncomeDesc, month_year, crypto.randomUUID()).run();
 
         return new Response(JSON.stringify({ 
           success: true, 
-          message: `4GB Transfer to 1CB Bank successful` 
+          message: `4GB Transfer to 1CB Bank successfully recorded`,
+          unique_id
         }), { headers: corsHeaders });
       }
 
       // -------------------------------------------------------------
-      // 🏛️ STANDARD CASE: အခြား စာအုပ်များ၏ ပုံမှန် ထည့်သွင်းမှု
+      // 🌟 အထူးကိစ္စ ၂: အခြား စာအုပ်များမှ 2CB ဘဏ်သို့ စာရင်းပြောင်းခြင်း
       // -------------------------------------------------------------
-      const recordType = isTransfer ? 'ထွက်ငွေ' : type;
-      const recordCategory = isTransfer ? 'စာရင်းပြောင်း' : category;
-
-      const res1 = await env.DB.prepare(`
-        INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).bind(sheet_code, date, recordType, recordCategory, subcategory, voucher_no, amount, receiver, description, month_year).run();
-
-      const row1Id = res1.meta.last_row_id;
-
-      // တခြား ပဒေသာပင်စာအုပ်များ (5FB, 8EB, 9MB, 10GB) သည် 2CB ဘဏ်သို့ Auto ဝင်မည်
-      const targetBank = TRANSFER_TARGET_BANKS[sheet_code];
+      const targetBank = TRANSFER_TARGET_BANKS[rawSheet] || TRANSFER_TARGET_BANKS[tableName];
       if (isTransfer && targetBank) {
-        const bookTitle = SHEET_TITLES[sheet_code] || sheet_code;
-        const bankDepositDesc = description || `${bookTitle} မှ စာရင်းပြောင်း အဝင်`;
+        const transferAmt = expense || income;
+        const depositDesc = description || `${tableName} မှ စာရင်းပြောင်း အဝင်`;
 
-        const res2 = await env.DB.prepare(`
-          INSERT INTO cashbooks (sheet_code, date, type, category, subcategory, voucher_no, amount, receiver, description, month_year, linked_id)
-          VALUES (?, ?, 'ဝင်ငွေ', 'ဘဏ်အပ်ငွေ', 'လှူဒါန်းငွေ အပ်နှံခြင်း', ?, ?, ?, ?, ?, ?)
-        `).bind(targetBank, date, voucher_no, amount, receiver, bankDepositDesc, month_year, row1Id).run();
+        // လက်ရှိ စာအုပ် ထွက်ငွေ
+        await env.DB.prepare(`
+          INSERT INTO "${tableName}" (date, title, sub_title, voucher_no, expense, income, receiver, description, month_year, book_name, unique_id)
+          VALUES (?, 'စာရင်းပြောင်း', 'ဘဏ်အပ်နှံခြင်း', ?, ?, 0, ?, ?, ?, ?, ?)
+        `).bind(date, voucher_no, transferAmt, receiver, description || 'ဘဏ်အပ်နှံခြင်း', month_year, tableName, unique_id).run();
 
-        const row2Id = res2.meta.last_row_id;
-        await env.DB.prepare(`UPDATE cashbooks SET linked_id = ? WHERE id = ?`).bind(row2Id, row1Id).run();
+        // ပစ်မှတ် ဘဏ် (2CB) ဝင်ငွေ
+        await env.DB.prepare(`
+          INSERT INTO "${targetBank}" (date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, book_name, unique_id)
+          VALUES (?, 'ဘဏ်အပ်ငွေ', 'လှူဒါန်းငွေ အပ်နှံခြင်း', ?, ?, 0, ?, ?, ?, ?, ?)
+        `).bind(date, voucher_no, transferAmt, receiver, depositDesc, month_year, targetBank, crypto.randomUUID()).run();
+
+        return new Response(JSON.stringify({ 
+          success: true, 
+          message: `${tableName} Transfer to ${targetBank} recorded successfully`,
+          unique_id
+        }), { headers: corsHeaders });
       }
 
-      return new Response(JSON.stringify({ success: true, message: "Entry created successfully" }), {
-        headers: corsHeaders
-      });
+      // -------------------------------------------------------------
+      // 🏛️ ပုံမှန် ဝင်ငွေ/ထွက်ငွေ ထည့်သွင်းခြင်း
+      // -------------------------------------------------------------
+      await env.DB.prepare(`
+        INSERT INTO "${tableName}" 
+        (date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, book_name, unique_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        date,
+        category,
+        subcategory,
+        voucher_no,
+        income,
+        expense,
+        receiver,
+        description,
+        month_year,
+        tableName,
+        unique_id
+      ).run();
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        message: "Entry created successfully", 
+        unique_id 
+      }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Ledger Insert Error]:", err);
@@ -255,35 +286,41 @@ export async function handleBankRequests(request, env, corsHeaders) {
   if (method === 'PUT') {
     try {
       const body = await request.json();
-      const rawId = String(body.uniqueId || body.id || '');
-      const id = parseInt(rawId.replace(/^(BANK|BOOK|CB)-/, '')) || parseInt(rawId);
+      const rawSheet = String(body.sheet_name || body.sheet_code || body.book || '1CB').trim();
+      const tableName = TABLE_MAP[rawSheet] || '1CB Bank (General)';
+      const unique_id = body.unique_id || body.uniqueId;
+      const id = body.id;
 
-      if (!id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing Entry ID for update" }), {
+      if (!unique_id && !id) {
+        return new Response(JSON.stringify({ success: false, error: "Missing unique_id or id for update" }), {
           status: 400,
           headers: corsHeaders
         });
       }
 
-      const date = body.entry_date;
-      const type = body.category;
-      const category = body.subcategory;
-      const subcategory = body.subcategory_detail || body.extraNote || '';
+      const date = body.entry_date || body.date;
+      const title = body.category || body.title;
+      const sub_title = body.subcategory || body.sub_title || '';
       const voucher_no = body.voucher_no || '';
-      const amount = parseFloat(body.income || body.expense || body.amount || 0);
+      const income = parseFloat(body.income || 0);
+      const expense = parseFloat(body.expense || 0);
       const receiver = body.receiver || '';
       const description = body.description || '';
       const month_year = formatMonthYear(date);
 
-      const isTransfer = type === 'စာရင်းပြောင်း' || category === 'စာရင်းပြောင်း';
-      const recordType = isTransfer ? 'ထွက်ငွေ' : type;
-      const recordCategory = isTransfer ? 'စာရင်းပြောင်း' : category;
-
-      await env.DB.prepare(`
-        UPDATE cashbooks 
-        SET date = ?, type = ?, category = ?, subcategory = ?, voucher_no = ?, amount = ?, receiver = ?, description = ?, month_year = ?, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `).bind(date, recordType, recordCategory, subcategory, voucher_no, amount, receiver, description, month_year, id).run();
+      if (unique_id) {
+        await env.DB.prepare(`
+          UPDATE "${tableName}" 
+          SET date = ?, title = ?, sub_title = ?, voucher_no = ?, income = ?, expense = ?, receiver = ?, description = ?, month_year = ?, updated_at = datetime('now')
+          WHERE unique_id = ?
+        `).bind(date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, unique_id).run();
+      } else {
+        await env.DB.prepare(`
+          UPDATE "${tableName}" 
+          SET date = ?, title = ?, sub_title = ?, voucher_no = ?, income = ?, expense = ?, receiver = ?, description = ?, month_year = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `).bind(date, title, sub_title, voucher_no, income, expense, receiver, description, month_year, id).run();
+      }
 
       return new Response(JSON.stringify({ success: true, message: "Entry updated successfully" }), {
         headers: corsHeaders
@@ -299,40 +336,42 @@ export async function handleBankRequests(request, env, corsHeaders) {
   }
 
   // -----------------------------------------------------------------
-  // 4. DELETE /api/entries?uniqueId=CB-12 (ဖျက်ပါက linked_id ပါ တစ်ပြိုင်နက် ပျက်မည်)
+  // 4. DELETE /api/entries?unique_id=UUID သို့မဟုတ် ?id=1
   // -----------------------------------------------------------------
   if (method === 'DELETE') {
     try {
-      const rawId = String(url.searchParams.get('uniqueId') || '');
-      const id = parseInt(rawId.replace(/^(BANK|BOOK|CB)-/, '')) || parseInt(rawId);
+      const rawSheet = url.searchParams.get('sheet') || url.searchParams.get('book') || '1CB';
+      const tableName = TABLE_MAP[rawSheet.trim()] || '1CB Bank (General)';
 
-      if (!id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing Entry ID for deletion" }), {
+      let unique_id = url.searchParams.get('unique_id') || url.searchParams.get('uniqueId');
+      let id = url.searchParams.get('id');
+
+      // Body ဖြင့် ပို့လာပါက စစ်ဆေးခြင်း
+      if (!unique_id && !id) {
+        try {
+          const body = await request.json();
+          unique_id = body.unique_id || body.uniqueId;
+          id = body.id;
+        } catch (_) {}
+      }
+
+      if (!unique_id && !id) {
+        return new Response(JSON.stringify({ success: false, error: "Missing unique_id or id for deletion" }), {
           status: 400,
           headers: corsHeaders
         });
       }
 
-      const { results } = await env.DB.prepare(
-        `SELECT id, linked_id FROM cashbooks WHERE id = ? LIMIT 1`
-      ).bind(id).all();
-
-      if (results && results.length > 0) {
-        const linkedId = results[0].linked_id;
-
-        await env.DB.prepare(`DELETE FROM cashbooks WHERE id = ?`).bind(id).run();
-
-        if (linkedId) {
-          await env.DB.prepare(`DELETE FROM cashbooks WHERE id = ?`).bind(linkedId).run();
-        }
+      if (unique_id) {
+        await env.DB.prepare(`DELETE FROM "${tableName}" WHERE unique_id = ?`).bind(unique_id).run();
+      } else {
+        await env.DB.prepare(`DELETE FROM "${tableName}" WHERE id = ?`).bind(id).run();
       }
 
       return new Response(JSON.stringify({ 
         success: true, 
-        message: "Entry and its linked counterpart deleted successfully" 
-      }), {
-        headers: corsHeaders
-      });
+        message: "Entry deleted successfully" 
+      }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Ledger Delete Error]:", err);
