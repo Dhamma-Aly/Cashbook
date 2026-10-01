@@ -1,0 +1,86 @@
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report (Guaranteed 100% Single Row) -->
+
+<div id="report-section" class="space-y-4">
+  
+  <!-- 💡 ULTRA-COMPACT SINGLE-ROW ACTION BAR (Height ~46px - Zero Line Wrapping) -->
+  <div style="display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: space-between !important; gap: 12px !important; width: 100% !important; background-color: #0f172a !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; padding: 8px 16px !important; border-radius: 12px !important; overflow-x: auto !important; box-sizing: border-box !important;">
+    
+    <!-- Left: Search Box (Compact 220px Fixed Width) -->
+    <div style="position: relative !important; width: 220px !important; flex-shrink: 0 !important;">
+      <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 12px !important; top: 50% !important; transform: translateY(-50%) !important; color: #94a3b8 !important; font-size: 11px !important; pointer-events: none !important;"></i>
+      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="ရှာဖွေရန်..." style="width: 100% !important; height: 34px !important; padding-left: 32px !important; padding-right: 10px !important; font-size: 11px !important; border-radius: 8px !important; background-color: rgba(8, 13, 26, 0.8) !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #f8fafc !important; outline: none !important;">
+    </div>
+
+    <!-- Right: All Controls on the Same Single Line -->
+    <div style="display: flex !important; align-items: center !important; gap: 8px !important; flex-shrink: 0 !important; white-space: nowrap !important;">
+      
+      <!-- Annual vs Summary Mode Toggle -->
+      <div style="display: flex !important; align-items: center !important; gap: 4px !important; background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.2) !important; padding: 3px !important; border-radius: 8px !important; font-size: 11px !important;">
+        <button id="btn-report-annual" onclick="switchReportMode('Annual')" style="padding: 5px 12px !important; border-radius: 6px !important; font-weight: 800 !important; color: #fbbf24 !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;">
+          <i class="fa-solid fa-calendar-days" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Annual
+        </button>
+        <button id="btn-report-summary" onclick="switchReportMode('Summary')" style="padding: 5px 12px !important; border-radius: 6px !important; font-weight: 700 !important; color: rgba(251, 191, 36, 0.6) !important; background: transparent !important; border: none !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;">
+          <i class="fa-solid fa-chart-column" style="font-size: 11px !important;"></i> Summary
+        </button>
+      </div>
+
+      <!-- Year Selector Dropdown -->
+      <div style="display: flex !important; align-items: center !important; gap: 6px !important; background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; padding: 5px 10px !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; color: #fef08a !important;">
+        <i class="fa-solid fa-calendar" style="color: #fbbf24 !important; font-size: 11px !important;"></i>
+        <label for="report-year-select" style="color: rgba(251, 191, 36, 0.9) !important; font-weight: 700 !important;">ခုနှစ်:</label>
+        <select id="report-year-select" onchange="onReportYearChange(this.value)" style="background: transparent !important; color: #fbbf24 !important; font-weight: 900 !important; border: none !important; outline: none !important; cursor: pointer !important; font-size: 11px !important;">
+          <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
+          <option value="2024">2024</option>
+          <option value="2023">2023</option>
+        </select>
+      </div>
+
+      <!-- Refresh & Export Buttons -->
+      <button onclick="renderReportView()" style="padding: 6px 14px !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #fef08a !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;" title="Refresh">
+        <i class="fa-solid fa-rotate" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Refresh
+      </button>
+      
+      <button onclick="exportReportCSV()" style="padding: 6px 14px !important; background-color: #1e293b !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; color: #fef08a !important; border-radius: 8px !important; font-size: 11px !important; font-weight: 800 !important; cursor: pointer !important; display: flex !important; align-items: center !important; gap: 6px !important;" title="Export CSV">
+        <i class="fa-solid fa-file-export" style="font-size: 11px !important; color: #fbbf24 !important;"></i> Export
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- 📊 16-Column Annual & Summary Matrix Table Container -->
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-2xl overflow-x-auto shadow-2xl relative">
+    <table id="report-matrix-table" class="table-lg w-full text-left border-collapse min-w-[1600px] text-xs">
+      <thead id="report-table-header">
+        <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 uppercase font-extrabold">
+          <th class="w-20 py-3.5 px-3">Head</th>
+          <th class="min-w-[160px] py-3.5 px-3">Category</th>
+          <th class="min-w-[180px] py-3.5 px-3">Sub Category</th>
+          <th class="text-right w-24 py-3.5 px-2">Jan-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Feb-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Mar-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Apr-26</th>
+          <th class="text-right w-24 py-3.5 px-2">May-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Jun-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Jul-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Aug-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Sep-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Oct-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Nov-26</th>
+          <th class="text-right w-24 py-3.5 px-2">Dec-26</th>
+          <th class="text-right w-28 py-3.5 px-3 bg-amber-500/10 text-amber-300 font-black">Total</th>
+        </tr>
+      </thead>
+      <tbody id="report-table-body" class="divide-y divide-amber-500/10">
+        <tr>
+          <td colspan="16" class="text-center py-16 text-amber-400 font-bold">
+            <i class="fa-solid fa-dharmachakra fa-spin text-xl mr-3 text-amber-400/60"></i>
+            အစီရင်ခံစာ ဒေတာများ ဆွဲယူနေပါသည်...
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>

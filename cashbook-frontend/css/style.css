@@ -1,0 +1,324 @@
+/* ===================================================================
+   css/style.css - Sāsana ERP Custom Responsive CSS & Modern Obsidian Theme
+   Polished: Deep Slate Navy (#020617), Crisp Borders & Amber Gold Accents
+   =================================================================== */
+
+:root {
+  color-scheme: dark;
+}
+
+/* 🇲🇲 Myanmar Webfont & Antialiasing Polish */
+body.font-myanmar {
+  font-family: 'Noto Sans Myanmar', ui-sans-serif, system-ui, -apple-system, sans-serif !important;
+  font-size: 0.9375rem !important; /* ~15px Base Font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* 📱 Dynamic Viewport Height Fix for Mobile Browsers */
+html, body {
+  height: 100%;
+  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #020617 !important; /* Pure Deep Slate Navy */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 🛡️ Critical Safety Net: Guarantee .hidden works everywhere */
+.hidden {
+  display: none !important;
+}
+
+/* ⚡ Gold Gradient Header Text */
+.text-gold-gradient {
+  color: #fbbf24 !important;
+  background: linear-gradient(135deg, #fef08a 0%, #f59e0b 50%, #d97706 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* 🖐️ Fast Touch Action for Mobile Buttons */
+button, a, select, input, textarea {
+  touch-action: manipulation;
+}
+
+/* 📜 Modern Slim Scrollbar */
+::-webkit-scrollbar { 
+  width: 5px; 
+  height: 5px; 
+}
+::-webkit-scrollbar-track { 
+  background: #020617; 
+}
+::-webkit-scrollbar-thumb { 
+  background: #1e293b; 
+  border-radius: 9999px; 
+}
+::-webkit-scrollbar-thumb:hover { 
+  background: #334155; 
+}
+
+/* 👆 Smooth Momentum Scrolling */
+.overflow-x-auto, .overflow-y-auto, main {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 🔘 Navigation Buttons Styling (Sidebar Menu) */
+.nav-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #94a3b8 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border-left: 3px solid transparent;
+  font-size: 0.8125rem !important; /* ~13px */
+  padding-top: 0.65rem !important;
+  padding-bottom: 0.65rem !important;
+}
+.nav-btn:hover {
+  background-color: rgba(30, 41, 59, 0.5) !important;
+  color: #f8fafc !important;
+}
+.nav-btn.active {
+  background-color: #090d16 !important;
+  color: #fbbf24 !important;
+  font-weight: 700 !important;
+  border-left: 3px solid #f59e0b !important;
+  box-shadow: inset 0 0 12px rgba(245, 158, 11, 0.05);
+}
+
+/* 📊 Modern Executive KPI Cards (Sleek Border & Deep Background) */
+.stats-card {
+  background: linear-gradient(135deg, #090d16 0%, #060913 100%) !important;
+  border: 1px solid rgba(51, 65, 85, 0.6) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+  padding: 1rem 1.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 1rem !important;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.stats-card:hover {
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.stats-card h3 {
+  font-size: 1.1rem !important;
+  letter-spacing: -0.01em;
+}
+
+/* ===================================================================
+   🎯 YOGI KPI 5-COLUMN GRID FIX
+   =================================================================== */
+.yogi-kpi-grid {
+  display: grid !important;
+  grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  gap: 1rem !important;
+}
+
+@media (min-width: 640px) {
+  .yogi-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (min-width: 1024px) {
+  .yogi-kpi-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ===================================================================
+   🌙 MODERN MODAL DIALOGS & OBSIDIAN STYLING
+   =================================================================== */
+#entry-modal, #inv-entry-modal, #yogi-entry-modal, .modal-backdrop {
+  background-color: rgba(2, 6, 23, 0.9) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 99999 !important;
+}
+
+#entry-modal > div, #inv-entry-modal > div, #yogi-entry-modal > div {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+  border: 1px solid #1e293b !important;
+  box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.95) !important;
+  border-radius: 1.25rem !important;
+}
+
+/* ✍️ FORM CONTROLS, INPUTS & DROPDOWNS (Deep Slate, Crisp Borders) */
+#entry-modal input, #entry-modal select, #entry-modal textarea,
+#inv-entry-modal input, #inv-entry-modal select, #inv-entry-modal textarea,
+#yogi-entry-modal input, #yogi-entry-modal select, #yogi-entry-modal textarea,
+#login-form input, #login-form select {
+  background-color: #050811 !important;
+  color: #f8fafc !important;
+  border: 1px solid #334155 !important;
+  border-radius: 0.65rem !important;
+  font-size: 0.8125rem !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  color-scheme: dark;
+}
+
+#entry-modal input:focus, #entry-modal select:focus, #entry-modal textarea:focus,
+#inv-entry-modal input:focus, #inv-entry-modal select:focus, #inv-entry-modal textarea:focus,
+#yogi-entry-modal input:focus, #yogi-entry-modal select:focus, #yogi-entry-modal textarea:focus,
+#login-form select:focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3) !important;
+  outline: none !important;
+}
+
+/* Normal input focus (non-autofill) */
+#login-form input:not(:-webkit-autofill):focus {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.3) !important;
+  outline: none !important;
+}
+
+select option {
+  background-color: #090d16 !important;
+  color: #f8fafc !important;
+  padding: 8px 12px;
+}
+
+/* 📐 2-Column Responsive Flex Helper for Modal Forms */
+.form-row-2col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .form-row-2col {
+    flex-direction: row;
+  }
+  .form-row-2col > div {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ===================================================================
+   📋 TABLE RESPONSIVENESS, BORDERS & STICKY ACTION COLUMN
+   =================================================================== */
+table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #080d1a !important;
+  padding: 13px 14px;
+  font-size: 0.775rem !important;
+  text-transform: uppercase;
+  color: #fef08a !important;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.3) !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.05em;
+}
+
+table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  font-size: 0.8125rem !important;
+  color: #f1f5f9 !important;
+  white-space: nowrap;
+}
+
+table tbody td.whitespace-normal,
+table tbody td .whitespace-normal {
+  white-space: normal !important;
+}
+
+table tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+table tbody tr:hover {
+  background-color: rgba(245, 158, 11, 0.05) !important;
+}
+
+/* 📌 Sticky Action Column on Right with Left Border & Shadow */
+table th.sticky, table td.sticky, th.right-0, td.right-0 {
+  position: sticky !important;
+  right: 0 !important;
+  background-color: #080d1a !important;
+  z-index: 25 !important;
+  border-left: 1px solid rgba(245, 158, 11, 0.25) !important;
+  box-shadow: -6px 0 16px -2px rgba(0, 0, 0, 0.6);
+}
+
+/* ===================================================================
+   💻 Desktop & Mobile Sidebar Responsive Logic
+   =================================================================== */
+@media (min-width: 768px) {
+  #main-sidebar {
+    position: static !important;
+    transform: none !important;
+    display: flex !important;
+    visibility: visible !important;
+    width: 16rem !important;
+    flex-shrink: 0 !important;
+    background-color: #080d1a !important;
+    border-right: 1px solid rgba(245, 158, 11, 0.2) !important;
+  }
+  #mobile-menu-btn, #sidebar-overlay {
+    display: none !important;
+  }
+}
+
+@media (max-width: 767px) {
+  #main-sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50 !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: #080d1a !important;
+    box-shadow: 20px 0 50px rgba(0, 0, 0, 0.9);
+  }
+  #main-sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+  table tbody td {
+    padding: 8px 10px;
+    font-size: 0.775rem !important;
+  }
+  .stats-card {
+    padding: 0.75rem 0.9rem !important;
+  }
+}
+
+/* ===================================================================
+   🛡️ Browser Password Autofill Complete Fix (Focus & Normal)
+   =================================================================== */
+/* ကာဆာ မချထားခင် အခြေအနေ */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #050811 inset !important;
+  box-shadow: 0 0 0 1000px #050811 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  caret-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* 🎯 FIX: ကာဆာ ချလိုက်ချိန် (:focus) တွင် အဝါရောင်မထွက်စေရန် Inset Mask နှင့် Focus Ring ကို တွဲဖက်ထားခြင်း */
+#login-form input:-webkit-autofill:focus,
+input:-webkit-autofill:focus,
+input:focus:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 0 1000px #050811 inset !important;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.4), 0 0 0 1000px #050811 inset !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  border-color: #f59e0b !important;
+  caret-color: #f8fafc !important;
+  outline: none !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
