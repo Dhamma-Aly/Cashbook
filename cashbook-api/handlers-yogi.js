@@ -1,16 +1,15 @@
 // ===================================================================
 // cashbook-api/handlers-yogi.js
-// Handles Yogi Management for both 'Permanent Yogi' (12Yogi) and 'Camp Yogi' (13Yogi)
-// Supports Offline Sync Engine with unique_id (UUID)
+// 100% Aligned with D1 "Permanent Yogi" & "Camp Yogi" Schema
+// Columns: id, no, start_date, end_date, yogi_type, name, father_name, nrc, dob, age, gender, yogi_phone, home_phone, address, unique_id, updated_at
 // ===================================================================
 
-// Helper: Sheet Code မှ D1 Table Name သို့ ချိတ်ဆက်ပေးခြင်း
 function resolveYogiTable(sheetOrTable) {
   const s = String(sheetOrTable || '').trim();
   if (s === '13Yogi' || s === 'Camp Yogi' || s.includes('စခန်းဝင်')) {
     return 'Camp Yogi';
   }
-  return 'Permanent Yogi'; // Default to 12Yogi
+  return 'Permanent Yogi';
 }
 
 export async function handleYogiRequests(request, env, corsHeaders) {
@@ -18,73 +17,47 @@ export async function handleYogiRequests(request, env, corsHeaders) {
   const method = request.method;
   const pathname = url.pathname;
 
-  // -----------------------------------------------------------------
-  // 1. PUT /api/yogi/checkout (Active -> Inactive: စခန်းထွက်မည်)
-  // -----------------------------------------------------------------
+  // 1. PUT /api/yogi/checkout (စခန်းထွက်မည် -> end_date ဖြည့်သွင်းခြင်း)
   if (method === 'PUT' && pathname.endsWith('/checkout')) {
     try {
       const body = await request.json();
       const unique_id = body.unique_id || body.uniqueId;
-      const rawId = String(unique_id || body.id || '');
-      const id = parseInt(rawId.replace(/^YOGI-/, '')) || (body.id ? parseInt(body.id) : null);
+      const id = body.id || (unique_id && !isNaN(unique_id) ? parseInt(unique_id) : null);
       const end_date = body.end_date || new Date().toISOString().split('T')[0];
 
       if (!unique_id && !id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing Yogi ID for checkout" }), {
-          status: 400,
-          headers: corsHeaders
-        });
+        return new Response(JSON.stringify({ success: false, error: "Missing Yogi unique_id or id" }), { status: 400, headers: corsHeaders });
       }
 
-      // Target Table သတ်မှတ်ခြင်း (မပါလာပါက Table နှစ်ခုလုံးတွင် စစ်ဆေးဆောင်ရွက်မည်)
       const targetTable = body.sheet_type || body.sheet ? resolveYogiTable(body.sheet_type || body.sheet) : null;
       const tablesToUpdate = targetTable ? [targetTable] : ['Permanent Yogi', 'Camp Yogi'];
 
       for (const tbl of tablesToUpdate) {
         if (unique_id) {
-          await env.DB.prepare(`
-            UPDATE "${tbl}"
-            SET status = 'Inactive', end_date = ?, updated_at = datetime('now')
-            WHERE unique_id = ?
-          `).bind(end_date, unique_id).run();
+          await env.DB.prepare(`UPDATE "${tbl}" SET end_date = ?, updated_at = datetime('now') WHERE unique_id = ?`).bind(end_date, unique_id).run();
         }
         if (id) {
-          await env.DB.prepare(`
-            UPDATE "${tbl}"
-            SET status = 'Inactive', end_date = ?, updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(end_date, id).run();
+          await env.DB.prepare(`UPDATE "${tbl}" SET end_date = ?, updated_at = datetime('now') WHERE id = ?`).bind(end_date, id).run();
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: "ယောဂီ စခန်းထွက်ခြင်း မှတ်တမ်းတင်ပြီးပါပြီ" }), {
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: true, message: "ယောဂီ စခန်းထွက်ခြင်း မှတ်တမ်းတင်ပြီးပါပြီ" }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Yogi Checkout Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  // -----------------------------------------------------------------
-  // 2. PUT /api/yogi/reactivate (Inactive -> Active: စခန်းတွင်း ပြန်လည်ဝင်မည်)
-  // -----------------------------------------------------------------
+  // 2. PUT /api/yogi/reactivate (စခန်းတွင်း ပြန်ဝင်မည် -> end_date အလွတ်လုပ်ခြင်း)
   if (method === 'PUT' && pathname.endsWith('/reactivate')) {
     try {
       const body = await request.json();
       const unique_id = body.unique_id || body.uniqueId;
-      const rawId = String(unique_id || body.id || '');
-      const id = parseInt(rawId.replace(/^YOGI-/, '')) || (body.id ? parseInt(body.id) : null);
+      const id = body.id;
 
       if (!unique_id && !id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing Yogi ID for reactivation" }), {
-          status: 400,
-          headers: corsHeaders
-        });
+        return new Response(JSON.stringify({ success: false, error: "Missing Yogi unique_id or id" }), { status: 400, headers: corsHeaders });
       }
 
       const targetTable = body.sheet_type || body.sheet ? resolveYogiTable(body.sheet_type || body.sheet) : null;
@@ -92,37 +65,22 @@ export async function handleYogiRequests(request, env, corsHeaders) {
 
       for (const tbl of tablesToUpdate) {
         if (unique_id) {
-          await env.DB.prepare(`
-            UPDATE "${tbl}"
-            SET status = 'Active', end_date = '', updated_at = datetime('now')
-            WHERE unique_id = ?
-          `).bind(unique_id).run();
+          await env.DB.prepare(`UPDATE "${tbl}" SET end_date = '', updated_at = datetime('now') WHERE unique_id = ?`).bind(unique_id).run();
         }
         if (id) {
-          await env.DB.prepare(`
-            UPDATE "${tbl}"
-            SET status = 'Active', end_date = '', updated_at = datetime('now')
-            WHERE id = ?
-          `).bind(id).run();
+          await env.DB.prepare(`UPDATE "${tbl}" SET end_date = '', updated_at = datetime('now') WHERE id = ?`).bind(id).run();
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: "ယောဂီ စခန်းတွင်း ပြန်လည်ဝင်ရောက်ပြီးပါပြီ" }), {
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: true, message: "ယောဂီ စခန်းတွင်း ပြန်လည်ဝင်ရောက်ပြီးပါပြီ" }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Yogi Reactivate Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  // -----------------------------------------------------------------
   // 3. GET /api/yogi?sheet=12Yogi (သို့မဟုတ် 13Yogi)
-  // -----------------------------------------------------------------
   if (method === 'GET') {
     const rawSheet = url.searchParams.get('sheet') || '12Yogi';
     const tableName = resolveYogiTable(rawSheet);
@@ -132,29 +90,29 @@ export async function handleYogiRequests(request, env, corsHeaders) {
         `SELECT * FROM "${tableName}" ORDER BY start_date ASC, id ASC`
       ).all();
 
-      let totalMonks = 0;   // ရဟန်း၊ သံဃာ၊ ဦးပဉ္ဇင်း၊ ကိုရင်
-      let totalNuns = 0;    // သီလရှင်၊ ဆရာလေး
-      let totalMales = 0;   // လူပုဂ္ဂိုလ် (ကျား)
-      let totalFemales = 0; // လူပုဂ္ဂိုလ် (မ)
-      let totalActiveYogis = 0;
-      let totalInactiveYogis = 0;
+      let totalMonks = 0, totalNuns = 0, totalMales = 0, totalFemales = 0;
+      let totalActiveYogis = 0, totalInactiveYogis = 0;
 
       const formattedEntries = (results || []).map((row, index) => {
-        const isActive = (row.status || 'Active') === 'Active';
+        // end_date မရှိပါက Active ဟု သတ်မှတ်သည်
+        const isActive = !row.end_date || row.end_date.trim() === '' || row.end_date.trim() === '-';
+
+        const name = (row.name || '').trim();
+        const type = (row.yogi_type || '').trim();
+        const gender = (row.gender || 'ကျား').trim();
 
         if (isActive) {
           totalActiveYogis++;
-          const cat = row.category || '';
-          const gender = row.gender || 'ကျား';
-
-          if (cat.includes('ရဟန်း') || cat.includes('သံဃာ') || cat.includes('ကိုရင်') || cat.includes('ဦးပဉ္ဇင်း')) {
+          if (name.includes('ဦး') || name.includes('အရှင်') || name.includes('ဆရာတော်') || type.includes('ရဟန်း') || type.includes('သံဃာ')) {
             totalMonks++;
-          } else if (cat.includes('သီလရှင်') || cat.includes('ဆရာလေး')) {
+          } else if (name.includes('ကိုရင်') || type.includes('ကိုရင်')) {
+            totalMonks++;
+          } else if (name.includes('ဒေါ်လေး') || name.includes('ဆရာလေး') || type.includes('သီလရှင်')) {
             totalNuns++;
-          } else if (gender === 'ကျား') {
-            totalMales++;
           } else if (gender === 'မ') {
             totalFemales++;
+          } else {
+            totalMales++;
           }
         } else {
           totalInactiveYogis++;
@@ -164,29 +122,26 @@ export async function handleYogiRequests(request, env, corsHeaders) {
 
         return {
           id: row.id,
-          no: index + 1,
+          no: row.no || (index + 1),
           uniqueId: uid,
           unique_id: uid,
           sheet_type: rawSheet,
-          category: row.category || 'လူပုဂ္ဂိုလ်',
           start_date: row.start_date || '',
           end_date: row.end_date || '',
-          name: row.name || '',
+          yogi_type: row.yogi_type || (rawSheet === '13Yogi' ? 'စခန်းဝင်' : 'အမြဲနေ'),
+          category: row.yogi_type || 'လူပုဂ္ဂိုလ်', // UI Compatibility
+          name: row.name,
           father_name: row.father_name || '',
-          nrc_state: row.nrc_state || '',
-          nrc_township: row.nrc_township || '',
-          nrc_type: row.nrc_type || '',
-          nrc_number: row.nrc_number || '',
-          full_nrc: row.full_nrc || '',
-          nrc: row.full_nrc || '',
+          nrc: row.nrc || '',
+          full_nrc: row.nrc || '',                // UI Compatibility
           dob: row.dob || '',
           age: row.age || 0,
           gender: row.gender || 'ကျား',
-          phone: row.phone || '',
-          yogi_phone: row.phone || '',
+          yogi_phone: row.yogi_phone || '',
+          phone: row.yogi_phone || '',             // UI Compatibility
           home_phone: row.home_phone || '',
           address: row.address || '',
-          status: row.status || 'Active',
+          status: isActive ? 'Active' : 'Inactive',
           book_name: tableName
         };
       });
@@ -197,124 +152,90 @@ export async function handleYogiRequests(request, env, corsHeaders) {
         book: tableName,
         data: formattedEntries,
         kpis: {
-          totalMonks,
-          totalNuns,
-          totalMales,
-          totalFemales,
-          totalActiveYogis,
-          totalInactiveYogis,
+          totalMonks, totalNuns, totalMales, totalFemales,
+          totalActiveYogis, totalInactiveYogis,
           totalCount: results ? results.length : 0
         }
       }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Yogi Fetch Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  // -----------------------------------------------------------------
-  // 4. POST /api/yogi (ယောဂီ အသစ်ထည့်သွင်းခြင်း)
-  // -----------------------------------------------------------------
+  // 4. POST /api/yogi
   if (method === 'POST') {
     try {
       const body = await request.json();
       const sheet_type = body.sheet_type || body.sheet || '12Yogi';
       const tableName = resolveYogiTable(sheet_type);
 
-      const category = body.category || 'လူပုဂ္ဂိုလ်';
-      const start_date = body.start_date || new Date().toISOString().split('T')[0];
-      const end_date = body.end_date || '';
       const name = (body.name || '').trim();
-      const father_name = body.father_name || '';
-      const nrc_state = body.nrc_state || '';
-      const nrc_township = body.nrc_township || '';
-      const nrc_type = body.nrc_type || '';
-      const nrc_number = body.nrc_number || '';
-      const full_nrc = body.full_nrc || body.nrc || '';
-      const dob = body.dob || '';
-      const age = parseInt(body.age) || 0;
-      const gender = body.gender || 'ကျား';
-      const phone = body.phone || body.yogi_phone || '';
-      const home_phone = body.home_phone || '';
-      const address = body.address || '';
-      const status = body.status || 'Active';
-      const unique_id = body.unique_id || body.uniqueId || `YOGI-${crypto.randomUUID()}`;
-
       if (!name) {
-        return new Response(JSON.stringify({ success: false, error: "ယောဂီအမည် ထည့်သွင်းရန် လိုအပ်ပါသည်" }), {
-          status: 400,
-          headers: corsHeaders
+        return new Response(JSON.stringify({ success: false, error: "ယောဂီအမည် (name) ထည့်သွင်းရန် လိုအပ်ပါသည်" }), {
+          status: 400, headers: corsHeaders
         });
       }
 
-      const query = `
-        INSERT INTO "${tableName}" 
-        (sheet_type, category, start_date, end_date, name, father_name, nrc_state, nrc_township, nrc_type, nrc_number, full_nrc, dob, age, gender, phone, home_phone, address, status, unique_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      const start_date = body.start_date || new Date().toISOString().split('T')[0];
+      const end_date = body.end_date || '';
+      const defaultType = tableName === 'Camp Yogi' ? 'စခန်းဝင်' : 'အမြဲနေ';
+      const yogi_type = body.yogi_type || body.category || defaultType;
+      const father_name = body.father_name || '';
+      const nrc = body.nrc || body.full_nrc || '';
+      const dob = body.dob || '';
+      const age = parseInt(body.age) || 0;
+      const gender = body.gender || 'ကျား';
+      const yogi_phone = body.yogi_phone || body.phone || '';
+      const home_phone = body.home_phone || '';
+      const address = body.address || '';
+      const unique_id = body.unique_id || body.uniqueId || `YOGI-${crypto.randomUUID()}`;
 
-      await env.DB.prepare(query).bind(
-        sheet_type, category, start_date, end_date, name, father_name,
-        nrc_state, nrc_township, nrc_type, nrc_number, full_nrc,
-        dob, age, gender, phone, home_phone, address, status, unique_id
+      await env.DB.prepare(`
+        INSERT INTO "${tableName}" 
+        (start_date, end_date, yogi_type, name, father_name, nrc, dob, age, gender, yogi_phone, home_phone, address, unique_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).bind(
+        start_date, end_date, yogi_type, name, father_name,
+        nrc, dob, age, gender, yogi_phone, home_phone, address, unique_id
       ).run();
 
-      return new Response(JSON.stringify({ 
-        success: true, 
-        message: "ယောဂီစာရင်း အသစ်ထည့်သွင်းခြင်း အောင်မြင်ပါသည်",
-        unique_id 
-      }), { headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, message: "ယောဂီစာရင်း သိမ်းဆည်းပြီးပါပြီ", unique_id }), {
+        headers: corsHeaders
+      });
 
     } catch (err) {
       console.error("[D1 Yogi Insert Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  // -----------------------------------------------------------------
-  // 5. PUT /api/yogi (ယောဂီ အချက်အလက် ပြင်ဆင်ခြင်း)
-  // -----------------------------------------------------------------
+  // 5. PUT /api/yogi
   if (method === 'PUT') {
     try {
       const body = await request.json();
       const unique_id = body.unique_id || body.uniqueId;
-      const rawId = String(unique_id || body.id || '');
-      const id = parseInt(rawId.replace(/^YOGI-/, '')) || (body.id ? parseInt(body.id) : null);
+      const id = body.id;
 
       if (!unique_id && !id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing Yogi unique_id or id for update" }), {
-          status: 400,
-          headers: corsHeaders
-        });
+        return new Response(JSON.stringify({ success: false, error: "Missing unique_id or id" }), { status: 400, headers: corsHeaders });
       }
 
       const sheet_type = body.sheet_type || body.sheet;
       const tableName = resolveYogiTable(sheet_type);
-
-      const category = body.category || 'လူပုဂ္ဂိုလ်';
       const start_date = body.start_date;
       const end_date = body.end_date || '';
+      const yogi_type = body.yogi_type || body.category;
       const name = body.name;
       const father_name = body.father_name || '';
-      const nrc_state = body.nrc_state || '';
-      const nrc_township = body.nrc_township || '';
-      const nrc_type = body.nrc_type || '';
-      const nrc_number = body.nrc_number || '';
-      const full_nrc = body.full_nrc || body.nrc || '';
+      const nrc = body.nrc || body.full_nrc || '';
       const dob = body.dob || '';
       const age = parseInt(body.age) || 0;
       const gender = body.gender || 'ကျား';
-      const phone = body.phone || body.yogi_phone || '';
+      const yogi_phone = body.yogi_phone || body.phone || '';
       const home_phone = body.home_phone || '';
       const address = body.address || '';
-      const status = body.status || 'Active';
 
       const tablesToUpdate = sheet_type ? [tableName] : ['Permanent Yogi', 'Camp Yogi'];
 
@@ -322,54 +243,39 @@ export async function handleYogiRequests(request, env, corsHeaders) {
         if (unique_id) {
           await env.DB.prepare(`
             UPDATE "${tbl}"
-            SET category = ?, start_date = ?, end_date = ?, name = ?, father_name = ?, nrc_state = ?, nrc_township = ?, nrc_type = ?, nrc_number = ?, full_nrc = ?, dob = ?, age = ?, gender = ?, phone = ?, home_phone = ?, address = ?, status = ?, updated_at = datetime('now')
+            SET start_date = ?, end_date = ?, yogi_type = ?, name = ?, father_name = ?, nrc = ?, dob = ?, age = ?, gender = ?, yogi_phone = ?, home_phone = ?, address = ?, updated_at = datetime('now')
             WHERE unique_id = ?
-          `).bind(category, start_date, end_date, name, father_name, nrc_state, nrc_township, nrc_type, nrc_number, full_nrc, dob, age, gender, phone, home_phone, address, status, unique_id).run();
+          `).bind(start_date, end_date, yogi_type, name, father_name, nrc, dob, age, gender, yogi_phone, home_phone, address, unique_id).run();
         } else if (id) {
           await env.DB.prepare(`
             UPDATE "${tbl}"
-            SET category = ?, start_date = ?, end_date = ?, name = ?, father_name = ?, nrc_state = ?, nrc_township = ?, nrc_type = ?, nrc_number = ?, full_nrc = ?, dob = ?, age = ?, gender = ?, phone = ?, home_phone = ?, address = ?, status = ?, updated_at = datetime('now')
+            SET start_date = ?, end_date = ?, yogi_type = ?, name = ?, father_name = ?, nrc = ?, dob = ?, age = ?, gender = ?, yogi_phone = ?, home_phone = ?, address = ?, updated_at = datetime('now')
             WHERE id = ?
-          `).bind(category, start_date, end_date, name, father_name, nrc_state, nrc_township, nrc_type, nrc_number, full_nrc, dob, age, gender, phone, home_phone, address, status, id).run();
+          `).bind(start_date, end_date, yogi_type, name, father_name, nrc, dob, age, gender, yogi_phone, home_phone, address, id).run();
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: "ယောဂီ အချက်အလက် ပြင်ဆင်မှု အောင်မြင်ပါသည်" }), {
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: true, message: "ယောဂီ အချက်အလက် ပြင်ဆင်ပြီးပါပြီ" }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Yogi Update Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  // -----------------------------------------------------------------
-  // 6. DELETE /api/yogi?unique_id=YOGI-xxx သို့မဟုတ် ?id=1
-  // -----------------------------------------------------------------
+  // 6. DELETE /api/yogi
   if (method === 'DELETE') {
     try {
       const sheet_type = url.searchParams.get('sheet') || url.searchParams.get('sheet_type');
       let unique_id = url.searchParams.get('unique_id') || url.searchParams.get('uniqueId');
       let id = url.searchParams.get('id');
 
-      // Request Body ဖြင့် လာပါက စစ်ဆေးခြင်း
       if (!unique_id && !id) {
         try {
           const body = await request.json();
           unique_id = body.unique_id || body.uniqueId;
           id = body.id;
         } catch (_) {}
-      }
-
-      if (!unique_id && !id) {
-        return new Response(JSON.stringify({ success: false, error: "Missing unique_id or id for deletion" }), {
-          status: 400,
-          headers: corsHeaders
-        });
       }
 
       const tablesToDelete = sheet_type ? [resolveYogiTable(sheet_type)] : ['Permanent Yogi', 'Camp Yogi'];
@@ -382,21 +288,13 @@ export async function handleYogiRequests(request, env, corsHeaders) {
         }
       }
 
-      return new Response(JSON.stringify({ success: true, message: "ယောဂီမှတ်တမ်း ဖျက်ပစ်ပြီးပါပြီ" }), {
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: true, message: "ယောဂီမှတ်တမ်း ဖျက်ပစ်ပြီးပါပြီ" }), { headers: corsHeaders });
 
     } catch (err) {
       console.error("[D1 Yogi Delete Error]:", err);
-      return new Response(JSON.stringify({ success: false, error: err.message }), {
-        status: 500,
-        headers: corsHeaders
-      });
+      return new Response(JSON.stringify({ success: false, error: err.message }), { status: 500, headers: corsHeaders });
     }
   }
 
-  return new Response(JSON.stringify({ success: false, error: "Method not supported" }), {
-    status: 405,
-    headers: corsHeaders
-  });
+  return new Response(JSON.stringify({ success: false, error: "Method not supported" }), { status: 405, headers: corsHeaders });
 }
