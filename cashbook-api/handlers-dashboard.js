@@ -1,16 +1,13 @@
 // ===================================================================
 // cashbook-api/handlers-dashboard.js
-// Handles Home Dashboard Summary (/api/home-summary) querying D1
-// Aggregates 10 Ledger/Bank Tables and 2 Yogi Tables concurrently
+// 100% Aligned with all 13 D1 Tables
+// Concurrent Multi-Table Aggregation without 'status' column error
 // ===================================================================
 
 export async function handleDashboardRequests(request, env, corsHeaders) {
-  const method = request.method;
-
-  if (method !== 'GET') {
+  if (request.method !== 'GET') {
     return new Response(JSON.stringify({ success: false, error: "Method not supported" }), {
-      status: 405,
-      headers: corsHeaders
+      status: 405, headers: corsHeaders
     });
   }
 
@@ -18,9 +15,7 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
     const BANK_SHEETS = ['1CB', '2CB', '3CB'];
     const ALL_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
 
-    // -----------------------------------------------------------------
-    // 🚀 HIGH-PERFORMANCE CONCURRENT QUERIES (Fund + Yogi Parallel Execution)
-    // -----------------------------------------------------------------
+    // စာအုပ် ၁၀ အုပ်လုံး၏ ဝင်ငွေ၊ ထွက်ငွေ၊ Receiver များကို တစ်ကြိမ်တည်း ဆွဲထုတ်ခြင်း
     const fundUnionSql = `
       SELECT '1CB' as sheet_code, '' as receiver, COALESCE(SUM(COALESCE(income,0) - COALESCE(expense,0)), 0) as net_amount, COUNT(*) as row_count FROM "1CB Bank (General)"
       UNION ALL
@@ -43,19 +38,17 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
       SELECT '10GB' as sheet_code, COALESCE(receiver, 'User 1') as receiver, COALESCE(SUM(COALESCE(income,0) - COALESCE(expense,0)), 0) as net_amount, COUNT(*) as row_count FROM "7Other Book" GROUP BY receiver
     `;
 
+    // ယောဂီ Table ၂ ခု (end_date မရှိသော တက်ကြွဆဲ ယောဂီများကိုသာ ရွေးထုတ်ခြင်း)
     const yogiUnionSql = `
-      SELECT '12Yogi' as sheet_type, category, gender, COUNT(*) as cnt
+      SELECT '12Yogi' as sheet_type, yogi_type, name, gender
       FROM "Permanent Yogi"
-      WHERE status = 'Active'
-      GROUP BY category, gender
+      WHERE (end_date IS NULL OR end_date = '' OR end_date = '-')
       UNION ALL
-      SELECT '13Yogi' as sheet_type, category, gender, COUNT(*) as cnt
+      SELECT '13Yogi' as sheet_type, yogi_type, name, gender
       FROM "Camp Yogi"
-      WHERE status = 'Active'
-      GROUP BY category, gender
+      WHERE (end_date IS NULL OR end_date = '' OR end_date = '-')
     `;
 
-    // Execute both queries simultaneously
     const [fundRes, yogiRes] = await Promise.all([
       env.DB.prepare(fundUnionSql).all(),
       env.DB.prepare(yogiUnionSql).all()
@@ -64,24 +57,13 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
     const fundRows = fundRes.results || [];
     const yogiRows = yogiRes.results || [];
 
-    // -----------------------------------------------------------------
-    // 1. FUND SUMMARY COMPUTATION
-    // -----------------------------------------------------------------
+    // Fund Summary တွက်ချက်ခြင်း
     const fundSummary = {};
     ALL_SHEETS.forEach(sheet => {
-      fundSummary[sheet] = {
-        bankBalance: 0,
-        user1Balance: 0,
-        user2Balance: 0,
-        user3Balance: 0,
-        totalBalance: 0
-      };
+      fundSummary[sheet] = { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 };
     });
 
-    let totalFund = 0;
-    let totalBank = 0;
-    let totalCash = 0;
-    let totalCount = 0;
+    let totalFund = 0, totalBank = 0, totalCash = 0, totalCount = 0;
 
     fundRows.forEach(row => {
       const sheet = String(row.sheet_code || '').trim();
@@ -96,35 +78,26 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
           fundSummary[sheet].bankBalance += amount;
           totalBank += amount;
         } else {
-          // Receiver အလိုက် User 1 / 2 / 3 သို့ ခွဲဝေထည့်သွင်းခြင်း
           if (receiver.includes('User 2') || receiver.includes('User2')) {
             fundSummary[sheet].user2Balance += amount;
           } else if (receiver.includes('User 3') || receiver.includes('User3')) {
             fundSummary[sheet].user3Balance += amount;
           } else {
-            // Default receiver to User 1
             fundSummary[sheet].user1Balance += amount;
           }
-
           totalCash += amount;
         }
-
         fundSummary[sheet].totalBalance += amount;
         totalFund += amount;
       }
     });
 
-    // -----------------------------------------------------------------
-    // 2. YOGI MATRIX COMPUTATION (Active Yogis Only)
-    // -----------------------------------------------------------------
+    // Yogi Matrix တွက်ချက်ခြင်း
     const YOGI_CATEGORIES = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
-
     const initYogiMatrix = () => {
-      const matrix = {};
-      YOGI_CATEGORIES.forEach(cat => {
-        matrix[cat] = { male: 0, female: 0, total: 0 };
-      });
-      return matrix;
+      const m = {};
+      YOGI_CATEGORIES.forEach(c => { m[c] = { male: 0, female: 0, total: 0 }; });
+      return m;
     };
 
     const residentMatrix = initYogiMatrix();
@@ -132,46 +105,36 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
 
     yogiRows.forEach(row => {
       const st = String(row.sheet_type || '12Yogi').trim();
-      const cat = String(row.category || 'လူပုဂ္ဂိုလ်').trim();
+      const name = String(row.name || '').trim();
+      const type = String(row.yogi_type || '').trim();
       const gender = String(row.gender || 'ကျား').trim();
-      const count = parseInt(row.cnt) || 0;
 
       const targetMatrix = (st === '13Yogi') ? retreatMatrix : residentMatrix;
 
-      // အမျိုးအစား ခွဲခြား သတ်မှတ်ခြင်း
       let matchCat = 'လူပုဂ္ဂိုလ်';
-      if (cat.includes('ရဟန်း') || cat.includes('သံဃာ') || cat.includes('ဦးပဉ္ဇင်း')) matchCat = 'ရဟန်း';
-      else if (cat.includes('ကိုရင်') || cat.includes('သာမဏေ')) matchCat = 'ကိုရင်';
-      else if (cat.includes('သီလရှင်') || cat.includes('ဆရာလေး')) matchCat = 'သီလရှင်';
-      else if (cat.includes('ဝေယျာဝိစ္စ')) matchCat = 'ဝေယျာဝိစ္စ';
-      else matchCat = 'လူပုဂ္ဂိုလ်';
+      if (name.includes('ဦး') || name.includes('အရှင်') || name.includes('ဆရာတော်') || type.includes('ရဟန်း') || type.includes('သံဃာ')) {
+        matchCat = 'ရဟန်း';
+      } else if (name.includes('ကိုရင်') || type.includes('ကိုရင်')) {
+        matchCat = 'ကိုရင်';
+      } else if (name.includes('ဒေါ်လေး') || name.includes('ဆရာလေး') || type.includes('သီလရှင်')) {
+        matchCat = 'သီလရှင်';
+      } else if (type.includes('ဝေယျာဝိစ္စ')) {
+        matchCat = 'ဝေယျာဝိစ္စ';
+      }
 
       if (targetMatrix[matchCat]) {
-        if (gender === 'မ') {
-          targetMatrix[matchCat].female += count;
-        } else {
-          targetMatrix[matchCat].male += count;
-        }
-        targetMatrix[matchCat].total += count;
+        if (gender === 'မ') targetMatrix[matchCat].female += 1;
+        else targetMatrix[matchCat].male += 1;
+        targetMatrix[matchCat].total += 1;
       }
     });
 
     return new Response(JSON.stringify({
       success: true,
-      kpis: {
-        totalFund,
-        totalBank,
-        totalCash,
-        totalCount
-      },
+      kpis: { totalFund, totalBank, totalCash, totalCount },
       fundSummary,
-      yogiSummary: {
-        resident: residentMatrix,
-        retreat: retreatMatrix
-      }
-    }), {
-      headers: corsHeaders
-    });
+      yogiSummary: { resident: residentMatrix, retreat: retreatMatrix }
+    }), { headers: corsHeaders });
 
   } catch (err) {
     console.error("[D1 Dashboard Fetch Error]:", err);
@@ -181,9 +144,6 @@ export async function handleDashboardRequests(request, env, corsHeaders) {
       kpis: { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 },
       fundSummary: {},
       yogiSummary: {}
-    }), {
-      status: 500,
-      headers: corsHeaders
-    });
+    }), { status: 500, headers: corsHeaders });
   }
 }
