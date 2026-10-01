@@ -1,6 +1,6 @@
 // ===================================================================
 // cashbook-api/worker.js - Main Cloudflare Worker Entry Point & Router
-// Imports all modular handlers and handles CORS & Security Authentication
+// Imports all modular handlers and handles CORS, Auth & Offline Sync
 // ===================================================================
 
 import { handleBankRequests } from './handlers-banks.js';
@@ -15,6 +15,11 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
+};
+
+const jsonCorsHeaders = {
+  ...corsHeaders,
+  'Content-Type': 'application/json; charset=utf-8',
 };
 
 // 🔒 SECURITY HELPER: Validate Authorization Bearer Token & Expiry
@@ -61,7 +66,7 @@ export default {
         if (method !== 'POST') {
           return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {
             status: 405,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: jsonCorsHeaders,
           });
         }
 
@@ -72,13 +77,13 @@ export default {
         if (!username || !password) {
           return new Response(JSON.stringify({ success: false, error: 'Username and password required' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: jsonCorsHeaders,
           });
         }
 
-        // Query D1 users table
+        // Query D1 "users" table
         const { results } = await env.DB.prepare(
-          `SELECT id, username, role FROM users WHERE username = ? AND password = ? LIMIT 1`
+          `SELECT id, username, role, name FROM "users" WHERE username = ? AND password_hash = ? LIMIT 1`
         ).bind(username, password).all();
 
         if (results && results.length > 0) {
@@ -91,11 +96,12 @@ export default {
             user: {
               id: user.id,
               username: user.username,
-              role: user.role || 'Staff'
+              role: user.role || 'Staff',
+              name: user.name || user.username
             },
             expiresInMs: 24 * 60 * 60 * 1000 // 24-hour Session
           }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: jsonCorsHeaders,
           });
         } else {
           return new Response(JSON.stringify({
@@ -103,7 +109,7 @@ export default {
             error: 'အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။'
           }), {
             status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: jsonCorsHeaders,
           });
         }
       }
@@ -114,38 +120,91 @@ export default {
       if (!isValidToken(request)) {
         return new Response(JSON.stringify({
           success: false,
-          error: 'Unauthorized: မလုပ်ဆောင်မီ Login ပြန်လည်ဝင်ရောက်ပါခင်ဗျာ။'
+          error: 'Unauthorized: စနစ်အသုံးပြုရန် Login ပြန်လည်ဝင်ရောက်ပေးပါခင်ဗျာ။'
         }), {
           status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          headers: jsonCorsHeaders,
         });
       }
 
-      const jsonCorsHeaders = {
-        ...corsHeaders,
-        'Content-Type': 'application/json',
-      };
+      // -------------------------------------------------------------
+      // 4. OFFLINE BATCH SYNC API: POST /api/sync
+      // (အင်တာနက် ပြန်ရချိန် နောက်ကွယ်မှ Auto Sync လုပ်ပေးမည့် Engine)
+      // -------------------------------------------------------------
+      if (pathname === '/api/sync' && method === 'POST') {
+        const { queue } = await request.json();
+        if (!Array.isArray(queue) || queue.length === 0) {
+          return new Response(JSON.stringify({ success: true, count: 0, results: [] }), {
+            headers: jsonCorsHeaders,
+          });
+        }
+
+        const results = [];
+        for (const item of queue) {
+          try {
+            const { action, table, data, unique_id } = item;
+            if (!table || !unique_id) continue;
+
+            if (action === 'CREATE') {
+              const keys = Object.keys(data).filter(k => k !== 'id');
+              const placeholders = keys.map(() => '?').join(', ');
+              const values = keys.map(k => data[k]);
+              const colNames = keys.map(k => `"${k}"`).join(', ');
+
+              await env.DB.prepare(
+                `INSERT OR REPLACE INTO "${table}" (${colNames}) VALUES (${placeholders})`
+              ).bind(...values).run();
+
+              results.push({ unique_id, status: 'synced' });
+            } else if (action === 'UPDATE') {
+              const keys = Object.keys(data).filter(k => k !== 'id' && k !== 'unique_id');
+              const setClause = keys.map(k => `"${k}" = ?`).join(', ');
+              const values = [...keys.map(k => data[k]), unique_id];
+
+              await env.DB.prepare(
+                `UPDATE "${table}" SET ${setClause}, updated_at = datetime('now') WHERE unique_id = ?`
+              ).bind(...values).run();
+
+              results.push({ unique_id, status: 'updated' });
+            } else if (action === 'DELETE') {
+              await env.DB.prepare(`DELETE FROM "${table}" WHERE unique_id = ?`).bind(unique_id).run();
+              results.push({ unique_id, status: 'deleted' });
+            }
+          } catch (err) {
+            console.error(`[Sync Item Error]:`, err);
+            results.push({ unique_id: item.unique_id, status: 'error', error: err.message });
+          }
+        }
+
+        return new Response(JSON.stringify({ success: true, count: results.length, results }), {
+          headers: jsonCorsHeaders,
+        });
+      }
 
       // -------------------------------------------------------------
-      // 4. Authorized API Router
+      // 5. Authorized Modular API Router
       // -------------------------------------------------------------
+      // Dashboard Summary Router
       if (pathname === '/api/home-summary') {
         return await handleDashboardRequests(request, env, jsonCorsHeaders);
       }
 
-      // 💡 Route ALL cashbook & bank requests (1CB to 10GB) directly to handleBankRequests
+      // Bank & Ledger Books Router (1CB မှ 10GB အထိ ၁၀ အုပ်လုံး)
       if (pathname === '/api/entries') {
         return await handleBankRequests(request, env, jsonCorsHeaders);
       }
 
+      // Inventory Router
       if (pathname === '/api/inventory') {
         return await handleInventoryRequests(request, env, jsonCorsHeaders);
       }
 
+      // Yogi Router (Permanent & Camp Yogi)
       if (pathname.startsWith('/api/yogi')) {
         return await handleYogiRequests(request, env, jsonCorsHeaders);
       }
 
+      // Financial Reports Router
       if (pathname === '/api/report') {
         return await handleReportRequests(request, env, jsonCorsHeaders);
       }
@@ -159,7 +218,7 @@ export default {
       console.error('[Worker Unhandled Error]:', err);
       return new Response(JSON.stringify({ success: false, error: err.message }), {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        headers: jsonCorsHeaders,
       });
     }
   }
