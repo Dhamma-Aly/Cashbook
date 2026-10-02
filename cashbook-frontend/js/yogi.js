@@ -592,3 +592,4 @@ window.exportYogiCSV = function() {
   link.download = `${currentYogiTable}_List_${currentYogiStatus}_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
+
