@@ -1,12 +1,14 @@
 -- ==============================================================================
 -- SASANA ERP - CLOUDFLARE D1 DATABASE SCHEMA
+-- Note: User Passwords are NOT stored here for security reasons.
+-- Passwords and credentials must only be managed directly within Cloudflare D1.
 -- ==============================================================================
 
--- 0. အသုံးပြုသူများ ဇယား (Users)
+-- 0. အသုံးပြုသူများ ဇယား (Users Table)
 CREATE TABLE IF NOT EXISTS "users" (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   username TEXT NOT NULL UNIQUE,
-  password_hash TEXT NOT NULL,
+  password TEXT NOT NULL,
   role TEXT NOT NULL DEFAULT 'Viewer',
   name TEXT,
   created_at TEXT DEFAULT (datetime('now'))
@@ -274,12 +276,3 @@ CREATE TABLE IF NOT EXISTS "Camp Yogi" (
   unique_id TEXT UNIQUE,
   updated_at TEXT DEFAULT (datetime('now'))
 );
-
--- Default Users ထည့်သွင်းခြင်း
-INSERT OR IGNORE INTO "users" (id, username, password_hash, role, name)
-VALUES 
-  (1, 'Admin', 'Admin123', 'Admin', 'စီမံအုပ်ချုပ်သူ'),
-  (2, 'Finance', 'Finance123', 'Finance', 'ဘဏ္ဍာရေး'),
-  (3, 'Account', 'account123', 'Account', 'ငွေစာရင်းကိုင်'),
-  (4, 'Staff', 'Staff123', 'Staff', 'ရုံးအကူ'),
-  (5, 'Viewer', 'Viewer123', 'Viewer', 'ကြည့်ရှုသူ');
