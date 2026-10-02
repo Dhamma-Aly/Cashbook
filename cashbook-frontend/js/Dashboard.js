@@ -1,7 +1,9 @@
 // ===================================================================
 // js/Dashboard.js - Home Dashboard View Renderer & Tab Controller
-// Executive Slate-Navy & Amber Gold Highlight Theme
+// Instant 0-Second Load with Offline-First Cache & D1 Table Integration
 // ===================================================================
+
+const DASH_CACHE_KEY = 'sasana_dashboard_cache';
 
 /**
  * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ အကျဉ်းချုပ် <-> ယောဂီ ပေါင်းချုပ်)
@@ -49,7 +51,7 @@ window.switchDashboardTab = function(tabName) {
 };
 
 /**
- * 📊 Main Dashboard View Render Function
+ * 📊 Main Dashboard View Render Function (Instant Cache-First Engine)
  */
 window.renderDashboardView = async function() {
   const container = document.getElementById("view-container");
@@ -67,10 +69,23 @@ window.renderDashboardView = async function() {
     }
   }
 
-  const ALL_KNOWN_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
+  // 🏛️ D1 Tables List (Table အမည် အစစ်အမှန်များနှင့် ချိတ်ဆက်ထားသည်)
+  const D1_TABLE_SPECS = [
+    { key: '1CB', tableName: '1CB Bank (General)', defaultTitle: 'အထွေထွေ ရန်ပုံငွေ (Bank)' },
+    { key: '2CB', tableName: '2CB Bank (Meal)', defaultTitle: 'ဆွမ်းပဒေသာပင် (Bank)' },
+    { key: '3CB', tableName: '3CB Bank (UZ)', defaultTitle: 'တစ်ဦးတည်းစာရင်း (Bank)' },
+    { key: '4GB', tableName: '1General Book', defaultTitle: 'ကျောင်းရန်ပုံငွေ စာအုပ်' },
+    { key: '5FB', tableName: '2Meal Book', defaultTitle: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
+    { key: '6HB', tableName: '3Hall Book', defaultTitle: 'ဓမ္မာရုံငွေစာရင်း စာအုပ်' },
+    { key: '7PB', tableName: '4Pagoda Book', defaultTitle: 'စေတီငွေစာရင်း စာအုပ်' },
+    { key: '8EB', tableName: '5Electronic Book', defaultTitle: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
+    { key: '9MB', tableName: '6Medical Book', defaultTitle: 'ဆေးပဒေသာပင် စာအုပ်' },
+    { key: '10GB', tableName: '7Other Book', defaultTitle: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
+  ];
+
   const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
 
-  // Smart Money Formatter (အနှုတ်ပြကိန်းများကို Rose Red ဖြင့် အလိုအလျောက် သီးသန့်ပြသခြင်း)
+  // Smart Money Formatter
   const formatMoney = (val, defaultColor = "text-slate-200") => {
     const num = Number(val || 0);
     if (num === 0) return `<span class="text-slate-600 font-mono font-medium">-</span>`;
@@ -110,19 +125,6 @@ window.renderDashboardView = async function() {
     // 2. FUND SUMMARY TABLE (ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ်)
     // ---------------------------------------------------------------
     if (bankTableElem) {
-      const titles = (window.CONFIG && window.CONFIG.SHEET_TITLES) || {
-        '1CB': 'အထွေထွေ ရန်ပုံငွေ (Bank)',
-        '2CB': 'ဆွမ်းပဒေသာပင် (Bank)',
-        '3CB': 'တစ်ဦးတည်းစာရင်း (Bank)',
-        '4GB': 'ကျောင်းရန်ပုံငွေ စာအုပ်',
-        '5FB': 'ဆွမ်းပဒေသာပင် စာအုပ်',
-        '6HB': 'ဓမ္မာရုံငွေစာရင်း စာအုပ်',
-        '7PB': 'စေတီငွေစာရင်း စာအုပ်',
-        '8EB': 'လျှပ်စစ်ပဒေသာပင် စာအုပ်',
-        '9MB': 'ဆေးပဒေသာပင် စာအုပ်',
-        '10GB': 'အထွေထွေရန်ပုံငွေစာအုပ်'
-      };
-
       let fundHtml = `
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[780px] text-xs">
@@ -143,9 +145,10 @@ window.renderDashboardView = async function() {
 
       let sumBank = 0, sumU1 = 0, sumU2 = 0, sumU3 = 0, sumTotal = 0;
 
-      ALL_KNOWN_SHEETS.forEach((sheet, idx) => {
-        const item = fundSummary[sheet] || { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 };
-        const name = titles[sheet] || sheet;
+      D1_TABLE_SPECS.forEach((spec, idx) => {
+        // Table Name အစစ်ဖြင့် ဖြစ်စေ၊ Key အတိုဖြင့် ဖြစ်စေ ဒေတာဆွဲယူခြင်း
+        const item = fundSummary[spec.tableName] || fundSummary[spec.key] || { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 };
+        const name = window.CONFIG?.TABLE_TITLES?.[spec.tableName] || window.CONFIG?.TABLE_TITLES?.[spec.key] || spec.defaultTitle;
 
         const bb = Number(item.bankBalance || 0);
         const u1 = Number(item.user1Balance || 0);
@@ -159,7 +162,6 @@ window.renderDashboardView = async function() {
         sumU3 += u3;
         sumTotal += tot;
 
-        // လက်ကျန်ပေါင်း ကော်လံအတွက် Highlight Style
         let totalCellHtml = '';
         if (tot < 0) {
           totalCellHtml = `<span class="font-mono font-black text-rose-400">${tot.toLocaleString()}</span>`;
@@ -183,7 +185,7 @@ window.renderDashboardView = async function() {
         </tr>`;
       });
 
-      // 🌟 GRAND TOTAL ROW (ပေါ်လွင်တောက်ပသော စုစုပေါင်း စာကြောင်း)
+      // Grand Total Row
       let grandTotalBadge = '';
       if (sumTotal < 0) {
         grandTotalBadge = `<span class="px-3.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono font-black text-sm shadow-sm">${sumTotal.toLocaleString()}</span>`;
@@ -261,7 +263,7 @@ window.renderDashboardView = async function() {
           <td class="font-bold text-amber-100 py-2.5 px-4">${cat}</td>
           <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
           <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
-          <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
+          <td class="text-center font-mono text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
         </tr>`;
       });
 
@@ -308,7 +310,7 @@ window.renderDashboardView = async function() {
           <td class="font-bold text-amber-100 py-2.5 px-4">${cat}</td>
           <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
           <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
-          <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
+          <td class="text-center font-mono text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
         </tr>`;
       });
 
@@ -322,7 +324,7 @@ window.renderDashboardView = async function() {
           <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${retTotal.toLocaleString()}</td>
         </tr>`;
 
-      // 🌟 Grand Total Yogi Row
+      // Grand Total Yogi Row
       const grandMale = resMale + retMale;
       const grandFemale = resFemale + retFemale;
       const grandTotal = resTotal + retTotal;
@@ -345,18 +347,30 @@ window.renderDashboardView = async function() {
     }
   };
 
-  // Safe Data Fetching
+  // -----------------------------------------------------------------
+  // 🚀 INSTANT CACHE-FIRST LOGIC (၀ စက္ကန့်ဖြင့် ချက်ချင်း ပြသခြင်း)
+  // -----------------------------------------------------------------
+  // ၁။ Cache ရှိပါက တန်းထုတ်ပြမည် (Loading လုံးဝ မစောင့်ရပါ)
+  try {
+    const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
+    if (cachedStr) {
+      const cachedData = JSON.parse(cachedStr);
+      renderHomeData(cachedData);
+    }
+  } catch (_) {}
+
+  // ၂။ နောက်ကွယ်မှ D1 အချက်အလက်အသစ်ကို အသံတိတ် ဆွဲယူပြီး အလိုအလျောက် Update လုပ်ပေးခြင်း
   try {
     const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
     if (typeof fetchFunc === 'function') {
-      const data = await fetchFunc();
-      renderHomeData(data);
-    } else {
-      renderHomeData(null);
+      const freshData = await fetchFunc();
+      if (freshData && freshData.success) {
+        localStorage.setItem(DASH_CACHE_KEY, JSON.stringify(freshData));
+        renderHomeData(freshData);
+      }
     }
   } catch (error) {
-    console.error("Error fetching home dashboard data:", error);
-    renderHomeData(null);
+    console.error("Silent background dashboard sync:", error);
   }
 };
 
