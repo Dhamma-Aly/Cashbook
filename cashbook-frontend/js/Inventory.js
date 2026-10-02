@@ -1,8 +1,11 @@
 // ===================================================================
-// js/Inventory.js - Inventory (11Inv) Logic & Management
+// js/Inventory.js - Inventory Management Logic & Controller
+// 100% Aligned with D1 "Inventory" Schema (date, description, remark, etc.)
+// Features: Instant 0-Second Cache, Offline Persistence & Search
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
+const INV_CACHE_KEY = 'sasana_inventory_cache';
 let currentInvPage = 1;
 let invAllEntries = [];
 let invFilteredEntries = [];
@@ -14,39 +17,52 @@ function formatMonthYear(dateStr) {
   if (isNaN(d.getTime())) return dateStr;
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = months[d.getMonth()];
-  const y = String(d.getFullYear()).slice(-2);
-  return `${m}-${y}`;
+  return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
+// -------------------------------------------------------------------
+// 🚀 Main View Renderer (Instant Cache-First Engine)
+// -------------------------------------------------------------------
 window.renderInventoryView = async function(isSilent = false) {
   currentInvPage = 1;
-  window.currentSheetKey = "11Inv";
+  window.currentTable = "Inventory";
+  window.currentSheet = "Inventory";
+  window.currentSheetKey = "Inventory";
 
-  if (!isSilent && typeof window.showLoading === 'function') {
+  // ၁။ Cache ရှိပါက ဝ စက္ကန့်ဖြင့် ချက်ချင်း အရင်ထုတ်ပြမည် (Loading မစောင့်ရပါ)
+  try {
+    const cachedStr = localStorage.getItem(INV_CACHE_KEY);
+    if (cachedStr) {
+      const cachedRes = JSON.parse(cachedStr);
+      if (cachedRes && cachedRes.data) {
+        invAllEntries = (cachedRes.data || []).slice().reverse();
+        updateInventoryKPIs(cachedRes.kpis);
+        applyInventoryFilter();
+      }
+    }
+  } catch (_) {}
+
+  // ၂။ ကက်ရှ်မရှိသေးလျှင် Loading ပြမည်
+  if (!isSilent && invAllEntries.length === 0 && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
 
+  // ၃။ နောက်ကွယ်မှ D1 Database အချက်အလက်အသစ်ကို အသံတိတ် ဆွဲယူပြီး Update လုပ်ခြင်း
   try {
     const res = await window.fetchInventoryDataAPI();
     if (res && res.success) {
-      invAllEntries = (res.data || []).slice().reverse(); // newest first
+      localStorage.setItem(INV_CACHE_KEY, JSON.stringify(res));
+      invAllEntries = (res.data || []).slice().reverse();
       updateInventoryKPIs(res.kpis);
-    } else {
-      invAllEntries = [];
-      updateInventoryKPIs(null);
+      applyInventoryFilter();
     }
   } catch (error) {
-    console.error("Error fetching inventory data:", error);
-    invAllEntries = [];
-    updateInventoryKPIs(null);
+    console.error("Error fetching inventory data from D1:", error);
   } finally {
     if (!isSilent && typeof window.showLoading === 'function') {
       window.showLoading(false);
     }
   }
-
-  applyInventoryFilter();
 };
 
 function updateInventoryKPIs(kpis) {
@@ -69,10 +85,11 @@ function applyInventoryFilter() {
     invFilteredEntries = invAllEntries;
   } else {
     invFilteredEntries = invAllEntries.filter(e => {
-      const name = e.item_desc || e.item_name || "";
-      const remark = e.note || e.remark || "";
-      const my = formatMonthYear(e.entry_date || e.month_year);
-      return [e.entry_date, e.location, e.category, name, e.unit, e.qty, remark, my, e.book_name]
+      const desc = e.description || e.item_desc || e.item_name || "";
+      const remark = e.remark || e.note || "";
+      const my = e.month_year || formatMonthYear(e.date || e.entry_date);
+      const d = e.date || e.entry_date || "";
+      return [d, e.location, e.category, desc, e.unit, e.qty, remark, my, e.book_name]
         .some(v => (v || "").toString().toLowerCase().includes(query));
     });
   }
@@ -99,17 +116,18 @@ function renderInventoryTable() {
   } else {
     let html = "";
     pageRows.forEach((entry, idx) => {
-      const uid = entry.uniqueId || entry.id || "";
-      const srNo = start + idx + 1;
-      const qty = parseInt(entry.qty) || 0;
-      const itemName = entry.item_desc || entry.item_name || "-";
-      const remark = entry.note || entry.remark || "-";
-      const monthYearFormatted = formatMonthYear(entry.entry_date || entry.month_year);
+      const uid = entry.unique_id || entry.uniqueId || entry.id || "";
+      const srNo = entry.no || (start + idx + 1);
+      const qty = parseFloat(entry.qty) || 0;
+      const itemName = entry.description || entry.item_desc || entry.item_name || "-";
+      const remark = entry.remark || entry.note || "-";
+      const dateText = entry.date || entry.entry_date || "-";
+      const monthYearFormatted = entry.month_year || formatMonthYear(dateText);
 
       html += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300">${entry.entry_date || "-"}</td>
+          <td class="font-mono text-xs text-slate-300">${dateText}</td>
           <td class="font-bold text-amber-300">${entry.location || "-"}</td>
           <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${entry.category || "-"}</span></td>
           <td class="font-semibold text-amber-100">${itemName}</td>
@@ -117,7 +135,7 @@ function renderInventoryTable() {
           <td class="text-right font-mono font-bold text-emerald-400">${qty.toLocaleString()}</td>
           <td class="text-xs text-amber-200/70">${remark}</td>
           <td class="font-mono text-xs text-sky-200 font-bold">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "11Inv - ပစ္စည်းစာရင်း"}</td>
+          <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "Inventory"}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -190,35 +208,43 @@ window.closeInvModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// Save / Edit / Delete Inventory Submissions
+// -------------------------------------------------------------------
+// 💾 Save / Edit / Delete Inventory Submissions (D1 Schema Aligned)
+// -------------------------------------------------------------------
 window.saveInventoryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
-  const uniqueId = document.getElementById("inv-id").value;
-  const entry_date = document.getElementById("inv-date").value;
+  const unique_id = document.getElementById("inv-id").value;
+  const date = document.getElementById("inv-date").value;
   const location = document.getElementById("inv-location").value;
   const category = document.getElementById("inv-category").value;
-  const item_desc = document.getElementById("inv-item-name").value.trim();
+  const description = document.getElementById("inv-item-name").value.trim();
   const unit = document.getElementById("inv-unit").value;
-  const qty = parseInt(document.getElementById("inv-qty").value) || 0;
-  const note = document.getElementById("inv-remark").value.trim();
+  const qty = parseFloat(document.getElementById("inv-qty").value) || 0;
+  const remark = document.getElementById("inv-remark").value.trim();
 
-  const month_year = formatMonthYear(entry_date);
-  const isEdit = !!uniqueId;
+  const month_year = formatMonthYear(date);
+  const isEdit = !!unique_id;
 
+  // 🌟 D1 Schema အတိုင်း ကော်လံအမည် အတိအကျ ပေးပို့ခြင်း
   const payload = {
-    uniqueId: uniqueId || `INV-${Date.now()}`,
-    entry_date,
+    unique_id: unique_id || crypto.randomUUID(),
+    date,
     location,
     category,
+    description,
     unit,
     qty,
-    item_desc,
-    item_name: item_desc,
-    note,
-    remark: note,
+    remark,
     month_year,
-    book_name: "11Inv - ပစ္စည်းစာရင်း"
+    book_name: "Inventory",
+    
+    // UI ချိတ်ဆက်မှု compatibility
+    uniqueId: unique_id,
+    entry_date: date,
+    item_desc: description,
+    item_name: description,
+    note: remark
   };
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
@@ -241,7 +267,7 @@ window.saveInventoryForm = async function(event) {
 window.saveInvEntryForm = window.saveInventoryForm;
 
 window.editInvEntry = function(uid) {
-  const entry = invAllEntries.find(e => String(e.uniqueId || e.id) === String(uid));
+  const entry = invAllEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(uid));
   if (!entry) return;
 
   const modal = document.getElementById("inv-entry-modal");
@@ -251,7 +277,7 @@ window.editInvEntry = function(uid) {
   if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
 
   document.getElementById("inv-id").value = uid;
-  document.getElementById("inv-date").value = entry.entry_date || "";
+  document.getElementById("inv-date").value = entry.date || entry.entry_date || "";
   
   const locSelect = document.getElementById("inv-location");
   if (locSelect) locSelect.value = entry.location || "မီးဖိုဆောင်";
@@ -259,13 +285,13 @@ window.editInvEntry = function(uid) {
   const catSelect = document.getElementById("inv-category");
   if (catSelect) catSelect.value = entry.category || "ပရိဘောဂ";
   
-  document.getElementById("inv-item-name").value = entry.item_desc || entry.item_name || "";
+  document.getElementById("inv-item-name").value = entry.description || entry.item_desc || entry.item_name || "";
   
   const unitSelect = document.getElementById("inv-unit");
   if (unitSelect) unitSelect.value = entry.unit || "ခု";
 
-  document.getElementById("inv-qty").value = parseInt(entry.qty) || 1;
-  document.getElementById("inv-remark").value = entry.note || entry.remark || "";
+  document.getElementById("inv-qty").value = parseFloat(entry.qty) || 1;
+  document.getElementById("inv-remark").value = entry.remark || entry.note || "";
 };
 
 window.deleteInvEntry = async function(uid) {
@@ -287,6 +313,7 @@ window.deleteInvEntry = async function(uid) {
   }
 };
 
+// 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော CSV Export
 window.exportInventoryCSV = function() {
   if (!invFilteredEntries || invFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
@@ -298,19 +325,21 @@ window.exportInventoryCSV = function() {
 
   invFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
-    const name = e.item_desc || e.item_name || "";
-    const remark = e.note || e.remark || "";
-    const my = formatMonthYear(e.entry_date || e.month_year);
+    const desc = e.description || e.item_desc || e.item_name || "";
+    const remark = e.remark || e.note || "";
+    const dateText = e.date || e.entry_date || "";
+    const my = e.month_year || formatMonthYear(dateText);
+
     csv += [
-      idx + 1, esc(e.entry_date), esc(e.location), esc(e.category), 
-      esc(name), esc(e.unit), e.qty || 0, esc(remark), 
-      esc(my), esc(e.book_name)
+      e.no || (idx + 1), esc(dateText), esc(e.location), esc(e.category), 
+      esc(desc), esc(e.unit), e.qty || 0, esc(remark), 
+      esc(my), esc(e.book_name || "Inventory")
     ].join(",") + "\n";
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `11Inv_Export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `Inventory_Export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
