@@ -1,19 +1,30 @@
-/**
- * Sāsana ERP System — Pure D1 Auth Controller
- * File: js/auth.js 
- */
+// ===================================================================
+// js/auth.js - Sāsana ERP Pure D1 Auth Controller
+// Features: Auto-Bootstrap on Login, Version Sync & Burmese Role Display
+// ===================================================================
 
 (function () {
   "use strict";
 
-  // 🚨 Version Check
-  const CURRENT_APP_VERSION = "v3.0_D1_AUTH";
-  if (localStorage.getItem("sasana_app_version") !== CURRENT_APP_VERSION) {
-    localStorage.clear();
-    localStorage.setItem("sasana_app_version", CURRENT_APP_VERSION);
+  // 🚨 1. Version Sync with config.js (Unifies App Version)
+  const getAppVersion = () => {
+    return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.0_D1_ENTERPRISE";
+  };
+
+  const storedVersion = localStorage.getItem("sasana_app_version");
+  const targetVersion = getAppVersion();
+  if (storedVersion && storedVersion !== targetVersion) {
+    // Version မတူပါက Token နှင့် Session ကိုသာ ရှင်းပြီး Version အသစ် သတ်မှတ်ခြင်း
+    localStorage.removeItem("sasana_auth_token");
+    localStorage.removeItem("yogi_auth_token");
+    localStorage.setItem("sasana_app_version", targetVersion);
+  } else if (!storedVersion) {
+    localStorage.setItem("sasana_app_version", targetVersion);
   }
 
-  // 1. User Info Helpers
+  // -----------------------------------------------------------------
+  // 👤 2. User Info Helpers
+  // -----------------------------------------------------------------
   window.getCurrentUser = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     if (!token) return null;
@@ -24,12 +35,18 @@
     return localStorage.getItem("sasana_user_role") || "Viewer";
   };
 
+  window.getCurrentUserDisplayName = function () {
+    return localStorage.getItem("sasana_display_name") || window.getCurrentUser() || "Admin";
+  };
+
   window.canUserEdit = function () {
     const role = window.getCurrentUserRole();
     return role !== "Viewer";
   };
 
-  // 2. Show Workspace UI & Update User Badge with Live Date
+  // -----------------------------------------------------------------
+  // 🏛️ 3. Workspace UI & User Badge Renderer
+  // -----------------------------------------------------------------
   window.showWorkspace = function () {
     document.documentElement.className = "dark is-authed";
     const loginOverlay = document.getElementById("login-overlay");
@@ -38,7 +55,7 @@
     if (loginOverlay) loginOverlay.classList.add("hidden");
     if (workspace) workspace.classList.remove("hidden");
 
-    // Header Display (Date & Role)
+    // Header Display (Date & Role Badge)
     const liveUserEl = document.getElementById("current-user-display") || document.getElementById("live-user-name");
     if (liveUserEl) {
       const today = new Date();
@@ -46,14 +63,18 @@
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
       const formattedDate = `${yyyy}-${mm}-${dd}`;
-      const user = window.getCurrentUser() || "Admin";
+      const username = window.getCurrentUser() || "Admin";
+      const displayName = window.getCurrentUserDisplayName();
       const role = window.getCurrentUserRole();
       
-      liveUserEl.textContent = `${formattedDate} | ${user} (${role})`;
+      // 🌟 မြန်မာလို အမည်နှင့် ရာထူးကို သပ်ရပ်စွာ ပေါင်းစပ်ပြသခြင်း
+      liveUserEl.textContent = `${formattedDate} | ${username} (${displayName || role})`;
     }
   };
 
-  // 3. Show Login Overlay UI
+  // -----------------------------------------------------------------
+  // 🔒 4. Login Overlay UI
+  // -----------------------------------------------------------------
   window.showLoginOverlay = function () {
     document.documentElement.className = "dark not-authed";
     const loginOverlay = document.getElementById("login-overlay");
@@ -63,7 +84,9 @@
     if (workspace) workspace.classList.add("hidden");
   };
 
-  // 4. Check Existing Auth Session on Page Load
+  // -----------------------------------------------------------------
+  // ⏰ 5. Check Existing Auth Session on Page Load
+  // -----------------------------------------------------------------
   window.checkExistingSession = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
@@ -79,7 +102,9 @@
     }
   };
 
-  // 5. Login Submission Handler
+  // -----------------------------------------------------------------
+  // 🚀 6. Login Submission Handler
+  // -----------------------------------------------------------------
   window.handleLoginSubmit = async function (event) {
     if (event && event.preventDefault) event.preventDefault();
 
@@ -103,17 +128,14 @@
     if (submitBtn) submitBtn.disabled = true;
 
     try {
-      const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL)
-        || (window.APP_CONFIG && window.APP_CONFIG.API_BASE_URL)
+      const baseUrl = (window.CONFIG && (window.CONFIG.API_BASE_URL || window.CONFIG.API_URL))
+        || (window.APP_CONFIG && (window.APP_CONFIG.API_BASE_URL || window.APP_CONFIG.API_URL))
         || "https://cashbook-api.dhammaaly.workers.dev";
 
       const res = await fetch(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          username: username,
-          password: password
-        })
+        body: JSON.stringify({ username, password })
       });
 
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
@@ -121,28 +143,38 @@
       if (res.ok && json.success && json.token) {
         const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
         const expiresAt = Date.now() + expiresInMs;
+        const userObj = json.user || { username, role: username, name: username };
 
-        const userObj = json.user || { username: username, role: username };
-
+        // Local Storage သိမ်းဆည်းခြင်း
         localStorage.setItem("sasana_auth_token", json.token);
         localStorage.setItem("sasana_user_name", userObj.username);
         localStorage.setItem("sasana_user_role", userObj.role || username);
+        localStorage.setItem("sasana_display_name", userObj.name || userObj.username);
         localStorage.setItem("sasana_token_expires_at", String(expiresAt));
 
+        // Yogi Session Compatibility
         localStorage.setItem("yogi_auth_token", json.token);
         localStorage.setItem("yogi_user_name", userObj.username);
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (passwordInput) passwordInput.value = "";
 
+        // UI ဖွင့်လှစ်ခြင်း
         window.showWorkspace();
 
-        if (typeof window.initApp === "function") {
-          window.initApp();
-        } else if (typeof window.switchTab === "function") {
-          window.switchTab("Home");
+        // 🚀 Login ဝင်သည်နှင့် တစ်ပြိုင်နက် စာအုပ်အားလုံးကို Background မှ ကြိုတင်ဆွဲယူစေခြင်း (Preload)
+        if (typeof window.bootstrapAppData === "function") {
+          window.bootstrapAppData();
         }
 
+        // Dashboard သို့ တန်းသွားခြင်း
+        if (typeof window.switchTab === "function") {
+          window.switchTab("Home");
+        } else if (typeof window.initApp === "function") {
+          window.initApp();
+        }
+
+        // Live Sync စတင်ခြင်း
         if (typeof window.startLiveSync === "function") {
           window.startLiveSync();
         }
@@ -157,7 +189,11 @@
     } catch (err) {
       console.error("[Login Exception]", err);
       if (errDiv) {
-        errDiv.textContent = "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
+        if (!navigator.onLine) {
+          errDiv.textContent = "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။";
+        } else {
+          errDiv.textContent = "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
+        }
         errDiv.classList.remove("hidden");
       }
     } finally {
@@ -165,16 +201,22 @@
     }
   };
 
-  // 6. Logout Handlers
+  // -----------------------------------------------------------------
+  // 🚪 7. Logout Handlers
+  // -----------------------------------------------------------------
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
+      const ver = localStorage.getItem("sasana_app_version");
       localStorage.clear();
+      if (ver) localStorage.setItem("sasana_app_version", ver);
       window.location.reload();
     }
   };
 
   window.handleLogoutSilent = function () {
+    const ver = localStorage.getItem("sasana_app_version");
     localStorage.clear();
+    if (ver) localStorage.setItem("sasana_app_version", ver);
     window.showLoginOverlay();
   };
 
