@@ -1,6 +1,6 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
-// 100% Aligned with D1 Schema (table_name, date, title, sub_title, etc.)
+// Clean Architecture: Fully driven by window.CONFIG (No redundant definitions)
 // Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | ခေါင်းစဉ်ခွဲ | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
@@ -9,34 +9,15 @@ let ledgerCurrentPage = 1;
 let bankAllEntries = [];      
 let bankFilteredEntries = []; 
 
-// D1 Table အမည် အပြည့်အစုံများသို့ ချိတ်ဆက်ပေးသော စံသတ်မှတ်ချက်
-const D1_TABLE_MAP = {
-  '1CB': '1CB Bank (General)',
-  '2CB': '2CB Bank (Meal)',
-  '3CB': '3CB Bank (UZ)',
-  '4GB': '1General Book',
-  '5FB': '2Meal Book',
-  '6HB': '3Hall Book',
-  '7PB': '4Pagoda Book',
-  '8EB': '5Electronic Book',
-  '9MB': '6Medical Book',
-  '10GB': '7Other Book',
-  // Direct Table Names
-  '1CB Bank (General)': '1CB Bank (General)',
-  '2CB Bank (Meal)': '2CB Bank (Meal)',
-  '3CB Bank (UZ)': '3CB Bank (UZ)',
-  '1General Book': '1General Book',
-  '2Meal Book': '2Meal Book',
-  '3Hall Book': '3Hall Book',
-  '4Pagoda Book': '4Pagoda Book',
-  '5Electronic Book': '5Electronic Book',
-  '6Medical Book': '6Medical Book',
-  '7Other Book': '7Other Book'
-};
-
+// 💡 config.js ထံမှ Table အမည်အမှန်ကို တိုက်ရိုက် ရယူခြင်း
 function resolveD1Table(nameOrKey) {
   const k = String(nameOrKey || '').trim();
-  return D1_TABLE_MAP[k] || '1CB Bank (General)';
+  const shortMap = {
+    '1CB': '1CB Bank (General)', '2CB': '2CB Bank (Meal)', '3CB': '3CB Bank (UZ)',
+    '4GB': '1General Book', '5FB': '2Meal Book', '6HB': '3Hall Book',
+    '7PB': '4Pagoda Book', '8EB': '5Electronic Book', '9MB': '6Medical Book', '10GB': '7Other Book'
+  };
+  return shortMap[k] || k || '1CB Bank (General)';
 }
 
 function formatMonthYear(dateStr) {
@@ -56,12 +37,10 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
+// 💡 config.js ထံမှ Dropdown Group Key ကို တိုက်ရိုက် ရယူခြင်း
 function getTreeGroupKey(tableName) {
   const tbl = resolveD1Table(tableName);
-  if (tbl.includes('Bank')) return 'BANKS';
-  if (tbl === '1General Book') return '4GB';
-  if (tbl.includes('Hall') || tbl.includes('Pagoda')) return 'BUILDING_BOOKS';
-  return 'PADETHA_BOOKS';
+  return window.CONFIG?.TABLE_GROUP_MAP?.[tbl] || window.CONFIG?.SHEET_GROUP_MAP?.[tbl] || 'PADETHA_BOOKS';
 }
 
 window.renderBankView = async function(tableIdentifier, isSilent = false) {
@@ -188,7 +167,7 @@ function renderLedgerTable() {
         ? `<div class="max-w-[280px] min-w-[200px] break-words whitespace-normal text-slate-200 text-xs leading-relaxed" style="word-break: break-word; overflow-wrap: anywhere;">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော ကော်လံ အစဉ်လိုက်အသစ်
+      // 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော ကော်လံ အစဉ်လိုက်
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
@@ -250,7 +229,7 @@ window.nextPage = function() {
 };
 
 // -------------------------------------------------------------------
-// D1 Dynamic Transfer Targets (4GB -> Users/1CB, အခြားစာအုပ်များ -> 2CB)
+// 🔄 config.js မှ TRANSFER_MAPPING ကို တိုက်ရိုက်ရယူသော Transfer Engine
 // -------------------------------------------------------------------
 function updateTransferTargets() {
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
@@ -273,15 +252,23 @@ function updateTransferTargets() {
     targetUsers.forEach(u => {
       optionsHtml += `<option value="${u}">${u} ထံ လွှဲပြောင်း</option>`;
     });
-    optionsHtml += `<option value="1CB Bank (General)">အထွေထွေ ရန်ပုံငွေ (Bank) သို့ လွှဲပြောင်း</option>`;
+
+    const bankTarget = window.CONFIG?.TRANSFER_MAPPING?.['1General Book']?.targetBank || '1CB Bank (General)';
+    const bankTitle = window.CONFIG?.TRANSFER_MAPPING?.['1General Book']?.bankTitle || 'အထွေထွေ ရန်ပုံငွေ (Bank)';
+    optionsHtml += `<option value="${bankTarget}">${bankTitle} သို့ လွှဲပြောင်း</option>`;
 
     if (subSelect) {
       subSelect.innerHTML = optionsHtml;
       updateTransferDescriptionText();
     }
   } else {
+    // 💡 config.js မှ သက်ဆိုင်ရာ စာအုပ်အလိုက် Target Bank ကို တိုက်ရိုက် ယူသုံးခြင်း
+    const mapping = window.CONFIG?.TRANSFER_MAPPING?.[currentTable];
+    const targetBank = mapping?.targetBank || '2CB Bank (Meal)';
+    const bankTitle = mapping?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)';
+
     if (subSelect) {
-      subSelect.innerHTML = `<option value="2CB Bank (Meal)">ဆွမ်းပဒေသာပင် (Bank) သို့ လွှဲပြောင်း</option>`;
+      subSelect.innerHTML = `<option value="${targetBank}">${bankTitle} သို့ လွှဲပြောင်း</option>`;
     }
     updateTransferDescriptionText();
   }
@@ -300,13 +287,15 @@ function updateTransferDescriptionText() {
 
   const selectedTarget = subSelect.value;
   if (currentTable === '1General Book') {
-    if (selectedTarget.includes('Bank') || selectedTarget.includes('ဘဏ်') || selectedTarget === '1CB Bank (General)') {
+    if (selectedTarget.includes('Bank') || selectedTarget.includes('ဘဏ်')) {
       descInput.value = "အထွေထွေ ရန်ပုံငွေ (Bank) သို့ ဘဏ်အပ်နှံခြင်း";
     } else {
       descInput.value = `${selectedTarget} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`;
     }
   } else {
-    descInput.value = "ဆွမ်းပဒေသာပင် (Bank) သို့ ဘဏ်အပ်နှံခြင်း";
+    const mapping = window.CONFIG?.TRANSFER_MAPPING?.[currentTable];
+    const bankTitle = mapping?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)';
+    descInput.value = `${bankTitle} သို့ ဘဏ်အပ်နှံခြင်း`;
   }
 }
 
@@ -326,6 +315,7 @@ window.onEntrySubcategoryChange = function(val) {
   }
 };
 
+// 💡 config.js မှ CATEGORY_TREE ကို တိုက်ရိုက်ယူသုံးသော Cascading Dropdown
 window.onEntryTypeChange = function(selectedType) {
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const cleanType = normalizeEntryType(selectedType);
@@ -460,8 +450,9 @@ window.saveEntryForm = async function(event) {
         return;
       } 
       else {
-        // B. သက်ဆိုင်ရာ Bank သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု
-        const targetBank = (currentTable === '1General Book') ? '1CB Bank (General)' : '2CB Bank (Meal)';
+        // B. သက်ဆိုင်ရာ Bank သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု (config.js မှ targetBank ကို ယူသုံးသည်)
+        const mapping = window.CONFIG?.TRANSFER_MAPPING?.[currentTable];
+        const targetBank = mapping?.targetBank || (currentTable === '1General Book' ? '1CB Bank (General)' : '2CB Bank (Meal)');
         const bankDesc = description || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`;
         const bankIncomeDesc = `${currentTable} [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
 
@@ -626,7 +617,6 @@ window.deleteEntry = async function(uid) {
   }
 };
 
-// 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော CSV Export
 window.exportCSV = function() {
   if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
@@ -637,7 +627,6 @@ window.exportCSV = function() {
   const isBankTable = currentTable.includes('Bank');
 
   let csv = "\uFEFF";
-  // 🌟 D1 Column အစဉ်လိုက်အတိုင်း Export ထုတ်ခြင်း
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
