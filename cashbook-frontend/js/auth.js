@@ -6,6 +6,15 @@
 (function () {
   "use strict";
 
+  // 🇲🇲 မြန်မာလို ရာထူးအမည်များ အလိုအလျောက် ချိတ်ဆက်ပေးသော စံနှုန်း
+  const ROLE_BURMESE_MAP = {
+    'Admin': 'စီမံအုပ်ချုပ်သူ',
+    'Finance': 'ဘဏ္ဍာရေး',
+    'Account': 'ငွေစာရင်းကိုင်',
+    'Staff': 'ရုံးအကူ',
+    'Viewer': 'ကြည့်ရှုသူ'
+  };
+
   // 🚨 1. Version Sync with config.js (Unifies App Version)
   const getAppVersion = () => {
     return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.0_D1_ENTERPRISE";
@@ -14,7 +23,6 @@
   const storedVersion = localStorage.getItem("sasana_app_version");
   const targetVersion = getAppVersion();
   if (storedVersion && storedVersion !== targetVersion) {
-    // Version မတူပါက Token နှင့် Session ကိုသာ ရှင်းပြီး Version အသစ် သတ်မှတ်ခြင်း
     localStorage.removeItem("sasana_auth_token");
     localStorage.removeItem("yogi_auth_token");
     localStorage.setItem("sasana_app_version", targetVersion);
@@ -36,7 +44,13 @@
   };
 
   window.getCurrentUserDisplayName = function () {
-    return localStorage.getItem("sasana_display_name") || window.getCurrentUser() || "Admin";
+    const role = window.getCurrentUserRole();
+    const storedName = localStorage.getItem("sasana_display_name");
+    // မြန်မာလို အမည်ရှိပါက ယူမည်၊ မရှိပါက ရာထူးအလိုက် မြန်မာလို အလိုအလျောက် ပြသမည်
+    if (storedName && storedName !== window.getCurrentUser()) {
+      return storedName;
+    }
+    return ROLE_BURMESE_MAP[role] || role;
   };
 
   window.canUserEdit = function () {
@@ -65,10 +79,9 @@
       const formattedDate = `${yyyy}-${mm}-${dd}`;
       const username = window.getCurrentUser() || "Admin";
       const displayName = window.getCurrentUserDisplayName();
-      const role = window.getCurrentUserRole();
       
-      // 🌟 မြန်မာလို အမည်နှင့် ရာထူးကို သပ်ရပ်စွာ ပေါင်းစပ်ပြသခြင်း
-      liveUserEl.textContent = `${formattedDate} | ${username} (${displayName || role})`;
+      // 🌟 "2026-10-02 | Admin (စီမံအုပ်ချုပ်သူ)" ဟု ခန့်ညားစွာ ပြသပေးခြင်း
+      liveUserEl.textContent = `${formattedDate} | ${username} (${displayName})`;
     }
   };
 
@@ -112,6 +125,7 @@
     const passwordInput = document.getElementById("login-password");
     const errDiv = document.getElementById("login-error");
     const submitBtn = event && event.target ? event.target.querySelector("button[type='submit']") : null;
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "";
 
     const username = usernameInput ? usernameInput.value.trim() : "";
     const password = passwordInput ? passwordInput.value.trim() : "";
@@ -125,7 +139,10 @@
     }
 
     if (errDiv) errDiv.classList.add("hidden");
-    if (submitBtn) submitBtn.disabled = true;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span>ဝင်ရောက်နေပါသည်...</span> <i class="fa-solid fa-spinner fa-spin text-xs"></i>`;
+    }
 
     try {
       const baseUrl = (window.CONFIG && (window.CONFIG.API_BASE_URL || window.CONFIG.API_URL))
@@ -149,7 +166,7 @@
         localStorage.setItem("sasana_auth_token", json.token);
         localStorage.setItem("sasana_user_name", userObj.username);
         localStorage.setItem("sasana_user_role", userObj.role || username);
-        localStorage.setItem("sasana_display_name", userObj.name || userObj.username);
+        localStorage.setItem("sasana_display_name", userObj.name || ROLE_BURMESE_MAP[userObj.role] || userObj.username);
         localStorage.setItem("sasana_token_expires_at", String(expiresAt));
 
         // Yogi Session Compatibility
@@ -197,7 +214,10 @@
         errDiv.classList.remove("hidden");
       }
     } finally {
-      if (submitBtn) submitBtn.disabled = false;
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
     }
   };
 
@@ -206,6 +226,7 @@
   // -----------------------------------------------------------------
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
+      if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
       const ver = localStorage.getItem("sasana_app_version");
       localStorage.clear();
       if (ver) localStorage.setItem("sasana_app_version", ver);
@@ -214,6 +235,7 @@
   };
 
   window.handleLogoutSilent = function () {
+    if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
     const ver = localStorage.getItem("sasana_app_version");
     localStorage.clear();
     if (ver) localStorage.setItem("sasana_app_version", ver);
