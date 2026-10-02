@@ -1,5 +1,5 @@
 // ===================================================================
-// js/yogi.js - Yogi Management Controller (Permanent Yogi & Camp Yogi)
+// js/yogi.js - Yogi Management Controller (Permanent Yogi & Camp Yogi) 
 // 100% Aligned with D1 Schema: end_date Status Tracking, Smart NRC & 0s Cache
 // ===================================================================
 
