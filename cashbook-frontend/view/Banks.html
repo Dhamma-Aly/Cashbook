@@ -1,4 +1,4 @@
-<!-- view/Banks.html - Fully Refined Banks & Books View with 3-Tier Cascading Modal -->
+<!-- view/Banks.html - Fully Refined Banks & Books View (100% D1 Aligned) -->
 
 <div class="space-y-5">
   
@@ -50,21 +50,21 @@
     </div>
   </div>
 
-  <!-- Table Container -->
+  <!-- Table Container (🌟 ကော်လံ အစဉ်လိုက် အသစ်အတိုင်း နေရာချထားသည်) -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl">
     <table class="w-full text-left border-collapse min-w-[1480px]">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
           <th class="w-12 text-center py-3.5 px-2">စဉ်</th>
           <th class="w-28 py-3.5 px-2">ရက်စွဲ</th>
-          <th class="w-24 py-3.5 px-2">ခေါင်းစဉ်</th>
+          <th class="w-28 py-3.5 px-2">ခေါင်းစဉ်</th>
           <th class="w-36 py-3.5 px-2">ခေါင်းစဉ်ခွဲ</th>
-          <th class="w-28 py-3.5 px-2">ဘောင်ချာ</th>
-          <th class="min-w-[280px] py-3.5 px-2">အကြောင်းအရာ</th>
-          <th class="w-28 py-3.5 px-2">လက်ခံသူ</th>
-          <th class="w-32 text-right py-3.5 px-2">ဝင်ငွေ</th>
-          <th class="w-32 text-right py-3.5 px-2">ထွက်ငွေ</th>
-          <th class="w-32 text-right py-3.5 px-2">လက်ကျန်</th>
+          <th class="min-w-[260px] py-3.5 px-3">အကြောင်းအရာ</th>       <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
+          <th class="w-32 text-right py-3.5 px-2">ဝင်ငွေ</th>            <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
+          <th class="w-32 text-right py-3.5 px-2">ထွက်ငွေ</th>           <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
+          <th class="w-32 text-right py-3.5 px-2">လက်ကျန်</th>           <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
+          <th class="w-28 py-3.5 px-2">ဘောင်ချာ</th>                    <!-- 👉 နောက်သို့ ရွှေ့ထားသည် -->
+          <th class="w-28 py-3.5 px-2">လက်ခံသူ</th>                     <!-- 👉 နောက်သို့ ရွှေ့ထားသည် -->
           <th class="w-24 py-3.5 px-2">လနှစ်</th>
           <th class="w-36 py-3.5 px-2">စာအုပ်အမည်</th>
           <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2">လုပ်ဆောင်ချက်</th>
@@ -139,10 +139,10 @@
         </div>
       </div>
 
-      <!-- Row 2: Category & Subcategory / Target -->
+      <!-- Row 2: Title & Sub-Title / Target -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ် (Category)</label>
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ် (Title)</label>
           <select id="entry-category" onchange="onEntryCategoryChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="စာရင်းဖွင့်">စာရင်းဖွင့်</option>
             <option value="ဘဏ်အပ်ငွေ">ဘဏ်အပ်ငွေ</option>
@@ -151,8 +151,7 @@
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <!-- 🎯 Dynamic Label for Subcategory or Target -->
-          <label id="label-entry-subcategory" style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ်ခွဲ (Sub-Category)</label>
+          <label id="label-entry-subcategory" style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ်ခွဲ (Sub-Title)</label>
           <select id="entry-subcategory" onchange="if(typeof onEntrySubcategoryChange === 'function') onEntrySubcategoryChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="စာရင်းဖွင့်လက်ကျန်">စာရင်းဖွင့်လက်ကျန်</option>
           </select>
