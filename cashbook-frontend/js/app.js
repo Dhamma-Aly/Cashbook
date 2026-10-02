@@ -1,41 +1,27 @@
 // ===================================================================
-// js/app.js - Main Application Controller & View Router 
-// Handles global routing, mobile sidebar, live sync, and modal delegations
+// js/app.js - Enterprise Main Application Controller & View Router
+// 100% Config-Driven: Directly uses window.CONFIG & D1 Table Names
+// Zero Redundant Dictionaries - Instant 0-Second Template Caching
 // ===================================================================
 
-// Safe Global Variable Assignments
-window.currentSheet = window.currentSheet || 'Home';
-window.currentYogiSheet = window.currentYogiSheet || '12Yogi';
+// Global State Assignments (Directly uses D1 Table Names)
+window.currentTable = window.currentTable || 'Home';
+window.currentSheet = window.currentTable; // Backward Compatibility Alias
+window.currentYogiTable = window.currentYogiTable || 'Permanent Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
 
-const LIVE_SYNC_INTERVAL = 10000; // 10-second Real-time Background Sync
+const LIVE_SYNC_INTERVAL = 15000; // 15-second Real-time Background Sync
+const templateCache = {};         // 0-Second Template Cache Engine
 
-// 💡 Built-in Default Titles (CONFIG ထဲ မပါလာလျှင်ပင် ခေါင်းစဉ်အမှန် ပေါ်စေရန် အာမခံသည်)
-const DEFAULT_SHEET_TITLES = {
-  'Home': 'Home Dashboard',
-  '1CB': 'အထွေထွေ ရန်ပုံငွေ (Bank)',
-  '2CB': 'ဆွမ်းပဒေသာပင် (Bank)',
-  '3CB': 'တစ်ဦးတည်းစာရင်း (Bank)',
-  '4GB': 'ကျောင်းရန်ပုံငွေ စာအုပ်',
-  '5FB': 'ဆွမ်းပဒေသာပင် စာအုပ်',
-  '6HB': 'ဓမ္မာရုံငွေစာရင်း စာအုပ်',
-  '7PB': 'စေတီငွေစာရင်း စာအုပ်',
-  '8EB': 'လျှပ်စစ်ပဒေသာပင် စာအုပ်',
-  '9MB': 'ဆေးပဒေသာပင် စာအုပ်',
-  '10GB': 'အထွေထွေရန်ပုံငွေစာအုပ်',
-  '11Inv': 'ပစ္စည်းစာရင်း',
-  '12Yogi': 'အမြဲနေ ယောဂီစာရင်း',
-  '13Yogi': 'စခန်းဝင် ယောဂီစာရင်း',
-  '14Rep': 'အသုံးစရိတ် အစီရင်ခံစာ',
-  'Report': 'အသုံးစရိတ် အစီရင်ခံစာ'
-};
-
+// -------------------------------------------------------------------
+// 🚀 APP INITIALIZATION
+// -------------------------------------------------------------------
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof window.initApp === 'function') {
     window.initApp();
   }
 
-  // 📱 Mobile Menu Button & Overlay များအား Event Listener တိုက်ရိုက် ချိတ်ဆက်ပေးခြင်း
+  // Mobile Menu & Overlay Listeners
   const mobileBtn = document.getElementById('mobile-menu-btn');
   if (mobileBtn) {
     mobileBtn.addEventListener('click', (e) => {
@@ -57,8 +43,17 @@ window.initApp = function() {
   const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
   if (user) {
     if (typeof window.showWorkspace === 'function') window.showWorkspace();
-    window.switchTab(window.currentSheet || 'Home');
-    window.startLiveSync(); // Start background real-time sync
+
+    // 🚀 Bootstrap Preload: စာအုပ်အားလုံး၏ ဒေတာများကို နောက်ကွယ်မှ အသံတိတ် ကြိုတင်ဆွဲယူထားခြင်း
+    if (typeof window.bootstrapAppData === 'function') {
+      window.bootstrapAppData();
+    }
+
+    // မူလ စာမျက်နှာသို့ သွားခြင်း
+    window.switchTab(window.currentTable || 'Home');
+
+    // နောက်ကွယ်မှ Auto-Sync နှင့် Background Refresh စတင်ခြင်း
+    window.startLiveSync();
   } else {
     if (typeof window.showLoginOverlay === 'function') window.showLoginOverlay();
   }
@@ -101,7 +96,7 @@ window.closeMobileSidebar = function() {
 };
 
 // ===================================================================
-// 2. Real-Time Live Sync Engine
+// 2. 🔄 Background Live Sync Engine
 // ===================================================================
 window.startLiveSync = function() {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
@@ -109,45 +104,58 @@ window.startLiveSync = function() {
     const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
+    // အကယ်၍ Offline တန်းစီထားသော ဒေတာများရှိပါက Background Sync လုပ်ပေးခြင်း
+    if (typeof window.triggerBackgroundSync === 'function') {
+      window.triggerBackgroundSync();
+    }
+
     window.refreshCurrentTabSilent();
   }, LIVE_SYNC_INTERVAL);
 };
 
 window.refreshCurrentTabSilent = function() {
   try {
-    const sheet = window.currentSheet;
-    if (['12Yogi', '13Yogi'].includes(sheet)) {
+    const table = window.currentTable;
+
+    if (table.includes('Yogi')) {
       if (typeof window.renderYogiView === 'function') window.renderYogiView(true);
-    } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheet)) {
-      if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
-      else if (typeof window.renderBankView === 'function') window.renderBankView(sheet, true);
-    } else if (sheet === '11Inv') {
+    } else if (table === 'Inventory' || table === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
-    } else if (sheet === 'Home') {
-      if (typeof window.renderDashboardView === 'function') window.renderDashboardView(true);
-    } else if (['14Rep', 'Report'].includes(sheet)) {
+    } else if (table === 'Home') {
+      if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
+    } else if (table.includes('Report') || table === '14Rep') {
       if (typeof window.renderReportView === 'function') window.renderReportView(true);
+    } else {
+      if (typeof window.renderBankView === 'function') window.renderBankView(table, true);
+      else if (typeof window.loadSheetView === 'function') window.loadSheetView(true);
     }
   } catch (err) {
-    console.warn("Silent Sync Error:", err);
+    console.warn("Silent Sync Warning:", err);
   }
 };
 
 // ===================================================================
-// 3. View Router & Navigation (Target Sheet Explicit Router)
+// 3. 🚀 View Router & Navigation (0-Second Template Cached)
 // ===================================================================
-window.switchTab = async function(sheetName) {
-  window.currentSheet = sheetName;
+window.switchTab = async function(tabIdentifier) {
+  // 💡 config.js ထံမှ D1 Table အမည် အစစ်အမှန်ကို တိုက်ရိုက် ဆွဲယူခြင်း
+  const targetKey = String(tabIdentifier || 'Home').trim();
+  const d1Table = (window.CONFIG?.TABLE_MAP && window.CONFIG.TABLE_MAP[targetKey]) || targetKey;
+
+  window.currentTable = d1Table;
+  window.currentSheet = d1Table; // Backward Compatibility Alias
   
   if (window.innerWidth < 768) {
     window.closeMobileSidebar();
   }
 
-  // 💡 FIX 1: ခေါင်းစဉ် (Title) အား 100% တိကျစွာ ပြောင်းလဲပေးခြင်း
+  // 💡 config.js ရှိ TABLE_TITLES ထံမှ ခေါင်းစဉ် အတိအကျ ရယူခြင်း
   const titleEl = document.getElementById('page-title');
   if (titleEl) {
-    const configTitle = (window.CONFIG && window.CONFIG.SHEET_TITLES) ? window.CONFIG.SHEET_TITLES[sheetName] : null;
-    titleEl.textContent = configTitle || DEFAULT_SHEET_TITLES[sheetName] || sheetName;
+    const title = window.CONFIG?.TABLE_TITLES?.[d1Table] || 
+                  window.CONFIG?.TABLE_TITLES?.[targetKey] || 
+                  d1Table;
+    titleEl.textContent = title;
   }
 
   // Active Navigation Styling
@@ -155,7 +163,7 @@ window.switchTab = async function(sheetName) {
     btn.classList.remove('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
   });
   
-  const activeBtn = document.getElementById(`btn-${sheetName}`);
+  const activeBtn = document.getElementById(`btn-${targetKey}`) || document.getElementById(`btn-${d1Table}`);
   if (activeBtn) {
     activeBtn.classList.add('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
   }
@@ -164,33 +172,39 @@ window.switchTab = async function(sheetName) {
   if (!container) return;
 
   try {
-    if (sheetName === 'Home') {
+    if (d1Table === 'Home') {
       container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
-    } else if (['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'].includes(sheetName)) {
-      container.innerHTML = await window.fetchTemplate('view/Banks.html');
-      if (typeof window.renderBankView === 'function') {
-        window.renderBankView(sheetName);
-      } else if (typeof window.loadSheetView === 'function') {
-        window.loadSheetView(sheetName);
-      }
-    } else if (sheetName === '11Inv') {
+    } else if (d1Table === 'Inventory' || targetKey === '11Inv') {
       container.innerHTML = await window.fetchTemplate('view/Inventory.html');
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView();
-    } else if (['12Yogi', '13Yogi'].includes(sheetName)) {
-      window.currentYogiSheet = sheetName;
+    } else if (d1Table.includes('Yogi') || targetKey.includes('Yogi')) {
+      window.currentYogiTable = d1Table;
       container.innerHTML = await window.fetchTemplate('view/yogi.html');
-      if (typeof window.renderYogiView === 'function') window.renderYogiView();
-    } else if (['14Rep', 'Report'].includes(sheetName)) {
+      if (typeof window.renderYogiView === 'function') window.renderYogiView(d1Table);
+    } else if (d1Table.includes('Report') || targetKey.includes('Rep')) {
       container.innerHTML = await window.fetchTemplate('view/report-system.html');
       if (typeof window.renderReportView === 'function') window.renderReportView();
+    } else {
+      // D1 Bank & Ledger စာအုပ်များ
+      container.innerHTML = await window.fetchTemplate('view/Banks.html');
+      if (typeof window.renderBankView === 'function') {
+        window.renderBankView(d1Table);
+      } else if (typeof window.loadSheetView === 'function') {
+        window.loadSheetView();
+      }
     }
   } catch (err) {
     console.error("Tab Switch Render Error:", err);
   }
 };
 
+// 💡 ၀ စက္ကန့်ဖြင့် ချက်ချင်း Render ဖြစ်စေရန် Template Cache Engine
 window.fetchTemplate = async function(path) {
+  if (templateCache[path]) {
+    return templateCache[path]; // Memory ထဲမှ ချက်ချင်း ပြန်ပေးခြင်း (0ms delay)
+  }
+
   try {
     let targetPath = path.startsWith('./') ? path : `./${path}`;
     let res = await fetch(targetPath);
@@ -206,7 +220,9 @@ window.fetchTemplate = async function(path) {
     }
     
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-    return await res.text();
+    const html = await res.text();
+    templateCache[path] = html; // နောင်တစ်ကြိမ်အတွက် Cache ထဲ ထည့်ထားမည်
+    return html;
   } catch (err) {
     console.error('Template Fetch Error:', err);
     return `<div class="text-rose-400 p-4 font-bold text-xs bg-rose-500/10 border border-rose-500/20 rounded-xl">Template မတွေ့ပါ: ${path}</div>`;
@@ -217,10 +233,11 @@ window.fetchTemplate = async function(path) {
 // 4. Modal Dialog Controllers
 // ===================================================================
 window.openAddModal = function() {
-  const sheet = window.currentSheet || '';
-  if (['12Yogi', '13Yogi'].includes(sheet) || sheet.includes('Yogi')) {
+  const table = window.currentTable || '';
+
+  if (table.includes('Yogi')) {
     if (typeof window.openAddYogiModal === 'function') window.openAddYogiModal();
-  } else if (sheet === '11Inv') {
+  } else if (table === 'Inventory' || table === '11Inv') {
     if (typeof window.openAddInvModal === 'function') window.openAddInvModal();
   } else {
     window.openAddEntryModal();
@@ -249,7 +266,6 @@ window.openAddEntryModal = function() {
     dateInput.value = `${yyyy}-${mm}-${dd}`;
   }
 
-  // 💡 3-Tier Cascading Dropdown ကို Default အနေဖြင့် "ဝင်ငွေ" ဖြင့် စတင် Trigger ပြုလုပ်ခြင်း
   const typeSelect = document.getElementById("entry-type");
   if (typeSelect) {
     typeSelect.value = "ဝင်ငွေ";
@@ -258,17 +274,13 @@ window.openAddEntryModal = function() {
     }
   }
 
-  // 💡 FIX 2: Bank စာအုပ်များ (1CB, 2CB, 3CB) တွင် လက်ခံသူ (Receiver) အား Auto "Bank" သတ်မှတ်ပေးခြင်း
-  const currentSheet = window.currentSheet || '';
-  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
-  const receiverInput = document.getElementById("entry-receiver") || 
-                        document.getElementById("entry-user") || 
-                        document.getElementById("entry-handler") ||
-                        document.getElementById("entry-received-by");
+  // Bank စာအုပ်များတွင် Receiver အား Auto "Bank" သတ်မှတ်ခြင်း
+  const currentTable = window.currentTable || '';
+  const isBankTable = currentTable.includes('Bank');
+  const receiverInput = document.getElementById("entry-receiver");
 
   if (receiverInput) {
-    if (isBankSheet) {
-      // အကယ်၍ select dropdown ဖြစ်ပါက 'Bank' option ပါ/မပါ စစ်ဆေးပြီး မရှိပါက ထည့်ပေးမည်
+    if (isBankTable) {
       if (receiverInput.tagName === 'SELECT') {
         const hasBankOpt = Array.from(receiverInput.options).some(opt => opt.value === 'Bank');
         if (!hasBankOpt) {
@@ -279,10 +291,10 @@ window.openAddEntryModal = function() {
         }
       }
       receiverInput.value = 'Bank';
-      receiverInput.style.pointerEvents = 'none'; // User 1, 2, 3 သို့ မှားမရွေးနိုင်အောင် Lock ချထားခြင်း
+      receiverInput.style.pointerEvents = 'none';
       receiverInput.style.opacity = '0.85';
     } else {
-      receiverInput.style.pointerEvents = 'auto'; // အခြားစာအုပ်များတွင် User 1, 2 ပုံမှန်အတိုင်း ပြန်ရွေးနိုင်ခြင်း
+      receiverInput.style.pointerEvents = 'auto';
       receiverInput.style.opacity = '1';
     }
   }
