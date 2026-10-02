@@ -1,15 +1,135 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <circle cx="32" cy="32" r="30" fill="#0f0e0c" stroke="#f59e0b" stroke-width="3"/>
-  <circle cx="32" cy="32" r="6" fill="#facc15"/>
-  <g stroke="#facc15" stroke-width="3" stroke-linecap="round">
-    <line x1="32" y1="8" x2="32" y2="18"/>
-    <line x1="32" y1="46" x2="32" y2="56"/>
-    <line x1="8" y1="32" x2="18" y2="32"/>
-    <line x1="46" y1="32" x2="56" y2="32"/>
-    <line x1="15" y1="15" x2="22" y2="22"/>
-    <line x1="42" y1="42" x2="49" y2="49"/>
-    <line x1="49" y1="15" x2="42" y2="22"/>
-    <line x1="22" y1="42" x2="15" y2="49"/>
-  </g>
-</svg> 
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- 🌟 Executive Luxury Gold Gradients -->
+    <linearGradient id="goldLight" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fffbeb" />
+      <stop offset="35%" stop-color="#fef08a" />
+      <stop offset="70%" stop-color="#fbbf24" />
+      <stop offset="100%" stop-color="#d97706" />
+    </linearGradient>
 
+    <linearGradient id="goldDark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#d97706" />
+      <stop offset="50%" stop-color="#b45309" />
+      <stop offset="100%" stop-color="#78350f" />
+    </linearGradient>
+
+    <linearGradient id="goldRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="25%" stop-color="#f59e0b" />
+      <stop offset="50%" stop-color="#b45309" />
+      <stop offset="75%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#92400e" />
+    </linearGradient>
+
+    <!-- 🌌 Background Radial Gradient (Deep Navy Slate) -->
+    <radialGradient id="bgDisc" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#0e172e" />
+      <stop offset="65%" stop-color="#080d1a" />
+      <stop offset="100%" stop-color="#020617" />
+    </radialGradient>
+
+    <!-- ✨ Radiant Center Aura -->
+    <radialGradient id="hubAura" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fef08a" stop-opacity="0.9" />
+      <stop offset="50%" stop-color="#f59e0b" stop-opacity="0.5" />
+      <stop offset="100%" stop-color="#b45309" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- 💡 3D Shadow Filter -->
+    <filter id="goldDropShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.75" />
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#f59e0b" flood-opacity="0.25" />
+    </filter>
+
+    <!-- ☸️ Reusable 3D Chiseled Spoke (မဂ္ဂင်တစ်ပါးစီ၏ ရွှေရောင်ထုဆစ်မှု) -->
+    <g id="dhammaSpoke">
+      <!-- Left Facet (Lit Side) -->
+      <path d="M 256,76 L 249,76 L 252,106 L 247,136 L 253,166 L 248,194 L 256,194 Z" fill="url(#goldLight)" />
+      <!-- Right Facet (Shaded Side) -->
+      <path d="M 256,76 L 263,76 L 260,106 L 265,136 L 259,166 L 264,194 L 256,194 Z" fill="url(#goldDark)" />
+      <!-- Central Highlight Spine -->
+      <line x1="256" y1="76" x2="256" y2="194" stroke="#ffffff" stroke-width="1.2" opacity="0.8" />
+    </g>
+
+    <!-- 🔱 Outer Jewel Spear Point (အရပ် ၈ မျက်နှာသို့ ထွက်သော ရတနာချွန်) -->
+    <g id="outerJewel">
+      <path d="M 256,26 L 264,46 L 256,52 L 248,46 Z" fill="url(#goldLight)" />
+      <path d="M 256,26 L 264,46 L 256,52 Z" fill="url(#goldDark)" opacity="0.6" />
+      <circle cx="256" cy="46" r="3" fill="#ffffff" />
+    </g>
+
+    <!-- ⚪ Decorative Pearl Stud -->
+    <circle id="pearlStud" cx="256" cy="195" r="4.5" fill="url(#goldLight)" stroke="#78350f" stroke-width="1" />
+  </defs>
+
+  <!-- 1. Background Luxury Disc -->
+  <circle cx="256" cy="256" r="246" fill="url(#bgDisc)" stroke="url(#goldRim)" stroke-width="3" />
+  <circle cx="256" cy="256" r="236" fill="none" stroke="rgba(245, 158, 11, 0.2)" stroke-width="1" stroke-dasharray="4 4" />
+
+  <!-- 2. Dharmachakra Master Assembly -->
+  <g filter="url(#goldDropShadow)">
+    
+    <!-- Outer Rim (Felly - အစွန်းဘီးဝိုင်းကြီး) -->
+    <circle cx="256" cy="256" r="195" fill="none" stroke="url(#goldRim)" stroke-width="38" />
+    <!-- Outer Rim Bevel Edges -->
+    <circle cx="256" cy="256" r="214" fill="none" stroke="#fef08a" stroke-width="2.5" />
+    <circle cx="256" cy="256" r="176" fill="none" stroke="#fef08a" stroke-width="2.5" />
+    <circle cx="256" cy="256" r="195" fill="none" stroke="#78350f" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.6" />
+
+    <!-- 3. The 8 Noble Spokes (မဂ္ဂင်ရှစ်ပါး အချက် ၈ ချောင်း) -->
+    <use href="#dhammaSpoke" />
+    <use href="#dhammaSpoke" transform="rotate(45 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(90 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(135 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(180 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(225 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(270 256 256)" />
+    <use href="#dhammaSpoke" transform="rotate(315 256 256)" />
+
+    <!-- 4. Outer Jewels on the 8 Spoke Directions (ရတနာအဖူးများ) -->
+    <use href="#outerJewel" />
+    <use href="#outerJewel" transform="rotate(45 256 256)" />
+    <use href="#outerJewel" transform="rotate(90 256 256)" />
+    <use href="#outerJewel" transform="rotate(135 256 256)" />
+    <use href="#outerJewel" transform="rotate(180 256 256)" />
+    <use href="#outerJewel" transform="rotate(225 256 256)" />
+    <use href="#outerJewel" transform="rotate(270 256 256)" />
+    <use href="#outerJewel" transform="rotate(315 256 256)" />
+
+    <!-- 5. Intermediate Rim Pearls (ပုလဲရတနာစေ့များ) -->
+    <use href="#pearlStud" transform="rotate(22.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(67.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(112.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(157.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(202.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(247.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(292.5 256 256)" />
+    <use href="#pearlStud" transform="rotate(337.5 256 256)" />
+
+    <!-- 6. Central Hub (Nābhi - သီလတရားနှင့် စိတ်တည်ငြိမ်မှု ဗဟိုချက်) -->
+    <!-- Hub Base Ring -->
+    <circle cx="256" cy="256" r="66" fill="url(#goldDark)" stroke="#fef08a" stroke-width="3" />
+    <circle cx="256" cy="256" r="54" fill="#080d1a" stroke="url(#goldRim)" stroke-width="4" />
+    <circle cx="256" cy="256" r="42" fill="url(#hubAura)" />
+    <circle cx="256" cy="256" r="36" fill="url(#goldLight)" />
+
+    <!-- 7. Central Sacred Lotus Rosette (အလယ်ဗဟို ကြာပန်းလွှာ ၈ ပွင့်) -->
+    <g fill="url(#goldDark)" opacity="0.95">
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(45 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(90 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(135 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(180 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(225 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(270 256 256)" />
+      <path d="M 256,220 C 251,232 251,244 256,256 C 261,244 261,232 256,220 Z" transform="rotate(315 256 256)" />
+    </g>
+
+    <!-- Very Center Crystal Diamond Hub -->
+    <circle cx="256" cy="256" r="14" fill="url(#goldLight)" stroke="#ffffff" stroke-width="1.5" />
+    <polygon points="256,245 264,256 256,267 248,256" fill="#ffffff" />
+    <circle cx="256" cy="256" r="3.5" fill="#f59e0b" />
+
+  </g>
+</svg>
