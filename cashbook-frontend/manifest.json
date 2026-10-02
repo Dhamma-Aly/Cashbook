@@ -1,14 +1,19 @@
 {
+  "id": "./index.html",
   "name": "ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP",
   "short_name": "Sāsana ERP",
   "description": "ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#020617",
   "theme_color": "#020617",
   "lang": "my",
   "dir": "ltr",
+  "categories": ["finance", "productivity", "business"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "favicon.svg",
@@ -28,6 +33,35 @@
       "type": "image/svg+xml",
       "purpose": "any"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Home Dashboard",
+      "short_name": "Dashboard",
+      "description": "ရိပ်သာ ရန်ပုံငွေနှင့် ယောဂီ အကျဉ်းချုပ်",
+      "url": "./index.html?tab=Home",
+      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "ကျောင်းရန်ပုံငွေ (1General Book)",
+      "short_name": "ကျောင်းရန်ပုံငွေ",
+      "description": "ကျောင်းရန်ပုံငွေ ပင်မစာအုပ်",
+      "url": "./index.html?tab=1General%20Book",
+      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "ယောဂီစာရင်း (Yogi)",
+      "short_name": "ယောဂီများ",
+      "description": "အမြဲနေ နှင့် စခန်းဝင် ယောဂီစာရင်း",
+      "url": "./index.html?tab=Permanent%20Yogi",
+      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    },
+    {
+      "name": "ပစ္စည်းစာရင်း (Inventory)",
+      "short_name": "ပစ္စည်းစာရင်း",
+      "description": "ရိပ်သာ ပစ္စည်းစာရင်း",
+      "url": "./index.html?tab=Inventory",
+      "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
+    }
   ]
 }
-
