@@ -1,64 +1,79 @@
-<!-- view/Inventory.html - Inventory (11Inv) fragment (Deep Navy Slate Theme) --> 
-<div class="space-y-5">
+<!-- view/Inventory.html - Inventory (D1 "Inventory" Schema Aligned & Mobile Optimized) --> 
+<div class="space-y-4 sm:space-y-5">
   
-  <!-- Top 4 KPI Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-    <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-kitchen-set text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">မီးဖိုဆောင်</p>
-        <h3 id="kpi-inv-kitchen" class="text-base font-extrabold text-amber-300 mt-1">0</h3>
+  <!-- 🌟 Top 4 KPI Cards (ဖုန်းတွင် ၂ တန်း၊ ကွန်ပျူတာတွင် ၄ တန်း ကျစ်လျစ်စွာ ပေါ်စေသည်) -->
+  <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+    <!-- မီးဖိုဆောင် -->
+    <div class="stats-card p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-amber-500/25 flex items-center gap-2.5 sm:gap-3.5 shadow-lg">
+      <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
+        <i class="fa-solid fa-kitchen-set text-base sm:text-xl"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-amber-400/80 truncate">မီးဖိုဆောင်</p>
+        <h3 id="kpi-inv-kitchen" class="text-xs sm:text-base font-black text-amber-300 mt-0.5 truncate font-mono">0</h3>
       </div>
     </div>
-    <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-om text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">ဓမ္မာရုံ</p>
-        <h3 id="kpi-inv-dhammahall" class="text-base font-extrabold text-sky-400 mt-1">0</h3>
+
+    <!-- ဓမ္မာရုံ -->
+    <div class="stats-card p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-sky-500/25 flex items-center gap-2.5 sm:gap-3.5 shadow-lg">
+      <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-sky-500/10 text-sky-400 shrink-0">
+        <i class="fa-solid fa-om text-base sm:text-xl"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-sky-400/80 truncate">ဓမ္မာရုံ</p>
+        <h3 id="kpi-inv-dhammahall" class="text-xs sm:text-base font-black text-sky-400 mt-0.5 truncate font-mono">0</h3>
       </div>
     </div>
-    <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-gopuram text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">သိမ်</p>
-        <h3 id="kpi-inv-sim" class="text-base font-extrabold text-emerald-400 mt-1">0</h3>
+
+    <!-- သိမ် -->
+    <div class="stats-card p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-emerald-500/25 flex items-center gap-2.5 sm:gap-3.5 shadow-lg">
+      <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
+        <i class="fa-solid fa-gopuram text-base sm:text-xl"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-emerald-400/80 truncate">သိမ်</p>
+        <h3 id="kpi-inv-sim" class="text-xs sm:text-base font-black text-emerald-400 mt-0.5 truncate font-mono">0</h3>
       </div>
     </div>
-    <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-warehouse text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">စတို</p>
-        <h3 id="kpi-inv-store" class="text-base font-extrabold text-amber-100 mt-1">0</h3>
+
+    <!-- စတို -->
+    <div class="stats-card p-3 sm:p-4 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-rose-500/25 flex items-center gap-2.5 sm:gap-3.5 shadow-lg">
+      <div class="p-2 sm:p-3 rounded-lg sm:rounded-xl bg-rose-500/10 text-rose-400 shrink-0">
+        <i class="fa-solid fa-warehouse text-base sm:text-xl"></i>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-rose-400/80 truncate">စတို</p>
+        <h3 id="kpi-inv-store" class="text-xs sm:text-base font-black text-amber-100 mt-0.5 truncate font-mono">0</h3>
       </div>
     </div>
   </div>
 
-  <!-- Action Bar (Translucent Glassmorphic Search Box) -->
-  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl">
+  <!-- Action Bar (Search & Mobile Optimized Buttons) -->
+  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
     <!-- Search Box with Icon -->
     <div class="w-full md:w-1/2 relative">
       <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="inv-search-input" oninput="onInvSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
+      <input type="text" id="inv-search-input" oninput="onInvSearchInput()" placeholder="ပစ္စည်းစာရင်း ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
     </div>
 
     <!-- Right Action Buttons -->
-    <div class="flex items-center gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
-      <button onclick="renderInventoryView()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
-      <button onclick="exportInventoryCSV()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
-      <button id="btn-add-inv" onclick="openAddInvModal()" class="p-2.5 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-plus text-xs"></i> + ပစ္စည်းအသစ်ထည့်ရန်</button>
+    <div class="flex items-center gap-2 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
+      <button onclick="renderInventoryView()" class="p-2 sm:px-3 sm:py-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+      <button onclick="exportInventoryCSV()" class="p-2 sm:px-3 sm:py-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+      <button id="btn-add-inv" onclick="openAddInvModal()" class="p-2 sm:px-3.5 sm:py-2.5 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-plus text-xs"></i> + ပစ္စည်းအသစ်ထည့်ရန်</button>
     </div>
   </div>
 
-  <!-- Table Container -->
-  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl">
+  <!-- Table Container (Smooth Touch Scrolling) -->
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
     <table class="w-full text-left border-collapse min-w-[1300px]">
       <thead>
-        <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-400 text-xs">
+        <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
           <th class="w-12 text-center py-3.5 px-2">စဉ်</th>
           <th class="w-28 py-3.5 px-2">ရက်စွဲ</th>
           <th class="w-32 py-3.5 px-2">နေရာ</th>
           <th class="w-36 py-3.5 px-2">အမျိုးအစား</th>
-          <th class="min-w-[280px] py-3.5 px-2">အကြောင်းအရာ</th>
+          <th class="min-w-[280px] py-3.5 px-3">အကြောင်းအရာ / ပစ္စည်းအမည်</th>
           <th class="w-24 py-3.5 px-2">ရေတွက်ပုံ</th>
           <th class="w-28 text-right py-3.5 px-2">အရေအတွက်</th>
           <th class="min-w-[180px] py-3.5 px-2">မှတ်ချက်</th>
@@ -78,7 +93,7 @@
   </div>
 
   <!-- Pagination Bar -->
-  <div id="inv-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-5 py-3 rounded-xl gap-4 text-xs">
+  <div id="inv-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-4 sm:px-5 py-3 rounded-xl gap-3 sm:gap-4 text-xs">
     <div class="text-amber-200/80 font-medium">
       Showing <span id="inv-page-start" class="font-bold text-amber-400">0</span> to <span id="inv-page-end" class="font-bold text-amber-400">0</span> of <span id="inv-total-entries" class="font-bold text-amber-400">0</span> entries
     </div>
@@ -95,7 +110,7 @@
 
 </div>
 
-<!-- 💡 STANDARD COMPACT INVENTORY MODAL (Unit Dropdown List & Non-Overlapping Grid) -->
+<!-- 💡 STANDARD COMPACT INVENTORY MODAL (D1 Aligned) -->
 <div id="inv-entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
@@ -114,21 +129,21 @@
       </button>
     </div>
 
-    <!-- Modal Form Body (Spacious 18px Gap) -->
-    <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 18px !important; overflow-y: auto !important; flex: 1 !important;">
+    <!-- Modal Form Body -->
+    <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 16px !important; overflow-y: auto !important; flex: 1 !important;">
       
       <!-- Hidden Inputs -->
       <input type="hidden" id="inv-id" value="">
 
       <!-- Row 1: Date & Location -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
           <input type="date" id="inv-date" required style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
         </div>
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
-          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">နေရာ (Location)</label>
+          <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">တည်နေရာ (Location)</label>
           <select id="inv-location" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="မီးဖိုဆောင်">မီးဖိုဆောင်</option>
             <option value="ဓမ္မာရုံ">ဓမ္မာရုံ</option>
@@ -139,14 +154,15 @@
         </div>
       </div>
 
-      <!-- Row 2: Category & Item Name -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
+      <!-- Row 2: Category & Description/Item Name -->
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အမျိုးအစား (Category)</label>
           <select id="inv-category" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ပရိဘောဂ">ပရိဘောဂ</option>
             <option value="လျှပ်စစ်">လျှပ်စစ်ပစ္စည်း</option>
             <option value="မီးဖိုချောင်သုံး">မီးဖိုချောင်သုံး</option>
+            <option value="ဆေးဝါး/ကျန်းမာရေး">ဆေးဝါး/ကျန်းမာရေး</option>
             <option value="အဝတ်အထည်">အဝတ်အထည် / အခင်း</option>
             <option value="အထွေထွေ">အထွေထွေ</option>
           </select>
@@ -159,10 +175,9 @@
       </div>
 
       <!-- Row 3: Unit Dropdown List & Quantity -->
-      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 18px 20px !important; width: 100% !important;">
+      <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရေတွက်ပုံ (Unit)</label>
-          <!-- 💡 Dropdown List Selection for INV_UNITS -->
           <select id="inv-unit" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ခု">ခု</option>
             <option value="စုံ">စုံ</option>
