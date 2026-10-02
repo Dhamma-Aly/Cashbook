@@ -1,9 +1,7 @@
 // ===================================================================
-// js/Banks.js - Bank & Book Ledger Table Renderer & Cascading Controller
-// Fixed: 1. Clean Type Parser (Category Dropdown never empty)
-//        2. Universal 2-Way Double-Entry Transfer (4GB, 5FB, 8EB, 9MB, 10GB -> Bank)
-//        3. Synchronized Double-Row Edit & Delete via transfer_group_id
-//        4. Auto "Bank" Receiver & "ဘဏ်အပ်ငွေ" Subcategory in Bank Ledgers
+// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
+// 100% Aligned with D1 Schema (table_name, date, title, sub_title, etc.)
+// Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | ခေါင်းစဉ်ခွဲ | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -11,18 +9,45 @@ let ledgerCurrentPage = 1;
 let bankAllEntries = [];      
 let bankFilteredEntries = []; 
 
+// D1 Table အမည် အပြည့်အစုံများသို့ ချိတ်ဆက်ပေးသော စံသတ်မှတ်ချက်
+const D1_TABLE_MAP = {
+  '1CB': '1CB Bank (General)',
+  '2CB': '2CB Bank (Meal)',
+  '3CB': '3CB Bank (UZ)',
+  '4GB': '1General Book',
+  '5FB': '2Meal Book',
+  '6HB': '3Hall Book',
+  '7PB': '4Pagoda Book',
+  '8EB': '5Electronic Book',
+  '9MB': '6Medical Book',
+  '10GB': '7Other Book',
+  // Direct Table Names
+  '1CB Bank (General)': '1CB Bank (General)',
+  '2CB Bank (Meal)': '2CB Bank (Meal)',
+  '3CB Bank (UZ)': '3CB Bank (UZ)',
+  '1General Book': '1General Book',
+  '2Meal Book': '2Meal Book',
+  '3Hall Book': '3Hall Book',
+  '4Pagoda Book': '4Pagoda Book',
+  '5Electronic Book': '5Electronic Book',
+  '6Medical Book': '6Medical Book',
+  '7Other Book': '7Other Book'
+};
+
+function resolveD1Table(nameOrKey) {
+  const k = String(nameOrKey || '').trim();
+  return D1_TABLE_MAP[k] || '1CB Bank (General)';
+}
+
 function formatMonthYear(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
   if (isNaN(d.getTime())) return dateStr;
 
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const m = months[d.getMonth()];
-  const y = String(d.getFullYear()).slice(-2);
-  return `${m}-${y}`;
+  return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-// 💡 Helper: Type စာသားအား 'ဝင်ငွေ (Income)' မှ 'ဝင်ငွေ' သို့ သန့်စင်ပေးခြင်း
 function normalizeEntryType(typeStr) {
   const s = String(typeStr || '').trim();
   if (s.includes('ဝင်ငွေ')) return 'ဝင်ငွေ';
@@ -31,25 +56,18 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
-function getTreeGroupKey(sheetCode) {
-  const sheet = String(sheetCode || '1CB').trim();
-  if (window.CONFIG?.SHEET_GROUP_MAP?.[sheet]) {
-    return window.CONFIG.SHEET_GROUP_MAP[sheet];
-  }
-  if (['1CB', '2CB', '3CB'].includes(sheet)) return 'BANKS';
-  if (sheet === '4GB') return '4GB';
-  if (['6HB', '7PB'].includes(sheet)) return 'BUILDING_BOOKS';
+function getTreeGroupKey(tableName) {
+  const tbl = resolveD1Table(tableName);
+  if (tbl.includes('Bank')) return 'BANKS';
+  if (tbl === '1General Book') return '4GB';
+  if (tbl.includes('Hall') || tbl.includes('Pagoda')) return 'BUILDING_BOOKS';
   return 'PADETHA_BOOKS';
 }
 
-window.renderBankView = async function(sheetKey, isSilent = false) {
-  let targetSheet = String(sheetKey || window.currentSheet || window.currentSheetKey || '1CB').trim();
-  if (targetSheet === 'true' || targetSheet === 'false' || targetSheet === '1' || targetSheet === '1.0') {
-    targetSheet = String(window.currentSheet || '1CB').trim();
-  }
-  
-  window.currentSheetKey = targetSheet;
-  window.currentSheet = targetSheet;
+window.renderBankView = async function(tableIdentifier, isSilent = false) {
+  const currentTable = resolveD1Table(tableIdentifier || window.currentSheet || window.currentTable || '1CB Bank (General)');
+  window.currentTable = currentTable;
+  window.currentSheet = currentTable;
   ledgerCurrentPage = 1;
 
   bankAllEntries = [];
@@ -63,7 +81,7 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
   }
 
   try {
-    const res = await window.fetchSheetData(window.currentSheetKey);
+    const res = await window.fetchSheetData(currentTable);
     if (res && res.success) {
       bankAllEntries = (res.data || []).slice().reverse();
       updateLedgerKPIs(res.kpis);
@@ -72,7 +90,7 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
       updateLedgerKPIs(null);
     }
   } catch (error) {
-    console.error("Error fetching ledger data:", error);
+    console.error("Error fetching D1 ledger data:", error);
     bankAllEntries = [];
     updateLedgerKPIs(null);
   }
@@ -81,7 +99,7 @@ window.renderBankView = async function(sheetKey, isSilent = false) {
 };
 
 window.loadSheetView = function(isSilent = false) {
-  window.renderBankView(window.currentSheet || window.currentSheetKey, isSilent);
+  window.renderBankView(window.currentTable || window.currentSheet, isSilent);
 };
 
 function updateLedgerKPIs(kpis) {
@@ -104,9 +122,9 @@ function applyLedgerSearchFilter() {
     bankFilteredEntries = bankAllEntries;
   } else {
     bankFilteredEntries = bankAllEntries.filter(e => {
-      const my = formatMonthYear(e.entry_date || e.month_year);
+      const my = e.month_year || formatMonthYear(e.date);
       return [
-        e.entry_date, e.category, e.subcategory, e.subcategory_detail, e.voucher_no, 
+        e.date, e.title, e.sub_title, e.voucher_no, 
         e.description, e.receiver, e.book_name, e.income, e.expense, my
       ].some(v => (v || "").toString().toLowerCase().includes(query));
     });
@@ -119,8 +137,8 @@ function renderLedgerTable() {
   const tbody = document.getElementById("table-body");
   if (!tbody) return;
 
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
+  const isBankTable = currentTable.includes('Bank');
 
   const total = bankFilteredEntries.length;
   const maxPage = Math.max(1, Math.ceil(total / LEDGER_ROWS_PER_PAGE));
@@ -138,13 +156,14 @@ function renderLedgerTable() {
     tableHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-folder-open mr-2"></i> စာရင်း မရှိသေးပါ။</td></tr>`;
   } else {
     pageRows.forEach((entry, idx) => {
-      const uid = entry.uniqueId || "";
-      const srNo = start + idx + 1;
+      const uid = entry.unique_id || entry.uniqueId || "";
+      const srNo = entry.no || (start + idx + 1);
       const income = parseFloat(entry.income) || 0;
       const expense = parseFloat(entry.expense) || 0;
       const balance = parseFloat(entry.balance) || 0;
 
-      const isTransfer = entry.category === "စာရင်းပြောင်း" || (entry.subcategory && entry.subcategory.includes("လွှဲပြောင်း"));
+      const titleText = entry.title || (income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ');
+      const isTransfer = titleText === "စာရင်းပြောင်း" || (entry.sub_title && entry.sub_title.includes("လွှဲပြောင်း"));
       const isIncome = income > 0;
 
       let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
@@ -155,13 +174,12 @@ function renderLedgerTable() {
           : 'bg-purple-500/10 text-purple-300 border border-purple-500/20';
       }
 
-      const monthYearFormatted = formatMonthYear(entry.entry_date || entry.month_year);
+      const monthYearFormatted = entry.month_year || formatMonthYear(entry.date);
       const incomeHtml = income ? `<span class="text-emerald-400 font-mono font-bold">${income.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
       const expenseHtml = expense ? `<span class="text-rose-400 font-mono font-bold">${expense.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
       const balanceHtml = `<span class="text-amber-300 font-mono font-black">${balance.toLocaleString()}</span>`;
       
-      // 💡 Bank စာအုပ်များ ဖြစ်ပါက လက်ခံသူအား အလိုအလျောက် "Bank" အဖြစ် ပြသခြင်း
-      const displayReceiver = isBankSheet ? "Bank" : (entry.receiver || "-");
+      const displayReceiver = isBankTable ? "Bank" : (entry.receiver || "-");
       const receiverBadge = displayReceiver !== "-"
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
@@ -170,23 +188,21 @@ function renderLedgerTable() {
         ? `<div class="max-w-[280px] min-w-[200px] break-words whitespace-normal text-slate-200 text-xs leading-relaxed" style="word-break: break-word; overflow-wrap: anywhere;">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      const catBadgeText = isTransfer ? 'စာရင်းပြောင်း' : (entry.category || '-');
-      const subcatText = entry.subcategory_detail || entry.subcategory || '-';
-
+      // 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော ကော်လံ အစဉ်လိုက်အသစ်
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.entry_date || "-"}</td>
-          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${catBadgeText}</span></td>
-          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${subcatText}</td>
-          <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
+          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
+          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
+          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
           <td class="py-3 px-3">${descHtml}</td>
-          <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${balanceHtml}</td>
+          <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
+          <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || "-"}</td>
+          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || currentTable}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -234,10 +250,10 @@ window.nextPage = function() {
 };
 
 // -------------------------------------------------------------------
-// 4. DYNAMIC TRANSFER TARGET HELPERS (4GB, 5FB, 8EB, 9MB, 10GB Universal)
+// D1 Dynamic Transfer Targets (4GB -> Users/1CB, အခြားစာအုပ်များ -> 2CB)
 // -------------------------------------------------------------------
 function updateTransferTargets() {
-  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const typeSelect = document.getElementById("entry-type");
   const cleanType = normalizeEntryType(typeSelect ? typeSelect.value : '');
   if (cleanType !== 'စာရင်းပြောင်း') return;
@@ -249,7 +265,7 @@ function updateTransferTargets() {
   const subLabel = document.getElementById("label-entry-subcategory");
   if (subLabel) subLabel.textContent = "လွှဲပြောင်းမည့် ပစ်မှတ် (Target)";
 
-  if (sheet === '4GB') {
+  if (currentTable === '1General Book') {
     const allUsers = ['User 1', 'User 2', 'User 3'];
     const targetUsers = allUsers.filter(u => u !== currentSender);
 
@@ -257,20 +273,15 @@ function updateTransferTargets() {
     targetUsers.forEach(u => {
       optionsHtml += `<option value="${u}">${u} ထံ လွှဲပြောင်း</option>`;
     });
-    optionsHtml += `<option value="1CB">အထွေထွေ ရန်ပုံငွေ (Bank) သို့ လွှဲပြောင်း</option>`;
+    optionsHtml += `<option value="1CB Bank (General)">အထွေထွေ ရန်ပုံငွေ (Bank) သို့ လွှဲပြောင်း</option>`;
 
     if (subSelect) {
       subSelect.innerHTML = optionsHtml;
       updateTransferDescriptionText();
     }
   } else {
-    // 💡 5FB, 8EB, 9MB, 10GB စသည်တို့အတွက် သက်ဆိုင်ရာ Target Bank စာရင်း
-    const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet];
-    const targetBankCode = transferMap?.targetBank || '2CB';
-    const bankTitle = transferMap?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)';
-
     if (subSelect) {
-      subSelect.innerHTML = `<option value="${targetBankCode}">${bankTitle} သို့ လွှဲပြောင်း</option>`;
+      subSelect.innerHTML = `<option value="2CB Bank (Meal)">ဆွမ်းပဒေသာပင် (Bank) သို့ လွှဲပြောင်း</option>`;
     }
     updateTransferDescriptionText();
   }
@@ -278,7 +289,7 @@ function updateTransferTargets() {
 window.update4GBTransferTargets = updateTransferTargets;
 
 function updateTransferDescriptionText() {
-  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const typeSelect = document.getElementById("entry-type");
   const cleanType = normalizeEntryType(typeSelect ? typeSelect.value : '');
   if (cleanType !== 'စာရင်းပြောင်း') return;
@@ -288,16 +299,14 @@ function updateTransferDescriptionText() {
   if (!subSelect || !descInput) return;
 
   const selectedTarget = subSelect.value;
-  if (sheet === '4GB') {
-    if (selectedTarget === '1CB' || selectedTarget.includes('Bank') || selectedTarget.includes('ဘဏ်')) {
+  if (currentTable === '1General Book') {
+    if (selectedTarget.includes('Bank') || selectedTarget.includes('ဘဏ်') || selectedTarget === '1CB Bank (General)') {
       descInput.value = "အထွေထွေ ရန်ပုံငွေ (Bank) သို့ ဘဏ်အပ်နှံခြင်း";
     } else {
       descInput.value = `${selectedTarget} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`;
     }
   } else {
-    const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet];
-    const bankTitle = transferMap?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)';
-    descInput.value = `${bankTitle} သို့ ဘဏ်အပ်နှံခြင်း`;
+    descInput.value = "ဆွမ်းပဒေသာပင် (Bank) သို့ ဘဏ်အပ်နှံခြင်း";
   }
 }
 
@@ -317,28 +326,24 @@ window.onEntrySubcategoryChange = function(val) {
   }
 };
 
-// 💡 FIX 1: Type ရွေးလိုက်သည်နှင့် Category အလွတ်မဖြစ်ဘဲ ချက်ချင်း တန်းပေါ်စေခြင်း
 window.onEntryTypeChange = function(selectedType) {
-  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const cleanType = normalizeEntryType(selectedType);
 
   const catSelect = document.getElementById("entry-category");
   const subLabel = document.getElementById("label-entry-subcategory");
 
   if (cleanType === 'စာရင်းပြောင်း') {
-    if (catSelect) {
-      catSelect.innerHTML = `<option value="စာရင်းပြောင်း">စာရင်းပြောင်း</option>`;
-    }
+    if (catSelect) catSelect.innerHTML = `<option value="စာရင်းပြောင်း">စာရင်းပြောင်း</option>`;
     updateTransferTargets();
     return;
   }
 
   if (subLabel) subLabel.textContent = "ခေါင်းစဉ်ခွဲ (Sub-Category)";
 
-  const groupKey = getTreeGroupKey(sheet);
+  const groupKey = getTreeGroupKey(currentTable);
   const tree = window.CONFIG?.CATEGORY_TREE?.[groupKey] || {};
   
-  // 💡 cleanType ('ဝင်ငွေ' သို့မဟုတ် 'ထွက်ငွေ') ဖြင့် တိုက်ရိုက်ယူသဖြင့် ဘယ်တော့မှ မလွဲပါ
   const typeData = tree[cleanType] || tree[selectedType] || {};
   const categories = Object.keys(typeData);
 
@@ -355,7 +360,7 @@ window.onEntryTypeChange = function(selectedType) {
 };
 
 window.onEntryCategoryChange = function(selectedCategory) {
-  const sheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const typeSelect = document.getElementById("entry-type");
   const cleanType = normalizeEntryType(typeSelect ? typeSelect.value : 'ဝင်ငွေ');
 
@@ -364,7 +369,7 @@ window.onEntryCategoryChange = function(selectedCategory) {
     return;
   }
 
-  const groupKey = getTreeGroupKey(sheet);
+  const groupKey = getTreeGroupKey(currentTable);
   const tree = window.CONFIG?.CATEGORY_TREE?.[groupKey] || {};
   const subcategories = tree[cleanType]?.[selectedCategory] || ['ပုံမှန်'];
 
@@ -378,46 +383,40 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// 5. Save Form (Synchronized 2-Row Transfer with transfer_group_id)
+// Save Form (D1 Columns: date, title, sub_title, description, income, expense, etc.)
 // -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
-  const uniqueId = document.getElementById("entry-id").value;
-  const entry_date = document.getElementById("entry-date").value;
+  const unique_id = document.getElementById("entry-id").value;
+  const date = document.getElementById("entry-date").value;
   const rawType = document.getElementById("entry-type").value;
   const cleanType = normalizeEntryType(rawType);
-  const category = document.getElementById("entry-category").value;
+  const title = document.getElementById("entry-category").value;
   const subcatEl = document.getElementById("entry-subcategory");
-  const subcategory = subcatEl ? subcatEl.value : "";
+  const sub_title = subcatEl ? subcatEl.value : "";
   const voucher_no = document.getElementById("entry-voucher").value.trim();
   const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
   
-  let sheet_name = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBankSheet = ['1CB', '2CB', '3CB'].includes(sheet_name);
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
+  const isBankTable = currentTable.includes('Bank');
 
-  // Bank စာအုပ်ဖြစ်ပါက လက်ခံသူသည် အမြဲတမ်း 'Bank' ဖြစ်ရမည်
   const rawReceiver = document.getElementById("entry-receiver")?.value || "User 1";
-  const receiver = isBankSheet ? "Bank" : rawReceiver;
+  const receiver = isBankTable ? "Bank" : rawReceiver;
 
   const description = document.getElementById("entry-description").value.trim();
-  const month_year = formatMonthYear(entry_date);
-
-  const bookName = (window.CONFIG && window.CONFIG.SHEET_TITLES && window.CONFIG.SHEET_TITLES[sheet_name]) || sheet_name;
-  const isEdit = !!uniqueId;
+  const month_year = formatMonthYear(date);
+  const isEdit = !!unique_id;
 
   window.showLoading(true);
   try {
-    // 🌟 စာရင်းပြောင်း (Transfer) ဖြစ်ပါက 4GB ရော ပဒေသာပင်စာအုပ်များပါ ၂ ကြောင်း အလိုအလျောက် ခွဲထုတ်သိမ်းဆည်းခြင်း
+    // 🌟 Transfer စာရင်းများ
     if (cleanType === 'စာရင်းပြောင်း') {
-      const target = subcategory;
-      
-      // ချိတ်ဆက်မှုနံပါတ် (Edit / Delete တွင် ၂ ကြောင်းစလုံး ပြိုင်တူအလုပ်လုပ်စေရန်)
-      const existingEntry = isEdit ? bankAllEntries.find(e => String(e.uniqueId) === String(uniqueId)) : null;
-      const transferGroupId = existingEntry?.transfer_group_id || `TRF_${Date.now()}`;
+      const target = sub_title;
+      const transferGroupId = `TRF_${Date.now()}`;
 
-      // A. 4GB အချင်းချင်း User လွှဲပြောင်းမှု (User 1 -> User 2 / User 3)
-      if (sheet_name === '4GB' && (target.includes('User 1') || target.includes('User 2') || target.includes('User 3'))) {
+      // A. 1General Book (4GB) အချင်းချင်း User လွှဲပြောင်းမှု
+      if (currentTable === '1General Book' && (target.includes('User 1') || target.includes('User 2') || target.includes('User 3'))) {
         let targetUser = 'User 2';
         if (target.includes('User 1')) targetUser = 'User 1';
         else if (target.includes('User 3')) targetUser = 'User 3';
@@ -426,130 +425,105 @@ window.saveEntryForm = async function(event) {
         const recipientDesc = `${receiver} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`;
 
         const payload1 = {
-          uniqueId: `${transferGroupId}_OUT`,
-          transfer_group_id: transferGroupId,
-          sheet_name: '4GB',
-          entry_date,
-          category: 'ထွက်ငွေ',
-          subcategory: 'စာရင်းပြောင်း',
-          subcategory_detail: `${targetUser} သို့ လွှဲပြောင်း`,
+          unique_id: `${transferGroupId}_OUT`,
+          book_name: '1General Book',
+          date,
+          title: 'စာရင်းပြောင်း',
+          sub_title: `${targetUser} သို့ လွှဲပြောင်း`,
           voucher_no,
           description: senderDesc,
           receiver: receiver,
           income: 0,
           expense: amount,
-          amount: amount,
-          month_year,
-          book_name: bookName
+          month_year
         };
 
         const payload2 = {
-          uniqueId: `${transferGroupId}_IN`,
-          transfer_group_id: transferGroupId,
-          sheet_name: '4GB',
-          entry_date,
-          category: 'ဝင်ငွေ',
-          subcategory: 'လွှဲပြောင်းရရှိ',
-          subcategory_detail: `${receiver} ထံမှ လွှဲပြောင်းရရှိ`,
+          unique_id: `${transferGroupId}_IN`,
+          book_name: '1General Book',
+          date,
+          title: 'စာရင်းပြောင်း',
+          sub_title: `${receiver} ထံမှ လွှဲပြောင်းရရှိ`,
           voucher_no,
           description: recipientDesc,
           receiver: targetUser,
           income: amount,
           expense: 0,
-          amount: amount,
-          month_year,
-          book_name: bookName
+          month_year
         };
 
         await window.saveCashbookEntryAPI(payload1, isEdit);
         await window.saveCashbookEntryAPI(payload2, isEdit);
 
         if (typeof window.closeEntryModal === 'function') window.closeEntryModal();
-        await window.renderBankView('4GB');
+        await window.renderBankView('1General Book');
         return;
       } 
       else {
-        // B. သက်ဆိုင်ရာ Bank စာအုပ်သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု (4GB -> 1CB, 5FB/8EB/9MB/10GB -> 2CB)
-        const transferMap = window.CONFIG?.TRANSFER_MAPPING?.[sheet_name];
-        const targetBankCode = (sheet_name === '4GB') ? '1CB' : (transferMap?.targetBank || '2CB');
-        const targetBankTitle = (sheet_name === '4GB') ? 'အထွေထွေ ရန်ပုံငွေ (Bank)' : (transferMap?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)');
+        // B. သက်ဆိုင်ရာ Bank သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု
+        const targetBank = (currentTable === '1General Book') ? '1CB Bank (General)' : '2CB Bank (Meal)';
+        const bankDesc = description || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`;
+        const bankIncomeDesc = `${currentTable} [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
 
-        const currentBookTitle = window.CONFIG?.SHEET_TITLES?.[sheet_name] || sheet_name;
-        const bankDesc = description || `${targetBankTitle} သို့ ဘဏ်အပ်နှံခြင်း`;
-        const bankIncomeDesc = `${currentBookTitle} [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
-
-        // ၁။ မူရင်းစာအုပ် ထွက်ငွေ
         const payload1 = {
-          uniqueId: `${transferGroupId}_OUT`,
-          transfer_group_id: transferGroupId,
-          sheet_name: sheet_name,
-          entry_date,
-          category: 'ထွက်ငွေ',
-          subcategory: 'စာရင်းပြောင်း',
-          subcategory_detail: 'ဘဏ်အပ်နှံခြင်း',
+          unique_id: `${transferGroupId}_OUT`,
+          book_name: currentTable,
+          date,
+          title: 'စာရင်းပြောင်း',
+          sub_title: 'ဘဏ်အပ်နှံခြင်း',
           voucher_no,
           description: bankDesc,
           receiver: receiver,
           income: 0,
           expense: amount,
-          amount: amount,
-          month_year,
-          book_name: currentBookTitle
+          month_year
         };
 
-        // ၂။ သက်ဆိုင်ရာ Bank ဝင်ငွေ (Auto "ဘဏ်အပ်ငွေ" & "Bank")
         const payload2 = {
-          uniqueId: `${transferGroupId}_IN`,
-          transfer_group_id: transferGroupId,
-          sheet_name: targetBankCode,
-          entry_date,
-          category: 'ဝင်ငွေ',
-          subcategory: 'ဘဏ်အပ်ငွေ',
-          subcategory_detail: 'ဘဏ်အပ်နှံခြင်း',
+          unique_id: `${transferGroupId}_IN`,
+          book_name: targetBank,
+          date,
+          title: 'ဘဏ်အပ်ငွေ',
+          sub_title: 'ဘဏ်အပ်နှံခြင်း',
           voucher_no,
           description: bankIncomeDesc,
-          receiver: 'Bank', // 💡 Bank တွင် အမြဲတမ်း 'Bank' ဖြစ်သည်
+          receiver: 'Bank',
           income: amount,
           expense: 0,
-          amount: amount,
-          month_year,
-          book_name: targetBankTitle
+          month_year
         };
 
         await window.saveCashbookEntryAPI(payload1, isEdit);
         await window.saveCashbookEntryAPI(payload2, isEdit);
 
         if (typeof window.closeEntryModal === 'function') window.closeEntryModal();
-        await window.renderBankView(sheet_name);
+        await window.renderBankView(currentTable);
         return;
       }
     }
 
-    // ပုံမှန် ဝင်ငွေ / ထွက်ငွေ စာရင်းသွင်းမှု
+    // ပုံမှန် ဝင်ငွေ / ထွက်ငွေ
     const income = cleanType === "ဝင်ငွေ" ? amount : 0;
     const expense = cleanType === "ထွက်ငွေ" ? amount : 0;
 
     const payload = {
-      uniqueId: uniqueId || `${sheet_name}-${Date.now()}`,
-      sheet_name,
-      entry_date,
-      category: cleanType,
-      subcategory: category,
-      subcategory_detail: subcategory,
+      unique_id: unique_id || crypto.randomUUID(),
+      book_name: currentTable,
+      date,
+      title: title || cleanType,
+      sub_title: sub_title || '-',
       voucher_no,
       description,
-      receiver: receiver,
+      receiver,
       income,
       expense,
-      amount,
-      month_year,
-      book_name: bookName
+      month_year
     };
 
     const res = await window.saveCashbookEntryAPI(payload, isEdit);
     if (res && res.success) {
       if (typeof window.closeEntryModal === 'function') window.closeEntryModal();
-      await window.renderBankView(sheet_name);
+      await window.renderBankView(currentTable);
     } else {
       alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
     }
@@ -562,11 +536,11 @@ window.saveEntryForm = async function(event) {
 };
 
 window.editEntry = function(uid) {
-  const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
+  const entry = bankAllEntries.find(e => String(e.unique_id || e.uniqueId) === String(uid));
   if (!entry) return;
 
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
+  const isBankTable = currentTable.includes('Bank');
 
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (modal) modal.classList.remove('hidden');
@@ -574,15 +548,15 @@ window.editEntry = function(uid) {
   const titleEl = document.getElementById("entry-modal-title");
   if (titleEl) titleEl.textContent = "စာရင်း ပြင်ဆင်ရန်";
 
-  const cleanType = normalizeEntryType(entry.category);
+  const entryTitle = entry.title || (entry.income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ');
+  const cleanType = normalizeEntryType(entryTitle);
 
-  document.getElementById("entry-id").value = entry.uniqueId || "";
-  document.getElementById("entry-date").value = entry.entry_date || "";
+  document.getElementById("entry-id").value = entry.unique_id || entry.uniqueId || "";
+  document.getElementById("entry-date").value = entry.date || "";
   
-  // Bank စာအုပ်ဖြစ်ပါက 'Bank' ဟု ပုံသေထားပြီး Lock ချခြင်း
   const recSelect = document.getElementById("entry-receiver");
   if (recSelect) {
-    if (isBankSheet) {
+    if (isBankTable) {
       let hasBankOpt = Array.from(recSelect.options).some(opt => opt.value === 'Bank');
       if (!hasBankOpt) {
         const opt = document.createElement('option');
@@ -607,25 +581,24 @@ window.editEntry = function(uid) {
   }
 
   const catSelect = document.getElementById("entry-category");
-  if (catSelect && entry.subcategory) {
-    catSelect.value = entry.subcategory;
-    window.onEntryCategoryChange(entry.subcategory);
+  if (catSelect && entry.title) {
+    catSelect.value = entry.title;
+    window.onEntryCategoryChange(entry.title);
   }
 
   const subcatSelect = document.getElementById("entry-subcategory");
-  if (subcatSelect && (entry.subcategory_detail || entry.subcategory)) {
-    subcatSelect.value = entry.subcategory_detail || entry.subcategory;
+  if (subcatSelect && entry.sub_title) {
+    subcatSelect.value = entry.sub_title;
   }
 
   document.getElementById("entry-voucher").value = entry.voucher_no || "";
-  document.getElementById("entry-amount").value = (entry.income || entry.expense || entry.amount || 0);
+  document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
   document.getElementById("entry-description").value = entry.description || "";
 };
 
-// 💡 2-Way Synchronized Delete: စာရင်းပြောင်း ဖြစ်ပါက ချိတ်ဆက်ထားသော ဒုတိယစာကြောင်းပါ တစ်ပါတည်း ဖျက်ပေးခြင်း
 window.deleteEntry = async function(uid) {
-  const entry = bankAllEntries.find(e => String(e.uniqueId) === String(uid));
-  const isTransfer = entry?.category === "စာရင်းပြောင်း" || entry?.subcategory === "စာရင်းပြောင်း" || entry?.transfer_group_id || String(uid).includes('TRF_');
+  const entry = bankAllEntries.find(e => String(e.unique_id || e.uniqueId) === String(uid));
+  const isTransfer = entry?.title === "စာရင်းပြောင်း" || entry?.sub_title?.includes("လွှဲပြောင်း") || String(uid).includes('TRF_');
 
   const confirmMsg = isTransfer 
     ? "ဤစာရင်းသည် စာရင်းပြောင်း (Transfer) စာရင်းဖြစ်သဖြင့် ချိတ်ဆက်ထားသော ဒုတိယစာကြောင်းပါ တစ်ပါတည်း ပျက်သွားပါမည်။ ဖျက်ရန် သေချာပါသလား?"
@@ -635,9 +608,8 @@ window.deleteEntry = async function(uid) {
 
   window.showLoading(true);
   try {
-    // အကယ်၍ transfer ဖြစ်ပါက ချိတ်ဆက်ထားသော OUT ရော IN ပါ ဖျက်ရန်
     if (isTransfer) {
-      const groupId = entry?.transfer_group_id || String(uid).replace(/_(OUT|IN)$/, '');
+      const groupId = String(uid).replace(/_(OUT|IN)$/, '');
       await window.deleteCashbookEntryAPI(`${groupId}_OUT`).catch(() => {});
       await window.deleteCashbookEntryAPI(`${groupId}_IN`).catch(() => {});
       await window.deleteCashbookEntryAPI(uid).catch(() => {});
@@ -645,7 +617,7 @@ window.deleteEntry = async function(uid) {
       await window.deleteCashbookEntryAPI(uid);
     }
 
-    await window.renderBankView(window.currentSheetKey || window.currentSheet);
+    await window.renderBankView(window.currentTable || window.currentSheet);
   } catch (err) {
     console.error("Delete Entry Error:", err);
     alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
@@ -654,34 +626,35 @@ window.deleteEntry = async function(uid) {
   }
 };
 
+// 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော CSV Export
 window.exportCSV = function() {
   if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
     return;
   }
 
-  const currentSheet = String(window.currentSheetKey || window.currentSheet || '1CB').trim();
-  const isBankSheet = ['1CB', '2CB', '3CB'].includes(currentSheet);
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
+  const isBankTable = currentTable.includes('Bank');
 
   let csv = "\uFEFF";
-  csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,အကြောင်းအရာ,လက်ခံသူ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,လနှစ်,စာအုပ်အမည်\n";
+  // 🌟 D1 Column အစဉ်လိုက်အတိုင်း Export ထုတ်ခြင်း
+  csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
-    const my = formatMonthYear(e.entry_date || e.month_year);
-
-    const receiverText = isBankSheet ? "Bank" : (e.receiver || "");
+    const my = e.month_year || formatMonthYear(e.date);
+    const receiverText = isBankTable ? "Bank" : (e.receiver || "");
 
     csv += [
-      idx + 1, esc(e.entry_date), esc(e.category), esc(e.subcategory), esc(e.voucher_no),
-      esc(e.description), esc(receiverText), e.income || 0, e.expense || 0, e.balance || 0,
-      esc(my), esc(e.book_name)
+      e.no || (idx + 1), esc(e.date), esc(e.title), esc(e.sub_title),
+      esc(e.description), e.income || 0, e.expense || 0, e.balance || 0,
+      esc(e.voucher_no), esc(receiverText), esc(my), esc(e.book_name || currentTable)
     ].join(",") + "\n";
   });
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${window.currentSheetKey || 'ledger'}_export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `${currentTable}_export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
