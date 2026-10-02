@@ -2,7 +2,7 @@
 <html lang="my" class="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
   <meta name="description" content="ဓမ္မအလင်းရောင်တောရရိပ်သာ ငွေစာရင်းနှင့် ယောဂီ စီမံခန့်ခွဲမှုစနစ်">
   <title>ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP</title>
 
@@ -25,8 +25,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Myanmar:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 
-  <!-- 💡 Fix Browser Autofill Ugly Yellow/Olive Background & Password Input Styling -->
+  <!-- 💡 Mobile Touch & Smooth Scrolling Optimization -->
   <style>
+    /* iOS & Android Touch Smoothing */
+    * {
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    .overflow-x-auto, .overflow-y-auto {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Fix Browser Autofill Ugly Background */
     input:-webkit-autofill,
     input:-webkit-autofill:hover, 
     input:-webkit-autofill:focus, 
@@ -36,11 +46,18 @@
       caret-color: #f8fafc !important;
       transition: background-color 5000s ease-in-out 0s;
     }
+
+    /* Prevent iOS auto-zoom on input focus */
+    @media screen and (max-width: 768px) {
+      input, select, textarea {
+        font-size: 16px !important;
+      }
+    }
   </style>
 </head>
-<body class="bg-[#020617] font-myanmar flex h-screen overflow-hidden text-slate-100">
+<body class="bg-[#020617] font-myanmar flex h-screen overflow-hidden text-slate-100 select-none">
 
-  <!-- 🌟 LOGIN OVERLAY (100% Guaranteed Centered & Polished Modern Card) -->
+  <!-- 🌟 LOGIN OVERLAY -->
   <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="background-color: rgba(2, 6, 23, 0.96) !important; backdrop-filter: blur(12px) !important;">
     <div style="width: 100% !important; max-width: 420px !important; background-color: #090d16 !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 24px !important; padding: 32px 28px !important; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.95) !important; position: relative !important; overflow: hidden !important; margin: auto !important;">
       
@@ -69,12 +86,12 @@
             အသုံးပြုသူ အမည် (USERNAME / ROLE)
           </label>
           <div style="position: relative !important; width: 100% !important;">
-            <select id="login-username" required style="width: 100% !important; height: 44px !important; padding: 0 36px 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 12px !important; font-weight: 600 !important; outline: none !important; appearance: none !important; -webkit-appearance: none !important; cursor: pointer !important; box-sizing: border-box !important;">
+            <select id="login-username" required style="width: 100% !important; height: 44px !important; padding: 0 36px 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; font-weight: 600 !important; outline: none !important; appearance: none !important; -webkit-appearance: none !important; cursor: pointer !important; box-sizing: border-box !important;">
               <option value="" disabled selected>-- Select Username / Role --</option>
               <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
               <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
               <option value="Account">Account (ငွေစာရင်းကိုင်)</option>
-              <option value="Staff">Staff (ဝန်ထမ်း)</option>
+              <option value="Staff">Staff (ရုံးအကူ)</option>
               <option value="Viewer">Viewer (ကြည့်ရှုသူ)</option>
             </select>
             <div style="position: absolute !important; right: 14px !important; top: 50% !important; transform: translateY(-50%) !important; pointer-events: none !important; color: #94a3b8 !important; font-size: 11px !important;">
@@ -88,14 +105,14 @@
           <label style="font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: #cbd5e1 !important; margin: 0 !important;">
             လျှို့ဝှက်နံပါတ် (PASSWORD)
           </label>
-          <input type="password" id="login-password" required placeholder="Type password..." style="width: 100% !important; height: 44px !important; padding: 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 12px !important; outline: none !important; box-sizing: border-box !important;">
+          <input type="password" id="login-password" required placeholder="Type password..." style="width: 100% !important; height: 44px !important; padding: 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;">
         </div>
 
         <!-- Error Container -->
         <div id="login-error" class="hidden" style="color: #fb7185 !important; font-size: 11px !important; font-weight: 600 !important; background-color: rgba(136, 19, 55, 0.4) !important; border: 1px solid rgba(244, 63, 94, 0.4) !important; padding: 10px !important; border-radius: 10px !important; text-align: center !important;"></div>
 
-        <!-- Solid Glowing CTA Button -->
-        <button type="submit" style="width: 100% !important; height: 44px !important; margin-top: 6px !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #020617 !important; font-size: 12.5px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 6px 20px rgba(217, 119, 6, 0.35) !important; outline: none !important;">
+        <!-- CTA Button -->
+        <button type="submit" style="width: 100% !important; height: 44px !important; margin-top: 6px !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #020617 !important; font-size: 13px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 6px 20px rgba(217, 119, 6, 0.35) !important; outline: none !important;">
           <span>စနစ်သို့ ဝင်ရောက်မည် (Enter System)</span>
           <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 13px !important;"></i>
         </button>
@@ -130,70 +147,70 @@
           <span class="text-gold-gradient">ဓမ္မအလင်းရောင်</span>
         </div>
         <div class="flex items-center gap-1">
-          <button onclick="closeMobileSidebar()" class="md:hidden text-slate-400 hover:text-white p-1.5 rounded-lg cursor-pointer">
-            <i class="fa-solid fa-xmark text-sm"></i>
+          <button onclick="closeMobileSidebar()" class="md:hidden text-slate-400 hover:text-white p-2 rounded-lg cursor-pointer" title="Close Menu">
+            <i class="fa-solid fa-xmark text-base"></i>
           </button>
-          <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 transition p-1.5 rounded-lg cursor-pointer" title="Logout">
-            <i class="fa-solid fa-power-off text-xs"></i>
+          <button onclick="handleLogout()" class="text-slate-400 hover:text-rose-400 transition p-2 rounded-lg cursor-pointer" title="Logout">
+            <i class="fa-solid fa-power-off text-sm"></i>
           </button>
         </div>
       </div>
 
-      <!-- SIDEBAR NAV -->
+      <!-- SIDEBAR NAV (D1 Table Standard) -->
       <nav class="flex-1 px-2.5 py-3.5 space-y-1.5 overflow-y-auto" id="sidebar-nav">
         <button onclick="switchTab('Home')" id="btn-Home" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-bold cursor-pointer" title="Home Dashboard">
           <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
         </button>
 
         <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
-        <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
+        <button onclick="switchTab('1CB Bank (General)')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
           <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေ ရန်ပုံငွေ (Bank)</span> 
         </button>
-        <button onclick="switchTab('2CB')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် (Bank)">
+        <button onclick="switchTab('2CB Bank (Meal)')" id="btn-2CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် (Bank)">
           <i class="fa-solid fa-bowl-rice text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">ဆွမ်းပဒေသာပင် (Bank)</span> 
         </button>
-        <button onclick="switchTab('3CB')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="တစ်ဦးတည်းစာရင်း (Bank)">
+        <button onclick="switchTab('3CB Bank (UZ)')" id="btn-3CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="တစ်ဦးတည်းစာရင်း (Bank)">
           <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">တစ်ဦးတည်းစာရင်း (Bank)</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
-        <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
+        <button onclick="switchTab('1General Book')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
           <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ကျောင်းရန်ပုံငွေ စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('5FB')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('2Meal Book')" id="btn-5FB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆွမ်းပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-utensils text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဆွမ်းပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('6HB')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဓမ္မာရုံငွေစာရင်း စာအုပ်">
+        <button onclick="switchTab('3Hall Book')" id="btn-6HB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဓမ္မာရုံငွေစာရင်း စာအုပ်">
           <i class="fa-solid fa-place-of-worship text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဓမ္မာရုံငွေစာရင်း စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('7PB')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စေတီငွေစာရင်း စာအုပ်">
+        <button onclick="switchTab('4Pagoda Book')" id="btn-7PB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စေတီငွေစာရင်း စာအုပ်">
           <i class="fa-solid fa-gopuram text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စေတီငွေစာရင်း စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('8EB')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="လျှပ်စစ်ပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('5Electronic Book')" id="btn-8EB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="လျှပ်စစ်ပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-bolt text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">လျှပ်စစ်ပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('9MB')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆေးပဒေသာပင် စာအုပ်">
+        <button onclick="switchTab('6Medical Book')" id="btn-9MB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ဆေးပဒေသာပင် စာအုပ်">
           <i class="fa-solid fa-notes-medical text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ဆေးပဒေသာပင် စာအုပ်</span> 
         </button>
-        <button onclick="switchTab('10GB')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေရန်ပုံငွေစာအုပ်">
+        <button onclick="switchTab('7Other Book')" id="btn-10GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေရန်ပုံငွေစာအုပ်">
           <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေရန်ပုံငွေစာအုပ်</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
-        <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ပစ္စည်းစာရင်း">
+        <button onclick="switchTab('Inventory')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ပစ္စည်းစာရင်း">
           <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ပစ္စည်းစာရင်း</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
-        <button onclick="switchTab('12Yogi')" id="btn-12Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အမြဲနေ ယောဂီစာရင်း">
+        <button onclick="switchTab('Permanent Yogi')" id="btn-12Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အမြဲနေ ယောဂီစာရင်း">
           <i class="fa-solid fa-person-praying text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အမြဲနေ ယောဂီ</span> 
         </button>
-        <button onclick="switchTab('13Yogi')" id="btn-13Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စခန်းဝင် ယောဂီစာရင်း">
+        <button onclick="switchTab('Camp Yogi')" id="btn-13Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="စခန်းဝင် ယောဂီစာရင်း">
           <i class="fa-solid fa-people-roof text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စခန်းဝင် ယောဂီ</span> 
         </button>
 
         <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
-        <button onclick="switchTab('14Rep')" id="btn-14Rep" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အသုံးစရိတ် အစီရင်ခံစာ">
+        <button onclick="switchTab('Report')" id="btn-14Rep" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အသုံးစရိတ် အစီရင်ခံစာ">
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အသုံးစရိတ် အစီရင်ခံစာ</span>
         </button>
       </nav>
@@ -201,20 +218,33 @@
 
     <!-- Main Content Work Area -->
     <div class="flex-1 flex flex-col overflow-hidden w-full">
-      <header class="bg-[#080d1a] border-b border-amber-500/20 h-[64px] px-4 md:px-6 flex justify-between items-center z-10 shrink-0 gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <button id="mobile-menu-btn" onclick="toggleMobileSidebar()" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#0f172a] border border-amber-500/30 cursor-pointer shrink-0" title="Open Menu">
+      <header class="bg-[#080d1a] border-b border-amber-500/20 h-[64px] px-3 sm:px-6 flex justify-between items-center z-10 shrink-0 gap-2 sm:gap-4">
+        
+        <!-- Left Title & Menu Button -->
+        <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <button id="mobile-menu-btn" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#0f172a] border border-amber-500/30 cursor-pointer shrink-0" title="Open Menu">
             <i class="fa-solid fa-bars text-base"></i>
           </button>
           <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-slate-100 tracking-wide truncate">Home Dashboard</h1>
         </div>
 
-        <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
-          <i class="fa-solid fa-calendar-day text-amber-400"></i> <span id="current-user-display" class="truncate max-w-[150px] sm:max-w-none">Date: -- | Admin</span>
+        <!-- Right Status Indicators -->
+        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+          <!-- Live Network Status Indicator -->
+          <div id="network-status-badge" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="network-status-text" class="hidden xs:inline">Online</span>
+          </div>
+
+          <!-- User Badge -->
+          <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
+            <i class="fa-solid fa-user-shield text-amber-400"></i> 
+            <span id="current-user-display" class="truncate max-w-[130px] sm:max-w-[220px]">Date: -- | Admin</span>
+          </div>
         </div>
       </header>
 
-      <main id="main-content" class="p-4 sm:p-6 overflow-y-auto flex-1 bg-[#020617] relative">
+      <main id="main-content" class="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#020617] relative">
         <div id="view-container"></div>
       </main>
     </div>
@@ -237,13 +267,33 @@
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
-  <!-- Service Worker Registration -->
+  <!-- Network Status Monitor & PWA Service Worker Registration -->
   <script>
+    // Live Network Online/Offline Monitor
+    function updateNetworkStatus() {
+      const badge = document.getElementById('network-status-badge');
+      const text = document.getElementById('network-status-text');
+      if (!badge || !text) return;
+
+      if (navigator.onLine) {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="network-status-text" class="hidden xs:inline">Online</span>`;
+      } else {
+        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30";
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400"></span><span id="network-status-text" class="hidden xs:inline">Offline (Local)</span>`;
+      }
+    }
+
+    window.addEventListener('online', updateNetworkStatus);
+    window.addEventListener('offline', updateNetworkStatus);
+    window.addEventListener('load', updateNetworkStatus);
+
+    // PWA Service Worker
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('Sāsana ERP PWA Service Worker Registered:', reg.scope))
-          .catch(err => console.error('Service Worker Registration Failed:', err));
+          .then(reg => console.log('Sāsana ERP PWA Registered:', reg.scope))
+          .catch(err => console.error('PWA Reg Failed:', err));
       });
     }
   </script>
