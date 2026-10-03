@@ -1,7 +1,7 @@
 // ===================================================================
 // js/Inventory.js - Inventory Management Logic & Controller
 // 100% Aligned with D1 "Inventory" Schema (date, description, remark, etc.)
-// Features: Instant 0-Second Cache, Offline Persistence & Search
+// Features: Instant 0-Second Cache, Natural Typography & Polished Sticky Actions
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -119,24 +119,36 @@ function renderInventoryTable() {
       const uid = entry.unique_id || entry.uniqueId || entry.id || "";
       const srNo = entry.no || (start + idx + 1);
       const qty = parseFloat(entry.qty) || 0;
-      const itemName = entry.description || entry.item_desc || entry.item_name || "-";
-      const remark = entry.remark || entry.note || "-";
       const dateText = entry.date || entry.entry_date || "-";
       const monthYearFormatted = entry.month_year || formatMonthYear(dateText);
 
+      // 🌟 နိုင်ငံတကာ စံနှုန်းမီ သဘာဝကျသော ပစ္စည်းအမည် (Natural Width + Tooltip)
+      const rawDesc = entry.description || entry.item_desc || entry.item_name || "";
+      const escapedDesc = rawDesc.replace(/"/g, '&quot;');
+      const descHtml = rawDesc
+        ? `<div class="min-w-[240px] max-w-[420px] text-slate-100 text-xs leading-relaxed font-semibold whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${rawDesc}</div>`
+        : '<span class="text-slate-600 font-mono">-</span>';
+
+      // 🌟 သပ်ရပ်သော မှတ်ချက် (Remark)
+      const rawRemark = entry.remark || entry.note || "";
+      const escapedRemark = rawRemark.replace(/"/g, '&quot;');
+      const remarkHtml = rawRemark
+        ? `<div class="min-w-[160px] max-w-[280px] text-amber-200/80 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedRemark}">${rawRemark}</div>`
+        : '<span class="text-slate-600 font-mono">-</span>';
+
       html += `
-        <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
-          <td class="text-center font-bold text-amber-500/70 py-3">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300">${dateText}</td>
-          <td class="font-bold text-amber-300">${entry.location || "-"}</td>
-          <td><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${entry.category || "-"}</span></td>
-          <td class="font-semibold text-amber-100">${itemName}</td>
-          <td class="text-slate-300 font-semibold">${entry.unit || "-"}</td>
-          <td class="text-right font-mono font-bold text-emerald-400">${qty.toLocaleString()}</td>
-          <td class="text-xs text-amber-200/70">${remark}</td>
-          <td class="font-mono text-xs text-sky-200 font-bold">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold">${entry.book_name || "Inventory"}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] px-3">
+        <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20 text-xs">
+          <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
+          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${dateText}</td>
+          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${entry.location || "-"}</td>
+          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${entry.category || "-"}</span></td>
+          <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
+          <td class="text-slate-300 font-semibold whitespace-nowrap px-2">${entry.unit || "-"}</td>
+          <td class="text-right font-mono font-bold text-emerald-400 whitespace-nowrap px-3">${qty.toLocaleString()}</td>
+          <td class="py-2.5 px-2 align-middle text-left">${remarkHtml}</td>
+          <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
+          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || "Inventory"}</td>
+          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
               <button onclick="deleteInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
@@ -226,7 +238,6 @@ window.saveInventoryForm = async function(event) {
   const month_year = formatMonthYear(date);
   const isEdit = !!unique_id;
 
-  // 🌟 D1 Schema အတိုင်း ကော်လံအမည် အတိအကျ ပေးပို့ခြင်း
   const payload = {
     unique_id: unique_id || crypto.randomUUID(),
     date,
@@ -313,7 +324,7 @@ window.deleteInvEntry = async function(uid) {
   }
 };
 
-// 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော CSV Export
+// CSV Export
 window.exportInventoryCSV = function() {
   if (!invFilteredEntries || invFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
