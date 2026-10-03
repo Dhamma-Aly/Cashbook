@@ -1,6 +1,7 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
 // Clean Architecture: Fully driven by window.CONFIG (No redundant definitions)
+// Features: Natural Burmese Typography for Description & Uniform Row Heights
 // Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | ခေါင်းစဉ်ခွဲ | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
@@ -37,7 +38,6 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
-// 💡 config.js ထံမှ Dropdown Group Key ကို တိုက်ရိုက် ရယူခြင်း
 function getTreeGroupKey(tableName) {
   const tbl = resolveD1Table(tableName);
   return window.CONFIG?.TABLE_GROUP_MAP?.[tbl] || window.CONFIG?.SHEET_GROUP_MAP?.[tbl] || 'PADETHA_BOOKS';
@@ -163,8 +163,10 @@ function renderLedgerTable() {
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
+      // 🌟 နိုင်ငံတကာ စံနှုန်းမီ သဘာဝကျသော အကြောင်းအရာ (Natural Width + Burmese Word Flow + Tooltip)
+      const escapedDesc = (entry.description || '').replace(/"/g, '&quot;');
       const descHtml = entry.description 
-        ? `<div class="max-w-[280px] min-w-[200px] break-words whitespace-normal text-slate-200 text-xs leading-relaxed" style="word-break: break-word; overflow-wrap: anywhere;">${entry.description}</div>`
+        ? `<div class="min-w-[300px] max-w-[480px] text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
       // 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော ကော်လံ အစဉ်လိုက်
@@ -174,7 +176,7 @@ function renderLedgerTable() {
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
           <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
-          <td class="py-3 px-3">${descHtml}</td>
+          <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2">${balanceHtml}</td>
@@ -182,7 +184,7 @@ function renderLedgerTable() {
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
           <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || currentTable}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10">
+          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
               <button onclick="deleteEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
@@ -229,7 +231,7 @@ window.nextPage = function() {
 };
 
 // -------------------------------------------------------------------
-// 🔄 config.js မှ TRANSFER_MAPPING ကို တိုက်ရိုက်ရယူသော Transfer Engine
+// 🔄 Transfer Targets Engine
 // -------------------------------------------------------------------
 function updateTransferTargets() {
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
@@ -262,7 +264,6 @@ function updateTransferTargets() {
       updateTransferDescriptionText();
     }
   } else {
-    // 💡 config.js မှ သက်ဆိုင်ရာ စာအုပ်အလိုက် Target Bank ကို တိုက်ရိုက် ယူသုံးခြင်း
     const mapping = window.CONFIG?.TRANSFER_MAPPING?.[currentTable];
     const targetBank = mapping?.targetBank || '2CB Bank (Meal)';
     const bankTitle = mapping?.bankTitle || 'ဆွမ်းပဒေသာပင် (Bank)';
@@ -315,7 +316,6 @@ window.onEntrySubcategoryChange = function(val) {
   }
 };
 
-// 💡 config.js မှ CATEGORY_TREE ကို တိုက်ရိုက်ယူသုံးသော Cascading Dropdown
 window.onEntryTypeChange = function(selectedType) {
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const cleanType = normalizeEntryType(selectedType);
@@ -373,7 +373,7 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// Save Form (D1 Columns: date, title, sub_title, description, income, expense, etc.)
+// Save Form
 // -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -400,7 +400,6 @@ window.saveEntryForm = async function(event) {
 
   window.showLoading(true);
   try {
-    // 🌟 Transfer စာရင်းများ
     if (cleanType === 'စာရင်းပြောင်း') {
       const target = sub_title;
       const transferGroupId = `TRF_${Date.now()}`;
@@ -450,7 +449,7 @@ window.saveEntryForm = async function(event) {
         return;
       } 
       else {
-        // B. သက်ဆိုင်ရာ Bank သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု (config.js မှ targetBank ကို ယူသုံးသည်)
+        // B. သက်ဆိုင်ရာ Bank သို့ ဘဏ်အပ်နှံ လွှဲပြောင်းမှု
         const mapping = window.CONFIG?.TRANSFER_MAPPING?.[currentTable];
         const targetBank = mapping?.targetBank || (currentTable === '1General Book' ? '1CB Bank (General)' : '2CB Bank (Meal)');
         const bankDesc = description || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`;
@@ -493,7 +492,6 @@ window.saveEntryForm = async function(event) {
       }
     }
 
-    // ပုံမှန် ဝင်ငွေ / ထွက်ငွေ
     const income = cleanType === "ဝင်ငွေ" ? amount : 0;
     const expense = cleanType === "ထွက်ငွေ" ? amount : 0;
 
