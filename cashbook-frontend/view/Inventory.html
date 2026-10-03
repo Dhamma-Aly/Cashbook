@@ -1,4 +1,4 @@
-<!-- view/Inventory.html - Inventory View (4 Cards Single Row & Clean Search Box) --> 
+<!-- view/Inventory.html - Inventory View (100% D1 Aligned & Natural Typography) --> 
 <div class="space-y-4 sm:space-y-5">
   
   <!-- 🌟 Top 4 KPI Cards (၄ ခု တစ်တန်းတည်း ညီညာစွာ ပေါ်စေသည်) -->
@@ -62,22 +62,25 @@
     </div>
   </div>
 
-  <!-- Table Container -->
+  <!-- Table Container (🌟 ၁၄၅၀ ပစ်ဇယ် အကျယ်ချဲ့ထားပြီး Touch Scroll ချောမောစေသည်) -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
-    <table class="w-full text-left border-collapse min-w-[1300px]">
+    <table class="w-full text-left border-collapse min-w-[1450px]">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
           <th class="w-12 text-center py-3.5 px-2">စဉ်</th>
           <th class="w-28 py-3.5 px-2">ရက်စွဲ</th>
-          <th class="w-32 py-3.5 px-2">နေရာ</th>
+          <th class="w-32 py-3.5 px-2">တည်နေရာ</th>
           <th class="w-36 py-3.5 px-2">အမျိုးအစား</th>
-          <th class="min-w-[280px] py-3.5 px-3">အကြောင်းအရာ / ပစ္စည်းအမည်</th>
+          <!-- 🌟 အကြောင်းအရာ/ပစ္စည်းအမည် ကော်လံအား သဘာဝကျကျ အကျယ်ချဲ့ထားသည် -->
+          <th class="min-w-[300px] max-w-[450px] py-3.5 px-3">အကြောင်းအရာ / ပစ္စည်းအမည်</th>
           <th class="w-24 py-3.5 px-2">ရေတွက်ပုံ</th>
           <th class="w-28 text-right py-3.5 px-2">အရေအတွက်</th>
-          <th class="min-w-[180px] py-3.5 px-2">မှတ်ချက်</th>
+          <!-- 🌟 မှတ်ချက် ကော်လံအား နေရာလွတ် သပ်ရပ်စွာ ပေးထားသည် -->
+          <th class="min-w-[180px] max-w-[300px] py-3.5 px-2">မှတ်ချက်</th>
           <th class="w-24 py-3.5 px-2">လနှစ်</th>
           <th class="w-36 py-3.5 px-2">စာအုပ်အမည်</th>
-          <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2">လုပ်ဆောင်ချက်</th>
+          <!-- 🌟 လုပ်ဆောင်ချက် ကော်လံအောက် စာလုံးမထပ်စေရန် Shadow & Border ခံထားသည် -->
+          <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">လုပ်ဆောင်ချက်</th>
         </tr>
       </thead>
       <tbody id="inv-table-body">
@@ -108,7 +111,7 @@
 
 </div>
 
-<!-- MODAL DIALOG -->
+<!-- 💡 MODAL DIALOG -->
 <div id="inv-entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
@@ -129,6 +132,7 @@
     <form id="inv-entry-form" onsubmit="saveInventoryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 16px !important; overflow-y: auto !important; flex: 1 !important;">
       <input type="hidden" id="inv-id" value="">
 
+      <!-- Row 1: Date & Location -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
@@ -147,6 +151,7 @@
         </div>
       </div>
 
+      <!-- Row 2: Category & Description -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အမျိုးအစား (Category)</label>
@@ -166,6 +171,7 @@
         </div>
       </div>
 
+      <!-- Row 3: Unit & Quantity -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရေတွက်ပုံ (Unit)</label>
@@ -187,11 +193,13 @@
         </div>
       </div>
 
+      <!-- Row 4: Remark -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">မှတ်ချက် (Remark)</label>
         <textarea id="inv-remark" rows="2" placeholder="ဖြည့်စွက် အချက်အလက်များ (ဥပမာ- အသစ်/ဟောင်း)..." style="width: 100% !important; padding: 10px 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important; resize: none !important;"></textarea>
       </div>
 
+      <!-- Footer Buttons -->
       <div style="padding-top: 12px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
         <button type="button" onclick="closeInvModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">Cancel</button>
         <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">Save</button>
