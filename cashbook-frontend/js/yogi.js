@@ -1,6 +1,7 @@
 // ===================================================================
 // js/yogi.js - Yogi Management Controller (Permanent Yogi & Camp Yogi) 
 // 100% Aligned with D1 Schema: end_date Status Tracking, Smart NRC & 0s Cache
+// Features: Natural Typography, Clamped Tooltips & Polished Sticky Actions
 // ===================================================================
 
 const YOGI_CACHE_PREFIX = 'sasana_yogi_cache_';
@@ -90,7 +91,7 @@ window.renderYogiView = async function(isSilent = false) {
 };
 
 // -------------------------------------------------------------------
-// 2. Update Active KPI Cards
+// 2. Update Active KPI Cards (4-Box Single Row Compatible)
 // -------------------------------------------------------------------
 function updateYogiKPIs(kpis) {
   if (!kpis) return;
@@ -196,22 +197,29 @@ function renderYogiTable() {
     const phoneVal = entry.yogi_phone || entry.phone || '-';
     const categoryVal = entry.yogi_type || entry.category || '-';
 
+    // 🌟 နေရပ်လိပ်စာအား နိုင်ငံတကာ စံနှုန်းအတိုင်း သဘာဝကျကျ ညှိနှိုင်းခြင်း
+    const rawAddr = entry.address || '';
+    const escapedAddr = rawAddr.replace(/"/g, '&quot;');
+    const addrHtml = rawAddr
+      ? `<div class="min-w-[180px] max-w-[320px] text-slate-300 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedAddr}">${rawAddr}</div>`
+      : '<span class="text-slate-600 font-mono">-</span>';
+
     html += `
       <tr class="hover:bg-amber-500/5 transition border-b border-amber-500/20 text-xs">
         <td class="text-center font-bold text-amber-400/80 py-3 font-mono">${srNo}</td>
-        <td class="font-mono text-slate-300">${entry.start_date || '-'}</td>
-        <td class="font-mono ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${entry.end_date || '-'}</td>
-        <td class="font-bold text-amber-300">${categoryVal}</td>
-        <td class="font-extrabold text-amber-100">${entry.name || '-'}</td>
-        <td class="text-slate-300">${entry.father_name || '-'}</td>
-        <td class="font-mono text-amber-200">${nrcVal}</td>
-        <td class="font-mono text-slate-300">${entry.dob || '-'}</td>
-        <td class="text-center font-bold text-amber-300">${entry.age || '-'}</td>
-        <td class="text-center font-bold ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${entry.gender || '-'}</td>
-        <td class="font-mono text-amber-200">${phoneVal}</td>
-        <td class="font-mono text-slate-300">${entry.home_phone || '-'}</td>
-        <td class="truncate max-w-[220px] text-slate-300" title="${entry.address || ''}">${entry.address || '-'}</td>
-        <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-2 py-1.5 border-l border-amber-500/20">
+        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.start_date || '-'}</td>
+        <td class="font-mono whitespace-nowrap px-2 ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${entry.end_date || '-'}</td>
+        <td class="font-bold text-amber-300 whitespace-nowrap px-2">${categoryVal}</td>
+        <td class="font-extrabold text-amber-100 whitespace-nowrap px-2">${entry.name || '-'}</td>
+        <td class="text-slate-300 whitespace-nowrap px-2">${entry.father_name || '-'}</td>
+        <td class="font-mono text-amber-200 whitespace-nowrap px-2">${nrcVal}</td>
+        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.dob || '-'}</td>
+        <td class="text-center font-bold text-amber-300 whitespace-nowrap px-2">${entry.age || '-'}</td>
+        <td class="text-center font-bold whitespace-nowrap px-2 ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${entry.gender || '-'}</td>
+        <td class="font-mono text-amber-200 whitespace-nowrap px-2">${phoneVal}</td>
+        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.home_phone || '-'}</td>
+        <td class="py-2.5 px-3 align-middle text-left">${addrHtml}</td>
+        <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-3 py-2 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
           <div class="flex items-center justify-center gap-1.5">
             <button onclick="openEditYogiModal('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer"'} title="ပြင်ဆင်မည်">
               <i class="fa-solid fa-pen-to-square"></i>
@@ -592,4 +600,3 @@ window.exportYogiCSV = function() {
   link.download = `${currentYogiTable}_List_${currentYogiStatus}_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
-
