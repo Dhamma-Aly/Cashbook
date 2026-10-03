@@ -1,62 +1,64 @@
-<!-- view/report-system.html - Annual & Summary Expense Matrix Report (D1 Aligned & Mobile Responsive) -->
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report (Guaranteed Single Row) -->
 
 <div id="report-section" class="space-y-4">
   
-  <!-- 💡 RESPONSIVE ACTION BAR (ဖုန်းတွင် အံဝင်ခွင်ကျဖြစ်ပြီး ကွန်ပျူတာတွင် ကျစ်လျစ်စွာ ပေါ်စေသည်) -->
-  <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl sm:rounded-2xl shadow-xl">
-    
-    <!-- Left: Search Box (ရှာဖွေရန်) -->
-    <div class="relative w-full lg:w-72 shrink-0">
-      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="အစီရင်ခံစာ ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
-    </div>
-
-    <!-- Right: Controls Group (Mode, Year, Refresh & Export) -->
-    <div class="flex flex-wrap items-center gap-2 sm:gap-2.5 justify-end shrink-0">
+  <!-- 🌟 GUARANTEED SINGLE ROW ACTION BAR (တစ်တန်းတည်း တစ်ကြောင်းတည်း ပေါ်စေသည်) -->
+  <div class="bg-[#0f172a] border border-amber-500/20 p-2.5 sm:p-3 rounded-xl shadow-xl overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+    <div class="flex items-center justify-between gap-3 min-w-[760px] whitespace-nowrap">
       
-      <!-- Annual vs Summary Mode Toggle -->
-      <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/25 p-1 rounded-xl text-xs shrink-0">
-        <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-3 py-1.5 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
-          <i class="fa-solid fa-calendar-days text-amber-400 text-xs"></i>
-          <span>Annual</span>
-        </button>
-
-        <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
-          <i class="fa-solid fa-chart-column text-amber-400/70 text-xs"></i>
-          <span>Summary</span>
-        </button>
+      <!-- Left: Clean Jet-Black Search Box -->
+      <div class="relative w-64 sm:w-72 shrink-0">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+        <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="အစီရင်ခံစာ ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-[#050811] border border-slate-700/70 text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium">
       </div>
 
-      <!-- Year Selector Dropdown -->
-      <div class="flex items-center gap-2 bg-[#080d1a] border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-200 shrink-0">
-        <i class="fa-solid fa-calendar text-amber-400 text-xs"></i>
-        <label for="report-year-select" class="text-amber-300/80 font-bold">ခုနှစ်:</label>
-        <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-extrabold outline-none cursor-pointer">
-          <option value="2026" selected>2026</option>
-          <option value="2025">2025</option>
-          <option value="2024">2024</option>
-          <option value="2023">2023</option>
-        </select>
-      </div>
-
-      <!-- Refresh & Export Action Buttons -->
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="renderReportView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer" title="Refresh">
-          <i class="fa-solid fa-rotate text-xs"></i>
-          <span class="hidden sm:inline">Refresh</span>
-        </button>
+      <!-- Right: All Controls on the Same Single Line -->
+      <div class="flex items-center gap-2 sm:gap-2.5 shrink-0">
         
-        <button onclick="exportReportCSV()" class="p-2 sm:px-3.5 sm:py-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer" title="Export CSV">
-          <i class="fa-solid fa-file-export text-xs"></i>
-          <span>Export</span>
-        </button>
+        <!-- Annual vs Summary Mode Toggle -->
+        <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/25 p-1 rounded-xl text-xs shrink-0">
+          <button id="btn-report-annual" onclick="switchReportMode('Annual')" class="px-3 py-1.5 rounded-lg font-extrabold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
+            <i class="fa-solid fa-calendar-days text-amber-400 text-xs"></i>
+            <span>Annual</span>
+          </button>
+
+          <button id="btn-report-summary" onclick="switchReportMode('Summary')" class="px-3 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-chart-column text-amber-400/70 text-xs"></i>
+            <span>Summary</span>
+          </button>
+        </div>
+
+        <!-- Year Selector Dropdown -->
+        <div class="flex items-center gap-2 bg-[#080d1a] border border-amber-500/30 px-3 py-1.5 rounded-xl text-xs font-bold text-amber-200 shrink-0">
+          <i class="fa-solid fa-calendar text-amber-400 text-xs"></i>
+          <label for="report-year-select" class="text-amber-300/80 font-bold">ခုနှစ်:</label>
+          <select id="report-year-select" onchange="onReportYearChange(this.value)" class="bg-transparent text-amber-300 font-extrabold outline-none cursor-pointer">
+            <option value="2026" selected>2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+          </select>
+        </div>
+
+        <!-- Refresh & Export Action Buttons -->
+        <div class="flex items-center gap-2 shrink-0">
+          <button onclick="renderReportView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer" title="Refresh">
+            <i class="fa-solid fa-rotate text-xs"></i>
+            <span class="hidden sm:inline">Refresh</span>
+          </button>
+          
+          <button onclick="exportReportCSV()" class="p-2 sm:px-3.5 sm:py-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer" title="Export CSV">
+            <i class="fa-solid fa-file-export text-xs"></i>
+            <span>Export</span>
+          </button>
+        </div>
+
       </div>
 
     </div>
-
   </div>
 
-  <!-- 📊 16-Column Annual & Summary Matrix Table Container (Smooth Touch Scrolling) -->
+  <!-- 📊 16-Column Matrix Table Container -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl sm:rounded-2xl overflow-x-auto shadow-2xl relative" style="-webkit-overflow-scrolling: touch;">
     <table id="report-matrix-table" class="w-full text-left border-collapse min-w-[1600px] text-xs">
       <thead id="report-table-header">
