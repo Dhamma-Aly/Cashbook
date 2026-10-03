@@ -1,57 +1,58 @@
-<!-- view/Banks.html - Fully Refined Banks & Books View (100% D1 Aligned) -->
+<!-- view/Banks.html - Fully Refined Banks & Books View (Crisp International Search Box) -->
 
-<div class="space-y-5">
+<div class="space-y-4 sm:space-y-5">
   
   <!-- Top 4 KPI Cards -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
     <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">စုစုပေါင်းဝင်ငွေ</p>
-        <h3 id="kpi-income" class="text-base font-extrabold text-emerald-400 mt-1">0 MMK</h3>
+      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0"><i class="fa-solid fa-arrow-trend-up text-xl"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase font-bold text-amber-400/80 truncate">စုစုပေါင်းဝင်ငွေ</p>
+        <h3 id="kpi-income" class="text-base font-extrabold text-emerald-400 mt-1 truncate font-mono">0 MMK</h3>
       </div>
     </div>
     <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400"><i class="fa-solid fa-arrow-trend-down text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">စုစုပေါင်းထွက်ငွေ</p>
-        <h3 id="kpi-expense" class="text-base font-extrabold text-rose-400 mt-1">0 MMK</h3>
+      <div class="p-3.5 rounded-lg bg-rose-500/10 text-rose-400 shrink-0"><i class="fa-solid fa-arrow-trend-down text-xl"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase font-bold text-amber-400/80 truncate">စုစုပေါင်းထွက်ငွေ</p>
+        <h3 id="kpi-expense" class="text-base font-extrabold text-rose-400 mt-1 truncate font-mono">0 MMK</h3>
       </div>
     </div>
     <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400"><i class="fa-solid fa-scale-balanced text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">လက်ကျန်ငွေ</p>
-        <h3 id="kpi-balance" class="text-base font-extrabold text-amber-300 mt-1">0 MMK</h3>
+      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-scale-balanced text-xl"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase font-bold text-amber-400/80 truncate">လက်ကျန်ငွေ</p>
+        <h3 id="kpi-balance" class="text-base font-extrabold text-amber-300 mt-1 truncate font-mono">0 MMK</h3>
       </div>
     </div>
     <div class="stats-card">
-      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400"><i class="fa-solid fa-list-check text-xl"></i></div>
-      <div>
-        <p class="text-[10px] uppercase font-bold text-amber-400/80">စာကြောင်းရေ</p>
-        <h3 id="kpi-count" class="text-base font-extrabold text-amber-100 mt-1">0</h3>
+      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400 shrink-0"><i class="fa-solid fa-list-check text-xl"></i></div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[10px] uppercase font-bold text-amber-400/80 truncate">စာကြောင်းရေ</p>
+        <h3 id="kpi-count" class="text-base font-extrabold text-amber-100 mt-1 truncate font-mono">0</h3>
       </div>
     </div>
   </div>
 
-  <!-- Action Bar -->
-  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-4 rounded-xl gap-4 shadow-xl">
-    <!-- Search Box -->
-    <div class="w-full md:w-1/2 relative">
+  <!-- Action Bar (🌟 International Standard Crisp Search Box) -->
+  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
+    
+    <!-- 🌟 Crisp Clean Search Input (နောက်ခံညစ်မနေတော့ဘဲ ကြည်လင်ပြတ်သားသည်) -->
+    <div class="w-full md:w-80 relative">
       <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
+      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="စာရင်းများ ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-[#050811] border border-slate-700/70 text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium">
     </div>
 
     <!-- Right Action Buttons -->
-    <div class="flex items-center gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
-      <button onclick="loadSheetView()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
-      <button onclick="exportCSV()" class="p-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
-      <button id="btn-add-entry" onclick="openAddModal()" class="p-2.5 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-plus text-xs"></i> + စာရင်းအသစ်ထည့်ရန်</button>
+    <div class="flex items-center gap-2 sm:gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
+      <button onclick="loadSheetView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+      <button onclick="exportCSV()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+      <button id="btn-add-entry" onclick="openAddModal()" class="p-2 sm:px-3.5 sm:py-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-plus text-xs"></i> + စာရင်းအသစ်ထည့်ရန်</button>
     </div>
   </div>
 
-  <!-- Table Container (🌟 ကော်လံ အစဉ်လိုက် အသစ်အတိုင်း နေရာချထားသည်) -->
-  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl">
+  <!-- Table Container (ကော်လံ အစဉ်လိုက်အသစ်) -->
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
     <table class="w-full text-left border-collapse min-w-[1480px]">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
@@ -59,12 +60,12 @@
           <th class="w-28 py-3.5 px-2">ရက်စွဲ</th>
           <th class="w-28 py-3.5 px-2">ခေါင်းစဉ်</th>
           <th class="w-36 py-3.5 px-2">ခေါင်းစဉ်ခွဲ</th>
-          <th class="min-w-[260px] py-3.5 px-3">အကြောင်းအရာ</th>       <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
-          <th class="w-32 text-right py-3.5 px-2">ဝင်ငွေ</th>            <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
-          <th class="w-32 text-right py-3.5 px-2">ထွက်ငွေ</th>           <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
-          <th class="w-32 text-right py-3.5 px-2">လက်ကျန်</th>           <!-- 👈 ရှေ့သို့ ရွှေ့ထားသည် -->
-          <th class="w-28 py-3.5 px-2">ဘောင်ချာ</th>                    <!-- 👉 နောက်သို့ ရွှေ့ထားသည် -->
-          <th class="w-28 py-3.5 px-2">လက်ခံသူ</th>                     <!-- 👉 နောက်သို့ ရွှေ့ထားသည် -->
+          <th class="min-w-[260px] py-3.5 px-3">အကြောင်းအရာ</th>
+          <th class="w-32 text-right py-3.5 px-2">ဝင်ငွေ</th>
+          <th class="w-32 text-right py-3.5 px-2">ထွက်ငွေ</th>
+          <th class="w-32 text-right py-3.5 px-2">လက်ကျန်</th>
+          <th class="w-28 py-3.5 px-2">ဘောင်ချာ</th>
+          <th class="w-28 py-3.5 px-2">လက်ခံသူ</th>
           <th class="w-24 py-3.5 px-2">လနှစ်</th>
           <th class="w-36 py-3.5 px-2">စာအုပ်အမည်</th>
           <th class="w-24 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2">လုပ်ဆောင်ချက်</th>
@@ -81,7 +82,7 @@
   </div>
 
   <!-- Pagination Bar -->
-  <div id="ledger-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-5 py-3 rounded-xl gap-4 text-xs">
+  <div id="ledger-pagination-bar" class="flex flex-col sm:flex-row items-center justify-between bg-[#0f172a] border border-amber-500/20 px-4 sm:px-5 py-3 rounded-xl gap-3 sm:gap-4 text-xs">
     <div class="text-amber-200/80 font-medium">
       Showing <span id="page-start" class="font-bold text-amber-400">0</span> to <span id="page-end" class="font-bold text-amber-400">0</span> of <span id="total-entries" class="font-bold text-amber-400">0</span> entries
     </div>
@@ -98,7 +99,7 @@
 
 </div>
 
-<!-- 💡 3-TIER DEPENDENT DROPDOWN CASCADING MODAL -->
+<!-- 💡 MODAL DIALOG -->
 <div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
@@ -171,7 +172,7 @@
         </div>
       </div>
 
-      <!-- Row 4: Receiver Dropdown (Sender/User) -->
+      <!-- Row 4: Receiver Dropdown -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">လက်ခံသူ / တာဝန်ခံ (User/Receiver)</label>
         <select id="entry-receiver" onchange="if(typeof onEntryReceiverChange === 'function') onEntryReceiverChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
