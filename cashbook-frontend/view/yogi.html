@@ -1,101 +1,92 @@
-<!-- view/yogi.html - Yogi Management (D1 Schema Aligned & Mobile/Tablet Optimized) -->
+<!-- view/yogi.html - Yogi Management View (4 Cards Single Row & Clean Search Box) -->
 <div class="space-y-4 sm:space-y-5">
   
-  <!-- 🌟 Top 5 Yogi KPI Cards (ဖုန်းတွင် ညီညာစွာ ၂ တန်းခွဲ၍ ကွန်ပျူတာတွင် ၅ ခု တန်းစီပေါ်စေသည်) -->
-  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
+  <!-- 🌟 Top 4 Yogi KPI Cards (App တစ်ခုလုံးနှင့်အညီ ၄ ခု တစ်တန်းတည်း ညီညာစွာ ပေါ်စေသည်) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
     
     <!-- 1. ရဟန်း / သံဃာ -->
-    <div class="stats-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-amber-500/25 flex items-center gap-2.5 sm:gap-3 shadow-lg">
-      <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-400 shrink-0">
-        <i class="fa-solid fa-vihara text-base sm:text-lg"></i>
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0">
+        <i class="fa-solid fa-vihara text-xl"></i>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-amber-400/80 truncate">ရဟန်း / သံဃာ</p>
-        <h3 id="kpi-yogi-monks" class="text-xs sm:text-base font-black text-amber-300 mt-0.5 truncate font-mono">0</h3>
+        <p class="text-[10px] uppercase font-bold text-amber-400/80 truncate">ရဟန်း / သံဃာ</p>
+        <h3 id="kpi-yogi-monks" class="text-base font-extrabold text-amber-300 mt-1 truncate font-mono">0</h3>
       </div>
     </div>
 
     <!-- 2. သီလရှင် -->
-    <div class="stats-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-emerald-500/25 flex items-center gap-2.5 sm:gap-3 shadow-lg">
-      <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-400 shrink-0">
-        <i class="fa-solid fa-user-ninja text-base sm:text-lg"></i>
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+        <i class="fa-solid fa-user-ninja text-xl"></i>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-emerald-400/80 truncate">သီလရှင်</p>
-        <h3 id="kpi-yogi-nuns" class="text-xs sm:text-base font-black text-emerald-400 mt-0.5 truncate font-mono">0</h3>
+        <p class="text-[10px] uppercase font-bold text-emerald-400/80 truncate">သီလရှင်</p>
+        <h3 id="kpi-yogi-nuns" class="text-base font-extrabold text-emerald-400 mt-1 truncate font-mono">0</h3>
       </div>
     </div>
 
-    <!-- 3. လူပုဂ္ဂိုလ် (ကျား) -->
-    <div class="stats-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-sky-500/25 flex items-center gap-2.5 sm:gap-3 shadow-lg">
-      <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-sky-500/10 text-sky-400 shrink-0">
-        <i class="fa-solid fa-person text-base sm:text-lg"></i>
+    <!-- 3. လူပုဂ္ဂိုလ် (ကျား / မ) -->
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
+        <i class="fa-solid fa-users-between-lines text-xl"></i>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-sky-400/80 truncate">လူပုဂ္ဂိုလ် (ကျား)</p>
-        <h3 id="kpi-yogi-males" class="text-xs sm:text-base font-black text-sky-400 mt-0.5 truncate font-mono">0</h3>
+        <p class="text-[10px] uppercase font-bold text-sky-400/80 truncate">လူပုဂ္ဂိုလ် (ကျား / မ)</p>
+        <div class="flex items-center gap-1.5 mt-1 font-mono font-bold text-xs">
+          <span class="text-sky-300"><span id="kpi-yogi-males">0</span> ကျား</span>
+          <span class="text-slate-500">/</span>
+          <span class="text-rose-300"><span id="kpi-yogi-females">0</span> မ</span>
+        </div>
       </div>
     </div>
 
-    <!-- 4. လူပုဂ္ဂိုလ် (မ) -->
-    <div class="stats-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-rose-500/25 flex items-center gap-2.5 sm:gap-3 shadow-lg">
-      <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-rose-500/10 text-rose-400 shrink-0">
-        <i class="fa-solid fa-person-dress text-base sm:text-lg"></i>
+    <!-- 4. စခန်းတွင်း စုစုပေါင်း -->
+    <div class="stats-card">
+      <div class="p-3.5 rounded-lg bg-amber-500/15 text-amber-300 shrink-0">
+        <i class="fa-solid fa-users text-xl"></i>
       </div>
       <div class="min-w-0 flex-1">
-        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-rose-400/80 truncate">လူပုဂ္ဂိုလ် (မ)</p>
-        <h3 id="kpi-yogi-females" class="text-xs sm:text-base font-black text-rose-400 mt-0.5 truncate font-mono">0</h3>
-      </div>
-    </div>
-
-    <!-- 5. စခန်းတွင်း စုစုပေါင်း (ဖုန်းတွင် အောက်ခြေ၌ ၂ ကော်လံ အပြည့် နေရာယူစေသည်) -->
-    <div class="col-span-2 sm:col-span-1 stats-card p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[#0f172a] border border-amber-400/40 flex items-center gap-2.5 sm:gap-3 shadow-lg bg-gradient-to-r from-amber-500/5 to-transparent">
-      <div class="p-2 sm:p-2.5 rounded-lg sm:rounded-xl bg-amber-500/20 text-amber-300 shrink-0">
-        <i class="fa-solid fa-users text-base sm:text-lg"></i>
-      </div>
-      <div class="min-w-0 flex-1">
-        <p class="text-[9.5px] sm:text-[10px] uppercase font-bold text-amber-300 truncate">စခန်းတွင်း စုစုပေါင်း</p>
-        <h3 id="kpi-yogi-total" class="text-xs sm:text-base font-black text-amber-200 mt-0.5 truncate font-mono">0</h3>
+        <p class="text-[10px] uppercase font-bold text-amber-300/80 truncate">စခန်းတွင်း စုစုပေါင်း</p>
+        <h3 id="kpi-yogi-total" class="text-base font-black text-amber-200 mt-1 truncate font-mono">0</h3>
       </div>
     </div>
 
   </div>
 
-  <!-- Action Bar (Search, Active/Inactive Tabs & Action Buttons) -->
-  <div class="flex flex-col lg:flex-row justify-between items-stretch lg:items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl sm:rounded-2xl gap-3 sm:gap-4 shadow-xl">
+  <!-- Action Bar (🌟 Clean Jet-Black Search Box) -->
+  <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
     
-    <!-- Search Box -->
-    <div class="w-full lg:w-80 relative shrink-0">
+    <div class="w-full md:w-80 relative">
       <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="ယောဂီအမည်၊ NRC၊ ဖုန်းဖြင့် ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-xl bg-[#080d1a]/80 backdrop-blur-md border border-amber-500/30 text-slate-100 placeholder:text-slate-400 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400 transition-all font-medium">
+      <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="ယောဂီအမည်၊ NRC၊ ဖုန်းဖြင့် ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-[#050811] border border-slate-700/70 text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium">
     </div>
 
-    <!-- Center/Right Controls Group -->
-    <div class="flex flex-wrap items-center justify-between lg:justify-end gap-2 sm:gap-3">
+    <div class="flex flex-wrap items-center justify-between md:justify-end gap-2 sm:gap-2.5 shrink-0 whitespace-nowrap">
       
-      <!-- Active / Inactive Tabs Toggle -->
-      <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/25 p-1 rounded-xl text-xs shrink-0">
-        <button id="tab-yogi-active" onclick="switchYogiStatusTab('Active')" class="px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
+      <!-- Active / Inactive Tabs -->
+      <div class="flex items-center gap-1 bg-[#080d1a] border border-amber-500/25 p-1 rounded-xl text-xs">
+        <button id="tab-yogi-active" onclick="switchYogiStatusTab('Active')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm">
           <i class="fa-solid fa-user-check text-xs"></i> <span>Active</span>
         </button>
-        <button id="tab-yogi-inactive" onclick="switchYogiStatusTab('Inactive')" class="px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
+        <button id="tab-yogi-inactive" onclick="switchYogiStatusTab('Inactive')" class="px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer">
           <i class="fa-solid fa-user-xmark text-xs"></i> <span>Inactive</span>
         </button>
       </div>
 
-      <!-- Action Buttons (Refresh, Export, Add) -->
-      <div class="flex items-center gap-2 shrink-0">
-        <button onclick="renderYogiView()" class="p-2 sm:px-3 sm:py-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> <span class="hidden sm:inline">Refresh</span></button>
-        <button onclick="exportYogiCSV()" class="p-2 sm:px-3 sm:py-2.5 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> <span class="hidden sm:inline">Export</span></button>
-        <button id="btn-add-yogi" onclick="openAddYogiModal()" class="p-2 sm:px-3.5 sm:py-2.5 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-user-plus text-xs"></i> <span>+ ယောဂီအသစ်ထည့်ရန်</span></button>
+      <!-- Buttons -->
+      <div class="flex items-center gap-2">
+        <button onclick="renderYogiView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
+        <button onclick="exportYogiCSV()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
+        <button id="btn-add-yogi" onclick="openAddYogiModal()" class="p-2 sm:px-3.5 sm:py-2 bg-amber-600 hover:bg-amber-500 text-amber-950 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-user-plus text-xs"></i> + ယောဂီအသစ်ထည့်ရန်</button>
       </div>
 
     </div>
 
   </div>
 
-  <!-- Table Container (14 Columns with Smooth Touch Scrolling) -->
-  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl sm:rounded-2xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
+  <!-- Table Container -->
+  <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
     <table class="w-full text-left border-collapse min-w-[1550px]">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
@@ -143,11 +134,10 @@
 
 </div>
 
-<!-- 💡 FULLY COMPLETED YOGI ENTRY MODAL (D1 Aligned) -->
+<!-- MODAL DIALOG -->
 <div id="yogi-entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
-    <!-- Modal Header -->
     <div style="padding: 14px 20px !important; background-color: #020617 !important; border-bottom: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: space-between !important; shrink: 0;">
       <div style="display: flex; align-items: center; gap: 10px;">
         <div style="width: 32px; height: 32px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); color: #fbbf24; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold;">
@@ -162,14 +152,10 @@
       </button>
     </div>
 
-    <!-- Modal Form Body -->
     <form id="yogi-entry-form" onsubmit="saveYogiEntryForm(event)" style="padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 14px !important; overflow-y: auto !important; flex: 1 !important;">
-      
-      <!-- Hidden Inputs -->
       <input type="hidden" id="yogi-uniqueId" value="">
       <input type="hidden" id="yogi-sheet-type" value="Permanent Yogi">
 
-      <!-- Row 1: Category & Start Date -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အမျိုးအစား (Category)</label>
@@ -188,7 +174,6 @@
         </div>
       </div>
 
-      <!-- Row 2: Yogi Name & Father Name -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ယောဂီ အမည် <span style="color: #f43f5e;">*</span></label>
@@ -201,7 +186,6 @@
         </div>
       </div>
 
-      <!-- Row 3: NRC (4-Part Layout) -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">မှတ်ပုံတင်အမှတ် (NRC)</label>
         <div style="display: grid !important; grid-template-columns: 1fr 1fr 1fr 1fr !important; gap: 8px !important; width: 100% !important;">
@@ -224,7 +208,6 @@
         </div>
       </div>
 
-      <!-- Row 4: DOB, Age, Gender -->
       <div style="display: grid !important; grid-template-columns: 2fr 1fr 1fr !important; gap: 10px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">မွေးသက္ကရာဇ် (DOB)</label>
@@ -245,7 +228,6 @@
         </div>
       </div>
 
-      <!-- Row 5: Phones -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ယောဂီ ဖုန်းနံပါတ်</label>
@@ -258,22 +240,15 @@
         </div>
       </div>
 
-      <!-- Row 6: Address -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">နေရပ်လိပ်စာ</label>
         <textarea id="yogi-address" rows="2" placeholder="မြို့နယ်၊ တိုင်းဒေသကြီး / ပြည်နယ်..." style="width: 100% !important; padding: 10px 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important; resize: none !important;"></textarea>
       </div>
 
-      <!-- Footer Buttons -->
       <div style="padding-top: 12px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
-        <button type="button" onclick="closeYogiModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">
-          Cancel
-        </button>
-        <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">
-          Save
-        </button>
+        <button type="button" onclick="closeYogiModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">Cancel</button>
+        <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">Save</button>
       </div>
-
     </form>
   </div>
 </div>
