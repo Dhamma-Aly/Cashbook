@@ -1,13 +1,29 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
-// 100% Aligned with view/Banks.html Column Order:
-// စဉ် | ရက်စွဲ | ခေါင်းစဉ် | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ခေါင်းစဉ်ခွဲ | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
+// Clean Architecture: Fully driven by window.CONFIG & view/Banks.html
+// Features: Myanmar-to-English Number Normalization (6-0001, 15000)
+// Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ခေါင်းစဉ်ခွဲ | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
 let ledgerCurrentPage = 1;
 let bankAllEntries = [];      
 let bankFilteredEntries = []; 
+
+// 🌟 မြန်မာဂဏန်း (၀-၉) အား အင်္ဂလိပ်ဂဏန်း (0-9) သို့ အလိုအလျောက် ပြောင်းပေးသော Engine
+window.toEnglishDigits = function(str) {
+  if (str === null || str === undefined) return '';
+  const myanmarDigits = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
+  return String(str).replace(/[၀-၉]/g, (ch) => myanmarDigits.indexOf(ch));
+};
+
+// 🌟 ငွေပမာဏ ကော်မာနှင့် မြန်မာဂဏန်းများ ရှင်းထုတ်ပြီး Float အဖြစ် ပြောင်းပေးခြင်း
+window.parseAmount = function(val) {
+  if (val === null || val === undefined || val === '') return 0;
+  const eng = window.toEnglishDigits(val);
+  const clean = String(eng).replace(/[^0-9.-]/g, '');
+  return parseFloat(clean) || 0;
+};
 
 // 💡 config.js ထံမှ Table အမည်အမှန်ကို တိုက်ရိုက် ရယူခြင်း
 function resolveD1Table(nameOrKey) {
@@ -37,7 +53,6 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
-// 💡 config.js ထံမှ Dropdown Group Key ကို တိုက်ရိုက် ရယူခြင်း
 function getTreeGroupKey(tableName) {
   const tbl = resolveD1Table(tableName);
   return window.CONFIG?.TABLE_GROUP_MAP?.[tbl] || window.CONFIG?.SHEET_GROUP_MAP?.[tbl] || 'PADETHA_BOOKS';
@@ -168,42 +183,21 @@ function renderLedgerTable() {
         ? `<div class="text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 view/Banks.html ၏ ကော်လံအစဉ်အတိုင်း ၁၀၀% တိကျစွာ တန်းညှိထားသည်
-      // စဉ် (1) | ရက်စွဲ (2) | ခေါင်းစဉ် (3) | အကြောင်းအရာ (4) | ဝင်ငွေ (5) | ထွက်ငွေ (6) | လက်ကျန် (7) | ခေါင်းစဉ်ခွဲ (8) | ဘောင်ချာ (9) | လက်ခံသူ (10) | လနှစ် (11) | စာအုပ်အမည် (12) | လုပ်ဆောင်ချက် (13)
+      // 🌟 view/Banks.html ၏ ကော်လံအစဉ်အတိုင်း ၁၀၀% တန်းညှိထားသည်
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
-          
-          <!-- 4. အကြောင်းအရာ -->
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
-          
-          <!-- 5. ဝင်ငွေ -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
-          
-          <!-- 6. ထွက်ငွေ -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
-          
-          <!-- 7. လက်ကျန် -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
-
-          <!-- 🌟 8. ခေါင်းစဉ်ခွဲ (လက်ကျန်၏ အနောက်သို့ နေရာမှန် ရောက်ရှိသွားသည်) -->
           <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
-
-          <!-- 9. ဘောင်ချာ -->
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
-          
-          <!-- 10. လက်ခံသူ -->
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
-          
-          <!-- 11. လနှစ် -->
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          
-          <!-- 12. စာအုပ်အမည် -->
           <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-3">${entry.book_name || currentTable}</td>
-          
-          <!-- 13. လုပ်ဆောင်ချက် -->
           <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -393,7 +387,7 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// Save Form
+// 💾 Save Form (🌟 မြန်မာဂဏန်းများကို အလိုအလျောက် အင်္ဂလိပ်ဂဏန်းအဖြစ် ပြောင်းလဲသိမ်းဆည်းခြင်း)
 // -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -405,8 +399,14 @@ window.saveEntryForm = async function(event) {
   const title = document.getElementById("entry-category").value;
   const subcatEl = document.getElementById("entry-subcategory");
   const sub_title = subcatEl ? subcatEl.value : "";
-  const voucher_no = document.getElementById("entry-voucher").value.trim();
-  const amount = parseFloat(document.getElementById("entry-amount").value) || 0;
+  
+  // 🌟 ဘောက်ချာနံပါတ် (၆-၀၀၀၁ မှ 6-0001 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
+  const rawVoucher = document.getElementById("entry-voucher").value.trim();
+  const voucher_no = window.toEnglishDigits(rawVoucher);
+
+  // 🌟 ငွေပမာဏ (၁၅,၀၀၀ မှ 15000 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
+  const rawAmount = document.getElementById("entry-amount").value.trim();
+  const amount = window.parseAmount(rawAmount);
   
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const isBankTable = currentTable.includes('Bank');
@@ -598,7 +598,8 @@ window.editEntry = function(uid) {
     subcatSelect.value = entry.sub_title;
   }
 
-  document.getElementById("entry-voucher").value = entry.voucher_no || "";
+  // 🌟 ဘောက်ချာနံပါတ်နှင့် ပမာဏကို အင်္ဂလိပ်ဂဏန်းဖြင့် သန့်ရှင်းစွာ ဖြည့်သွင်းခြင်း
+  document.getElementById("entry-voucher").value = window.toEnglishDigits(entry.voucher_no || "");
   document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
   document.getElementById("entry-description").value = entry.description || "";
 };
@@ -633,7 +634,6 @@ window.deleteEntry = async function(uid) {
   }
 };
 
-// 🌟 view/Banks.html ၏ ကော်လံအစဉ်သစ်အတိုင်း CSV ထုတ်ပေးခြင်း
 window.exportCSV = function() {
   if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
@@ -644,7 +644,6 @@ window.exportCSV = function() {
   const isBankTable = currentTable.includes('Bank');
 
   let csv = "\uFEFF";
-  // 🌟 ခေါင်းစဉ်ခွဲကို လက်ကျန်နောက်သို့ ရွှေ့ထားသော အစဉ်လိုက်
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
@@ -656,7 +655,7 @@ window.exportCSV = function() {
       e.no || (idx + 1), esc(e.date), esc(e.title),
       esc(e.description), e.income || 0, e.expense || 0, e.balance || 0,
       esc(e.sub_title),
-      esc(e.voucher_no), esc(receiverText), esc(my), esc(e.book_name || currentTable)
+      esc(window.toEnglishDigits(e.voucher_no)), esc(receiverText), esc(my), esc(e.book_name || currentTable)
     ].join(",") + "\n";
   });
 
