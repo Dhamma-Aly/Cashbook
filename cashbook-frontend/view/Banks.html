@@ -1,4 +1,4 @@
-<!-- view/Banks.html - Fully Refined Banks & Books View (Smart Myanmar-to-English Auto Convert) -->
+<!-- view/Banks.html - Fully Refined Banks & Books View (Ultra-Clean Centered Search Bar) -->
 
 <div class="space-y-4 sm:space-y-5">
   
@@ -36,11 +36,14 @@
 
   <!-- Action Bar -->
   <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
-    <div class="w-full md:w-80 relative">
-      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="စာရင်းများ ရှာဖွေရန်..." style="background-color: #050811 !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; color: #f8fafc !important;" class="w-full pl-9 pr-4 py-2 text-xs rounded-lg placeholder:text-slate-500 outline-none focus:border-amber-400 transition-all font-medium">
+    
+    <!-- 🌟 သပ်ရပ် လှပသော Ultra-Clean Search Box (Icon အလယ်တည့်တည့်ကျပြီး စာသားမထပ်စေပါ) -->
+    <div style="position: relative !important; width: 100% !important; max-width: 380px !important; display: flex !important; align-items: center !important;">
+      <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 15px !important; top: 50% !important; transform: translateY(-50%) !important; color: #fbbf24 !important; font-size: 13px !important; pointer-events: none !important; z-index: 2 !important;"></i>
+      <input type="text" id="search-input" oninput="onLedgerSearchInput()" placeholder="စာရင်းများ ရှာဖွေရန်..." style="width: 100% !important; height: 40px !important; padding: 0 16px 0 42px !important; background-color: #050811 !important; border: 1px solid rgba(51, 65, 85, 0.9) !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;" class="focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium placeholder:text-slate-500">
     </div>
 
+    <!-- Right Action Buttons -->
     <div class="flex items-center gap-2 sm:gap-2.5 justify-end w-full md:w-auto shrink-0 whitespace-nowrap">
       <button onclick="loadSheetView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
       <button onclick="exportCSV()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
@@ -96,7 +99,7 @@
 
 </div>
 
-<!-- 💡 MODAL DIALOG (Smart Myanmar-to-English Auto Convert) -->
+<!-- MODAL DIALOG -->
 <div id="entry-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.88) !important; z-index: 99999 !important;">
   <div style="width: 100% !important; max-width: 560px !important; background-color: #0f172a !important; border: 1px solid #334155 !important; border-radius: 16px !important; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8) !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; max-height: 90vh !important;">
     
@@ -118,7 +121,6 @@
       
       <input type="hidden" id="entry-id" value="">
 
-      <!-- Row 1: Date & Type -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ရက်စွဲ (Date) <span style="color: #f43f5e;">*</span></label>
@@ -135,7 +137,6 @@
         </div>
       </div>
 
-      <!-- Row 2: Title & Sub-Title / Target -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ခေါင်းစဉ် (Title)</label>
@@ -154,22 +155,18 @@
         </div>
       </div>
 
-      <!-- Row 3: Voucher & Amount (🌟 Auto-Convert Myanmar to English on Type) -->
       <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 14px !important; width: 100% !important;">
-        <!-- ဘောက်ချာနံပါတ် (Voucher No) -->
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ဘောက်ချာနံပါတ် (Voucher No)</label>
           <input type="text" id="entry-voucher" oninput="if(typeof window.toEnglishDigits === 'function') this.value = window.toEnglishDigits(this.value)" placeholder="ဥပမာ- 6-0001" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important; font-family: monospace;">
         </div>
 
-        <!-- ငွေပမာဏ (Amount - MMK) -> inputmode="decimal" ဖြင့် ဗမာဂဏန်းရော Eng ပါ ရိုက်ခွင့်ပြုသည် -->
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ငွေပမာဏ (Amount - MMK) <span style="color: #f43f5e;">*</span></label>
           <input type="text" inputmode="decimal" id="entry-amount" required oninput="if(typeof window.toEnglishDigits === 'function') this.value = window.toEnglishDigits(this.value)" placeholder="0.00" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; font-weight: 800 !important; box-sizing: border-box !important; outline: none !important; font-family: monospace;">
         </div>
       </div>
 
-      <!-- Row 4: Receiver Dropdown -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">လက်ခံသူ / တာဝန်ခံ (User/Receiver)</label>
         <select id="entry-receiver" onchange="if(typeof onEntryReceiverChange === 'function') onEntryReceiverChange(this.value)" style="width: 100% !important; height: 38px !important; padding: 0 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
@@ -179,13 +176,11 @@
         </select>
       </div>
 
-      <!-- Row 5: Description -->
       <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; width: 100% !important;">
         <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">အကြောင်းအရာ (Description)</label>
         <textarea id="entry-description" rows="2" placeholder="အသေးစိတ် အကြောင်းအရာ ရေးသားပါ..." style="width: 100% !important; padding: 10px 12px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important; resize: none !important;"></textarea>
       </div>
 
-      <!-- Footer Buttons -->
       <div style="padding-top: 12px !important; border-top: 1px solid #1e293b !important; display: flex !important; align-items: center !important; justify-content: flex-end !important; gap: 12px !important;">
         <button type="button" onclick="closeEntryModal()" style="padding: 8px 18px !important; border-radius: 10px !important; background-color: #1e293b !important; color: #cbd5e1 !important; font-size: 12px !important; font-weight: 700 !important; border: none !important; cursor: pointer !important;">Cancel</button>
         <button type="submit" style="padding: 8px 22px !important; border-radius: 10px !important; background: linear-gradient(135deg, #d97706 0%, #b45309 100%) !important; color: #020617 !important; font-size: 12px !important; font-weight: 900 !important; border: none !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3) !important;">Save</button>
