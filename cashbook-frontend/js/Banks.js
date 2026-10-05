@@ -1,7 +1,7 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
-// Clean Architecture: Fully driven by window.CONFIG (No redundant definitions)
-// Features: Guaranteed 380px Width for Description (No awkward line breaks)
+// Clean Architecture: Fully driven by window.CONFIG & view/Banks.html
+// Width Control: 100% Controlled by <th> in HTML (No hardcoded widths in JS)
 // Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | ခေါင်းစဉ်ခွဲ | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
@@ -38,7 +38,6 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
-// 💡 config.js ထံမှ Dropdown Group Key ကို တိုက်ရိုက် ရယူခြင်း
 function getTreeGroupKey(tableName) {
   const tbl = resolveD1Table(tableName);
   return window.CONFIG?.TABLE_GROUP_MAP?.[tbl] || window.CONFIG?.SHEET_GROUP_MAP?.[tbl] || 'PADETHA_BOOKS';
@@ -164,10 +163,10 @@ function renderLedgerTable() {
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 Inline Style ဖြင့် 380px ပုံသေ အကျယ်ချုပ်ထားသော အကြောင်းအရာ (Never squeezed)
+      // 🌟 သဘာဝကျကျ အပေါ်က <th> ၏ အကျယ်အတိုင်း လိုက်နာမည့် Description (Hardcoded Width ကင်းစင်သည်)
       const escapedDesc = (entry.description || '').replace(/"/g, '&quot;');
       const descHtml = entry.description 
-        ? `<div style="width: 100% !important; min-width: 360px !important; max-width: 500px !important; font-size: 12px !important; line-height: 1.6 !important; white-space: normal !important;" class="text-slate-200 font-normal leading-relaxed cursor-default" title="${escapedDesc}">${entry.description}</div>`
+        ? `<div class="text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
       tableHTML += `
@@ -176,16 +175,14 @@ function renderLedgerTable() {
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
           <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
-          <!-- 🌟 TD အကွက်ကိုယ်တိုင်ကို 380px ပုံသေချုပ်ထားသည် -->
-          <td style="width: 380px !important; min-width: 380px !important; max-width: 500px !important;" class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
+          <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          <!-- 🌟 စာအုပ်အမည် မပြတ်စေရန် 160px ပုံသေချုပ်ထားသည် -->
-          <td style="width: 160px !important; min-width: 160px !important; white-space: nowrap !important;" class="text-xs text-amber-500/70 font-semibold px-2">${entry.book_name || currentTable}</td>
+          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-3">${entry.book_name || currentTable}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
