@@ -145,7 +145,7 @@
     <!-- Responsive Sidebar Navigation -->
     <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#080d1a] border-r border-amber-500/20 flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
       
-      <!-- 🌟 Sidebar Header: Logo ကို 28px ပုံသေ ချုပ်ထားသည် -->
+      <!-- 🌟 Sidebar Header -->
       <div class="h-[64px] px-4 border-b border-amber-500/20 flex items-center justify-between text-amber-100 bg-[#020617] shrink-0">
         <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide min-w-0" style="display: flex !important; align-items: center !important; gap: 10px !important;">
           <div class="sidebar-logo-box">
@@ -235,19 +235,19 @@
           <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-slate-100 tracking-wide truncate">Home Dashboard</h1>
         </div>
 
-        <!-- Right Status Indicators -->
+        <!-- 🌟 Right Status Indicators (Vertically Centered & Matching Heights) -->
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           
-          <!-- 🌟 အကွက်လွတ်မဖြစ်တော့ဘဲ မီးစိမ်းလေးနှင့် "Online" ပီပြင်စွာ ပေါ်စေမည့် Badge -->
-          <div id="network-status-badge" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block"></span>
-            <span id="network-status-text">Online</span>
+          <!-- 🌟 ၁။ Wi-Fi Icon ပါဝင်သော Live Status Badge -->
+          <div id="network-status-badge" class="h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-sm transition-all shrink-0">
+            <i id="network-status-icon" class="fa-solid fa-wifi text-emerald-400 text-xs"></i>
+            <span id="network-status-text" class="tracking-wide">Online</span>
           </div>
 
-          <!-- User Badge -->
-          <div id="user-badge" class="text-[11px] sm:text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 px-2.5 sm:px-3.5 py-1.5 rounded-lg flex items-center gap-2 shrink-0">
-            <i class="fa-solid fa-user-shield text-amber-400"></i> 
-            <span id="current-user-display" class="truncate max-w-[130px] sm:max-w-[220px]">Date: -- | Admin</span>
+          <!-- 🌟 ၂။ Real-Time Live Clock: "2026-10-05 | Mon | 9:09 PM | Admin" -->
+          <div id="user-badge" class="h-9 px-3 sm:px-3.5 rounded-xl text-[11px] sm:text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 flex items-center gap-2 shadow-sm shrink-0">
+            <i class="fa-solid fa-clock text-amber-400 text-xs"></i> 
+            <span id="current-user-display" class="font-mono text-xs whitespace-nowrap">2026-10-05 | Mon | --:-- -- | Admin</span>
           </div>
 
         </div>
@@ -276,19 +276,23 @@
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
-  <!-- Network Status Monitor & PWA Service Worker Registration -->
+  <!-- 🌟 Real-Time Live Clock & Network Status Scripts -->
   <script>
+    // 🌟 ၁။ Wi-Fi Icon (Online/Offline) Monitor
     function updateNetworkStatus() {
       const badge = document.getElementById('network-status-badge');
+      const icon = document.getElementById('network-status-icon');
       const text = document.getElementById('network-status-text');
-      if (!badge || !text) return;
+      if (!badge || !icon || !text) return;
 
       if (navigator.onLine) {
-        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse inline-block"></span><span id="network-status-text">Online</span>`;
+        badge.className = "h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border bg-emerald-500/10 text-emerald-400 border-emerald-500/30 shadow-sm transition-all shrink-0";
+        icon.className = "fa-solid fa-wifi text-emerald-400 text-xs animate-pulse";
+        text.textContent = "Online";
       } else {
-        badge.className = "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span><span id="network-status-text">Offline</span>`;
+        badge.className = "h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-2 border bg-rose-500/10 text-rose-400 border-rose-500/30 shadow-sm transition-all shrink-0";
+        icon.className = "fa-solid fa-wifi-slash text-rose-400 text-xs";
+        text.textContent = "Offline (Local)";
       }
     }
 
@@ -296,6 +300,38 @@
     window.addEventListener('offline', updateNetworkStatus);
     window.addEventListener('load', updateNetworkStatus);
     updateNetworkStatus();
+
+    // 🌟 ၂။ Real-Time Live Clock: "2026-10-05 | Mon | 9:09 PM | Admin"
+    function updateLiveHeaderClock() {
+      const el = document.getElementById("current-user-display");
+      if (!el) return;
+
+      const now = new Date();
+      const yyyy = now.getFullYear();
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const dd = String(now.getDate()).padStart(2, '0');
+      
+      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = days[now.getDay()];
+
+      let hours = now.getHours();
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // 0 becomes 12
+      const timeStr = `${hours}:${minutes} ${ampm}`;
+
+      const username = (typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null) 
+                    || localStorage.getItem('sasana_user_name') 
+                    || 'Admin';
+
+      // 🌟 တိကျသော ပုံစံ: 2026-10-05 | Mon | 9:09 PM | Admin
+      el.textContent = `${yyyy}-${mm}-${dd} | ${dayName} | ${timeStr} | ${username}`;
+    }
+
+    // စက္ကန့်တိုင်း Live နာရီ မွမ်းမံခြင်း
+    setInterval(updateLiveHeaderClock, 1000);
+    updateLiveHeaderClock();
 
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
