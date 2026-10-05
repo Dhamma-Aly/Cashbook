@@ -1,8 +1,7 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
-// Clean Architecture: Fully driven by window.CONFIG & view/Banks.html
-// Width Control: 100% Controlled by <th> in HTML (No hardcoded widths in JS)
-// Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | ခေါင်းစဉ်ခွဲ | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
+// 100% Aligned with view/Banks.html Column Order:
+// စဉ် | ရက်စွဲ | ခေါင်းစဉ် | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ခေါင်းစဉ်ခွဲ | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -38,6 +37,7 @@ function normalizeEntryType(typeStr) {
   return s || 'ဝင်ငွေ';
 }
 
+// 💡 config.js ထံမှ Dropdown Group Key ကို တိုက်ရိုက် ရယူခြင်း
 function getTreeGroupKey(tableName) {
   const tbl = resolveD1Table(tableName);
   return window.CONFIG?.TABLE_GROUP_MAP?.[tbl] || window.CONFIG?.SHEET_GROUP_MAP?.[tbl] || 'PADETHA_BOOKS';
@@ -163,26 +163,47 @@ function renderLedgerTable() {
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 သဘာဝကျကျ အပေါ်က <th> ၏ အကျယ်အတိုင်း လိုက်နာမည့် Description (Hardcoded Width ကင်းစင်သည်)
       const escapedDesc = (entry.description || '').replace(/"/g, '&quot;');
       const descHtml = entry.description 
         ? `<div class="text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
+      // 🌟 view/Banks.html ၏ ကော်လံအစဉ်အတိုင်း ၁၀၀% တိကျစွာ တန်းညှိထားသည်
+      // စဉ် (1) | ရက်စွဲ (2) | ခေါင်းစဉ် (3) | အကြောင်းအရာ (4) | ဝင်ငွေ (5) | ထွက်ငွေ (6) | လက်ကျန် (7) | ခေါင်းစဉ်ခွဲ (8) | ဘောင်ချာ (9) | လက်ခံသူ (10) | လနှစ် (11) | စာအုပ်အမည် (12) | လုပ်ဆောင်ချက် (13)
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
+          
+          <!-- 4. အကြောင်းအရာ -->
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
+          
+          <!-- 5. ဝင်ငွေ -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
+          
+          <!-- 6. ထွက်ငွေ -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
+          
+          <!-- 7. လက်ကျန် -->
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
+
+          <!-- 🌟 8. ခေါင်းစဉ်ခွဲ (လက်ကျန်၏ အနောက်သို့ နေရာမှန် ရောက်ရှိသွားသည်) -->
           <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
+
+          <!-- 9. ဘောင်ချာ -->
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
+          
+          <!-- 10. လက်ခံသူ -->
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
+          
+          <!-- 11. လနှစ် -->
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
+          
+          <!-- 12. စာအုပ်အမည် -->
           <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-3">${entry.book_name || currentTable}</td>
+          
+          <!-- 13. လုပ်ဆောင်ချက် -->
           <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">
             <div class="flex items-center justify-center gap-2">
               <button onclick="editEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
@@ -612,6 +633,7 @@ window.deleteEntry = async function(uid) {
   }
 };
 
+// 🌟 view/Banks.html ၏ ကော်လံအစဉ်သစ်အတိုင်း CSV ထုတ်ပေးခြင်း
 window.exportCSV = function() {
   if (!bankFilteredEntries || bankFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
@@ -622,7 +644,8 @@ window.exportCSV = function() {
   const isBankTable = currentTable.includes('Bank');
 
   let csv = "\uFEFF";
-  csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,ခေါင်းစဉ်ခွဲ,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
+  // 🌟 ခေါင်းစဉ်ခွဲကို လက်ကျန်နောက်သို့ ရွှေ့ထားသော အစဉ်လိုက်
+  csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
     const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
@@ -630,8 +653,9 @@ window.exportCSV = function() {
     const receiverText = isBankTable ? "Bank" : (e.receiver || "");
 
     csv += [
-      e.no || (idx + 1), esc(e.date), esc(e.title), esc(e.sub_title),
+      e.no || (idx + 1), esc(e.date), esc(e.title),
       esc(e.description), e.income || 0, e.expense || 0, e.balance || 0,
+      esc(e.sub_title),
       esc(e.voucher_no), esc(receiverText), esc(my), esc(e.book_name || currentTable)
     ].join(",") + "\n";
   });
