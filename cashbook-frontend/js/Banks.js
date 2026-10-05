@@ -174,11 +174,11 @@ function renderLedgerTable() {
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
-          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
+          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
