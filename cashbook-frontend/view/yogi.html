@@ -1,7 +1,7 @@
 <!-- view/yogi.html - Yogi Management View (Ultra-Clean Search Box & 1600px Table) -->
 <div class="space-y-4 sm:space-y-5">
   
-  <!-- 🌟 Top 4 Yogi KPI Cards (App တစ်ခုလုံးနှင့်အညီ ၄ ခု တစ်တန်းတည်း အမြင့်ညီစွာ ပေါ်စေသည်) -->
+  <!-- 🌟 Top 4 Yogi KPI Cards (၄ ခု တစ်တန်းတည်း ညီညာစွာ ပေါ်စေသည်) -->
   <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
     
     <!-- 1. ရဟန်း / သံဃာ -->
@@ -57,7 +57,7 @@
   <!-- Action Bar -->
   <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
     
-    <!-- 🌟 သပ်ရပ် လှပသော Ultra-Clean Search Box (Icon အလယ်တည့်တည့်ကျပြီး စာသားမထပ်စေပါ) -->
+    <!-- 🌟 သပ်ရပ် လှပသော Ultra-Clean Search Box (Icon အလယ်တည့်တည့်ကျပြီး ရွှေရောင်ဖြင့် စာသားလုံးဝ မထပ်စေပါ) -->
     <div style="position: relative !important; width: 100% !important; max-width: 380px !important; display: flex !important; align-items: center !important;">
       <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 15px !important; top: 50% !important; transform: translateY(-50%) !important; color: #fbbf24 !important; font-size: 13px !important; pointer-events: none !important; z-index: 2 !important;"></i>
       <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="ယောဂီအမည်၊ NRC၊ ဖုန်းဖြင့် ရှာဖွေရန်..." style="width: 100% !important; height: 40px !important; padding: 0 16px 0 42px !important; background-color: #050811 !important; border: 1px solid rgba(51, 65, 85, 0.9) !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;" class="focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium placeholder:text-slate-500">
@@ -75,7 +75,7 @@
         </button>
       </div>
 
-      <!-- Buttons -->
+      <!-- Action Buttons -->
       <div class="flex items-center gap-2">
         <button onclick="renderYogiView()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-rotate text-xs"></i> Refresh</button>
         <button onclick="exportYogiCSV()" class="p-2 sm:px-3 sm:py-2 bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-200 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"><i class="fa-solid fa-file-export text-xs"></i> Export</button>
@@ -86,7 +86,7 @@
 
   </div>
 
-  <!-- Table Container (🌟 1600px ဖြင့် သပ်ရပ်စွာ နေရာချထားသည်) -->
+  <!-- Table Container (🌟 1600px အကျယ်ချဲ့ထားပြီး Touch Scroll ချောမောစေသည်) -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
     <table class="w-full text-left border-collapse" style="min-width: 1600px !important; width: 100% !important;">
       <thead>
@@ -103,8 +103,8 @@
           <th style="width: 70px !important; min-width: 70px !important; text-align: center !important;" class="py-3.5 px-2">ကျား/မ</th>
           <th style="width: 130px !important; min-width: 130px !important; white-space: nowrap !important;" class="py-3.5 px-2 font-mono">ယောဂီဖုန်း</th>
           <th style="width: 130px !important; min-width: 130px !important; white-space: nowrap !important;" class="py-3.5 px-2 font-mono">အိမ်ဖုန်း</th>
-          <!-- 🌟 နေရပ်လိပ်စာအား 260px ဖြင့် အကျယ်ချဲ့ထားသည် -->
-          <th style="width: 260px !important; min-width: 260px !important; max-width: 380px !important;" class="py-3.5 px-3">နေရပ်လိပ်စာ</th>
+          <!-- 🌟 နေရပ်လိပ်စာ ကော်လံအား 240px ဖြင့် အကျယ်ချဲ့ထားသည် -->
+          <th style="width: 240px !important; min-width: 240px !important; max-width: 360px !important;" class="py-3.5 px-3">နေရပ်လိပ်စာ</th>
           <!-- 🌟 လုပ်ဆောင်ချက် အောက်သို့ စာလုံးမထပ်စေရန် Shadow & Border ခံထားသည် -->
           <th style="width: 100px !important; min-width: 100px !important; text-align: center !important;" class="right-0 sticky bg-[#080d1a] py-3.5 px-2 z-10 border-l border-amber-500/30 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">လုပ်ဆောင်ချက်</th>
         </tr>
@@ -224,7 +224,7 @@
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ကျား / မ</label>
-          <select id="yogi-gender" style="width: 100% !important; height: 38px !important; padding: 0 8px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; font-weight: 700 !important; box-sizing: border-box !important; outline: none !important;">
+          <select id="yogi-gender" style="width: 100% !important; height: 38px !important; padding: 0 8px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ကျား">ကျား</option>
             <option value="မ">မ</option>
           </select>
