@@ -1,7 +1,7 @@
 // ===================================================================
-// SĀSANA ERP - ALL-IN-ONE ENTERPRISE WORKER ENGINE (worker.js) 
+// SĀSANA ERP - ALL-IN-ONE ENTERPRISE WORKER ENGINE (worker.js)
 // Zero External Imports - 100% Bulletproof Batch Engine
-// Features: Auto-Bootstrap Preload, Offline Sync, 13 D1 Tables Support
+// Features: Auto-Bootstrap Preload, Offline Sync, 13 D1 Tables Support, 4-Padetha Summary
 // ===================================================================
 
 const corsHeaders = {
@@ -16,7 +16,6 @@ const jsonCorsHeaders = {
   'Content-Type': 'application/json; charset=utf-8',
 };
 
-// 🔒 Token Validation Helper
 function isValidToken(request) {
   const authHeader = request.headers.get("Authorization") || "";
   if (!authHeader.startsWith("Bearer ")) return false;
@@ -24,7 +23,6 @@ function isValidToken(request) {
   return Boolean(token && token.startsWith("tok_"));
 }
 
-// 📅 Month-Year Helper (e.g. Mar-26)
 function formatMonthYear(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
@@ -33,7 +31,6 @@ function formatMonthYear(dateStr) {
   return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-// 🏛️ 10 Ledger & Bank Tables Mapping
 const TABLE_MAP = {
   '1CB': '1CB Bank (General)',
   '2CB': '2CB Bank (Meal)',
@@ -76,7 +73,6 @@ function resolveYogiTable(sheetOrTable) {
   return 'Permanent Yogi';
 }
 
-// 🔄 Helper to query ledger entries and compute running balance
 async function queryBookEntries(env, tableName, rawSheet) {
   const { results } = await env.DB.prepare(
     `SELECT * FROM "${tableName}" ORDER BY date ASC, id ASC`
@@ -111,14 +107,13 @@ export default {
     const pathname = url.pathname;
     const method = request.method;
 
-    // 1. CORS Preflight
     if (method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: corsHeaders });
     }
 
     try {
       // -------------------------------------------------------------
-      // 2. AUTHENTICATION: POST /api/login (Public)
+      // 2. AUTHENTICATION: POST /api/login
       // -------------------------------------------------------------
       if (pathname === '/api/login' && method === 'POST') {
         const body = await request.json();
@@ -145,7 +140,7 @@ export default {
               id: user.id, 
               username: user.username, 
               role: user.role || 'Staff', 
-              name: user.username
+              name: user.username 
             },
             expiresInMs: 24 * 60 * 60 * 1000
           }), { headers: jsonCorsHeaders });
@@ -156,7 +151,6 @@ export default {
         }
       }
 
-      // Security Check for Protected Endpoints
       if (!isValidToken(request)) {
         return new Response(JSON.stringify({
           success: false, error: 'Unauthorized: မလုပ်ဆောင်မီ Login ပြန်လည်ဝင်ရောက်ပေးပါခင်ဗျာ။'
@@ -164,7 +158,7 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 🚀 3. BOOTSTRAP PRELOAD API: GET /api/bootstrap
+      // 3. BOOTSTRAP PRELOAD API: GET /api/bootstrap
       // -------------------------------------------------------------
       if (pathname === '/api/bootstrap' && method === 'GET') {
         const ALL_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
@@ -227,7 +221,7 @@ export default {
       }
 
       // -------------------------------------------------------------
-      // 🌟 5. HOME DASHBOARD: GET /api/home-summary (Rock-Solid Batch)
+      // 🌟 5. HOME DASHBOARD: GET /api/home-summary (Fund + 4-Padetha + Yogi)
       // -------------------------------------------------------------
       if (pathname === '/api/home-summary' && method === 'GET') {
         const BANK_SHEETS = ['1CB', '2CB', '3CB'];
@@ -240,7 +234,7 @@ export default {
 
         let totalFund = 0, totalBank = 0, totalCash = 0, totalCount = 0;
 
-        // ၁။ Safe D1 Batch Query for all 10 Books
+        // ၁။ စာအုပ် ၁၀ အုပ်လုံး၏ ရန်ပုံငွေများ တွက်ချက်ခြင်း
         try {
           const batchStatements = ALL_SHEETS.map(sheet => {
             const tbl = TABLE_MAP[sheet];
@@ -277,7 +271,31 @@ export default {
           console.error('[Dashboard Fund Batch Error]:', fundErr);
         }
 
-        // ၂။ Safe Yogi Queries
+        // 🌟 ၂။ ပဒေသာပင် ၄ အုပ်၏ (ဝင်ငွေ၊ ဘဏ်အပ်နှံ၊ လက်ကျန်) သီးသန့် တွက်ချက်ခြင်း
+        let padethaSummary = [];
+        try {
+          const padethaSql = `
+            SELECT '2Meal Book' as table_name, 'ဆွမ်းပဒေသာပင် စာအုပ်' as title, COALESCE(SUM(COALESCE(income,0)), 0) as income, COALESCE(SUM(COALESCE(expense,0)), 0) as expense FROM "2Meal Book"
+            UNION ALL
+            SELECT '5Electronic Book', 'လျှပ်စစ်ပဒေသာပင် စာအုပ်', COALESCE(SUM(COALESCE(income,0)), 0), COALESCE(SUM(COALESCE(expense,0)), 0) FROM "5Electronic Book"
+            UNION ALL
+            SELECT '6Medical Book', 'ဆေးပဒေသာပင် စာအုပ်', COALESCE(SUM(COALESCE(income,0)), 0), COALESCE(SUM(COALESCE(expense,0)), 0) FROM "6Medical Book"
+            UNION ALL
+            SELECT '7Other Book', 'အထွေထွေရန်ပုံငွေစာအုပ်', COALESCE(SUM(COALESCE(income,0)), 0), COALESCE(SUM(COALESCE(expense,0)), 0) FROM "7Other Book"
+          `;
+          const { results: padethaRows } = await env.DB.prepare(padethaSql).all();
+          padethaSummary = (padethaRows || []).map(r => ({
+            table_name: r.table_name,
+            title: r.title,
+            income: parseFloat(r.income) || 0,
+            expense: parseFloat(r.expense) || 0,
+            balance: (parseFloat(r.income) || 0) - (parseFloat(r.expense) || 0)
+          }));
+        } catch (padethaErr) {
+          console.error('[Dashboard Padetha Error]:', padethaErr);
+        }
+
+        // ၃။ ယောဂီ ပေါင်းချုပ် တွက်ချက်ခြင်း
         const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
         const residentMatrix = {}, retreatMatrix = {};
         YOGI_CATS.forEach(c => {
@@ -315,6 +333,7 @@ export default {
           success: true,
           kpis: { totalFund, totalBank, totalCash, totalCount },
           fundSummary,
+          padethaSummary,
           yogiSummary: { resident: residentMatrix, retreat: retreatMatrix }
         }), { headers: jsonCorsHeaders });
       }
