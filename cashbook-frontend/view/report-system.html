@@ -1,15 +1,17 @@
-<!-- view/report-system.html - Annual & Summary Expense Matrix Report (Ultra-Clean Search Box & Guaranteed Single Row) -->
+<!-- view/report-system.html - Annual & Summary Expense Matrix Report (High-Contrast Luxury Gold Edition) -->
 
 <div id="report-section" class="space-y-4">
   
-  <!-- 🌟 GUARANTEED SINGLE ROW ACTION BAR (တစ်တန်းတည်း တစ်ကြောင်းတည်း သပ်ရပ်စွာ ပေါ်စေသည်) -->
-  <div class="bg-[#0f172a] border border-amber-500/20 p-2.5 sm:p-3 rounded-xl shadow-xl overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
+  <!-- 🌟 SINGLE ROW ACTION BAR -->
+  <div class="bg-[#0f172a] border border-amber-500/25 p-2.5 sm:p-3 rounded-xl shadow-xl overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
     <div class="flex items-center justify-between gap-3 min-w-[760px] whitespace-nowrap">
       
-      <!-- 🌟 Left: သပ်ရပ် လှပသော Ultra-Clean Jet-Black Search Box (Icon အလယ်တည့်တည့်ကျပြီး စာသားမထပ်စေပါ) -->
+      <!-- 🌟 လုံးဝ မမွဲတော့ဘဲ ရွှေရောင်အနားကွပ်ဖြင့် တောက်ပကြည်လင်သော Luxury Search Box -->
       <div style="position: relative !important; width: 280px !important; max-width: 320px !important; display: flex !important; align-items: center !important; flex-shrink: 0 !important;">
+        <!-- ရွှေရောင် Icon အလယ်တည့်တည့် -->
         <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 15px !important; top: 50% !important; transform: translateY(-50%) !important; color: #fbbf24 !important; font-size: 13px !important; pointer-events: none !important; z-index: 2 !important;"></i>
-        <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="အစီရင်ခံစာ ရှာဖွေရန်..." style="width: 100% !important; height: 38px !important; padding: 0 16px 0 42px !important; background-color: #050811 !important; border: 1px solid rgba(51, 65, 85, 0.9) !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12.5px !important; outline: none !important; box-sizing: border-box !important;" class="focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium placeholder:text-slate-500">
+        <!-- နက်မှောင်ပြတ်သားသော နောက်ခံ + ရွှေရောင်အနားကွပ် (စာလုံး လုံးဝ မထပ်စေရန် padding-left 44px) -->
+        <input type="text" id="report-search-input" oninput="onReportSearchInput()" placeholder="အစီရင်ခံစာ ရှာဖွေရန်..." style="width: 100% !important; height: 38px !important; padding: 0 16px 0 44px !important; background-color: #020617 !important; border: 1px solid rgba(245, 158, 11, 0.45) !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12.5px !important; outline: none !important; box-sizing: border-box !important; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;" class="focus:border-amber-400 focus:ring-1 focus:ring-amber-400/50 transition-all font-medium placeholder:text-slate-400">
       </div>
 
       <!-- Right: All Controls on the Same Single Line -->
@@ -58,7 +60,7 @@
     </div>
   </div>
 
-  <!-- 📊 16-Column Matrix Table Container (🌟 1650px ဖြင့် ၁၆ ကော်လံလုံး မပိပြားစေရန် ပုံသေချုပ်ထားသည်) -->
+  <!-- 📊 16-Column Matrix Table Container (🌟 1650px ဖြင့် သပ်ရပ်စွာ နေရာချထားသည်) -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl sm:rounded-2xl overflow-x-auto shadow-2xl relative" style="-webkit-overflow-scrolling: touch;">
     <table id="report-matrix-table" class="w-full text-left border-collapse text-xs" style="min-width: 1650px !important; width: 100% !important;">
       <thead id="report-table-header">
