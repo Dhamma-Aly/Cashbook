@@ -1,8 +1,8 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
 // Clean Architecture: Fully driven by window.CONFIG & view/Banks.html
-// Features: Myanmar-to-English Number Normalization (6-0001, 15000)
-// Column Order: စဉ် | ရက်စွဲ | ခေါင်းစဉ် | အကြောင်းအရာ | ဝင်ငွေ | ထွက်ငွေ | လက်ကျန် | ခေါင်းစဉ်ခွဲ | ဘောင်ချာ | လက်ခံသူ | လနှစ် | စာအုပ်အမည်
+// Features: 100% Smart Omni-Search (Searches Date, Title, Desc, Income, Expense, Balance, Subtitle, Voucher, Receiver)
+// Supports Myanmar Numerals & Comma-Free Fuzzy Number Search
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -25,7 +25,6 @@ window.parseAmount = function(val) {
   return parseFloat(clean) || 0;
 };
 
-// 💡 config.js ထံမှ Table အမည်အမှန်ကို တိုက်ရိုက် ရယူခြင်း
 function resolveD1Table(nameOrKey) {
   const k = String(nameOrKey || '').trim();
   const shortMap = {
@@ -108,19 +107,55 @@ function updateLedgerKPIs(kpis) {
   setText("kpi-count", (k.count || 0).toLocaleString());
 }
 
+// -------------------------------------------------------------------
+// 🔍 SMART OMNI-SEARCH FILTER ENGINE (အစွမ်းထက် ဘက်စုံ ရှာဖွေမှုစနစ်)
+// -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const rawQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
-  if (!query) {
+  if (!rawQuery) {
     bankFilteredEntries = bankAllEntries;
   } else {
+    // ရှာဖွေသည့် စကားလုံးအား အင်္ဂလိပ်ဂဏန်း၊ ကော်မာမပါသော ဂဏန်းတို့ဖြင့် ပြောင်းလဲစစ်ဆေးခြင်း
+    const engQuery = window.toEnglishDigits(rawQuery);
+    const cleanNumQuery = engQuery.replace(/,/g, '');
+
     bankFilteredEntries = bankAllEntries.filter(e => {
-      const my = e.month_year || formatMonthYear(e.date);
-      return [
-        e.date, e.title, e.sub_title, e.voucher_no, 
-        e.description, e.receiver, e.book_name, e.income, e.expense, my
-      ].some(v => (v || "").toString().toLowerCase().includes(query));
+      const inc = parseFloat(e.income) || 0;
+      const exp = parseFloat(e.expense) || 0;
+      const bal = parseFloat(e.balance) || 0;
+
+      const incStr = inc.toString();
+      const incFmt = inc.toLocaleString().toLowerCase();
+      const expStr = exp.toString();
+      const expFmt = exp.toLocaleString().toLowerCase();
+      const balStr = bal.toString();
+      const balFmt = bal.toLocaleString().toLowerCase();
+
+      const voucherEng = window.toEnglishDigits(e.voucher_no || '').toLowerCase();
+      const dateText = (e.date || '').toLowerCase();
+      const titleText = (e.title || '').toLowerCase();
+      const subTitleText = (e.sub_title || '').toLowerCase();
+      const descText = (e.description || '').toLowerCase();
+      const receiverText = (e.receiver || '').toLowerCase();
+      const bookText = (e.book_name || '').toLowerCase();
+      const myText = (e.month_year || formatMonthYear(e.date)).toLowerCase();
+
+      // စာသားစစ်ဆေးမှု
+      const textMatches = [
+        dateText, titleText, subTitleText, descText, 
+        receiverText, bookText, myText, (e.voucher_no || '').toLowerCase(), voucherEng
+      ].some(t => t.includes(rawQuery) || t.includes(engQuery));
+
+      if (textMatches) return true;
+
+      // ဝင်ငွေ၊ ထွက်ငွေ၊ လက်ကျန် ဂဏန်းများ စစ်ဆေးမှု (ကော်မာပါပါ မပါပါ ရှာဖွေနိုင်သည်)
+      const numMatches = [
+        incStr, incFmt, expStr, expFmt, balStr, balFmt
+      ].some(n => n.includes(cleanNumQuery) || n.includes(rawQuery) || n.includes(engQuery));
+
+      return numMatches;
     });
   }
 
@@ -183,7 +218,6 @@ function renderLedgerTable() {
         ? `<div class="text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 view/Banks.html ၏ ကော်လံအစဉ်အတိုင်း ၁၀၀% တန်းညှိထားသည်
       tableHTML += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
@@ -244,9 +278,6 @@ window.nextPage = function() {
   }
 };
 
-// -------------------------------------------------------------------
-// 🔄 Transfer Targets Engine
-// -------------------------------------------------------------------
 function updateTransferTargets() {
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const typeSelect = document.getElementById("entry-type");
@@ -386,9 +417,6 @@ window.onEntryCategoryChange = function(selectedCategory) {
 window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
-// -------------------------------------------------------------------
-// 💾 Save Form (🌟 မြန်မာဂဏန်းများကို အလိုအလျောက် အင်္ဂလိပ်ဂဏန်းအဖြစ် ပြောင်းလဲသိမ်းဆည်းခြင်း)
-// -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -400,11 +428,11 @@ window.saveEntryForm = async function(event) {
   const subcatEl = document.getElementById("entry-subcategory");
   const sub_title = subcatEl ? subcatEl.value : "";
   
-  // 🌟 ဘောက်ချာနံပါတ် (၆-၀၀၀၁ မှ 6-0001 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
+  // ဘောက်ချာနံပါတ် (၆-၀၀၀၁ မှ 6-0001 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
   const rawVoucher = document.getElementById("entry-voucher").value.trim();
   const voucher_no = window.toEnglishDigits(rawVoucher);
 
-  // 🌟 ငွေပမာဏ (၁၅,၀၀၀ မှ 15000 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
+  // ငွေပမာဏ (၁၅,၀၀၀ မှ 15000 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
   const rawAmount = document.getElementById("entry-amount").value.trim();
   const amount = window.parseAmount(rawAmount);
   
@@ -598,7 +626,6 @@ window.editEntry = function(uid) {
     subcatSelect.value = entry.sub_title;
   }
 
-  // 🌟 ဘောက်ချာနံပါတ်နှင့် ပမာဏကို အင်္ဂလိပ်ဂဏန်းဖြင့် သန့်ရှင်းစွာ ဖြည့်သွင်းခြင်း
   document.getElementById("entry-voucher").value = window.toEnglishDigits(entry.voucher_no || "");
   document.getElementById("entry-amount").value = (entry.income || entry.expense || 0);
   document.getElementById("entry-description").value = entry.description || "";
