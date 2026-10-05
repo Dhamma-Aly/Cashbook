@@ -1,4 +1,4 @@
-<!-- view/yogi.html - Yogi Management View (100% D1 Aligned & Natural Typography) -->
+<!-- view/yogi.html - Yogi Management View (Ultra-Clean Search Box & 1600px Table) -->
 <div class="space-y-4 sm:space-y-5">
   
   <!-- 🌟 Top 4 Yogi KPI Cards (App တစ်ခုလုံးနှင့်အညီ ၄ ခု တစ်တန်းတည်း အမြင့်ညီစွာ ပေါ်စေသည်) -->
@@ -54,12 +54,13 @@
 
   </div>
 
-  <!-- Action Bar (🌟 Clean Jet-Black Search Box) -->
+  <!-- Action Bar -->
   <div class="flex flex-col md:flex-row justify-between items-center bg-[#0f172a] border border-amber-500/20 p-3 sm:p-4 rounded-xl gap-3 sm:gap-4 shadow-xl">
     
-    <div class="w-full md:w-80 relative">
-      <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
-      <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="ယောဂီအမည်၊ NRC၊ ဖုန်းဖြင့် ရှာဖွေရန်..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg bg-[#050811] border border-slate-700/70 text-slate-100 placeholder:text-slate-500 outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium">
+    <!-- 🌟 သပ်ရပ် လှပသော Ultra-Clean Search Box (Icon အလယ်တည့်တည့်ကျပြီး စာသားမထပ်စေပါ) -->
+    <div style="position: relative !important; width: 100% !important; max-width: 380px !important; display: flex !important; align-items: center !important;">
+      <i class="fa-solid fa-magnifying-glass" style="position: absolute !important; left: 15px !important; top: 50% !important; transform: translateY(-50%) !important; color: #fbbf24 !important; font-size: 13px !important; pointer-events: none !important; z-index: 2 !important;"></i>
+      <input type="text" id="yogi-search-input" oninput="onYogiSearchInput()" placeholder="ယောဂီအမည်၊ NRC၊ ဖုန်းဖြင့် ရှာဖွေရန်..." style="width: 100% !important; height: 40px !important; padding: 0 16px 0 42px !important; background-color: #050811 !important; border: 1px solid rgba(51, 65, 85, 0.9) !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;" class="focus:border-amber-400 focus:ring-1 focus:ring-amber-400/40 transition-all font-medium placeholder:text-slate-500">
     </div>
 
     <div class="flex flex-wrap items-center justify-between md:justify-end gap-2 sm:gap-2.5 shrink-0 whitespace-nowrap">
@@ -85,27 +86,27 @@
 
   </div>
 
-  <!-- Table Container (🌟 ၁၆၀၀ ပစ်ဇယ် အကျယ်ချဲ့ထားပြီး Touch Scroll ချောမောစေသည်) -->
+  <!-- Table Container (🌟 1600px ဖြင့် သပ်ရပ်စွာ နေရာချထားသည်) -->
   <div class="bg-[#0f172a] border border-amber-500/20 rounded-xl overflow-x-auto shadow-2xl" style="-webkit-overflow-scrolling: touch;">
-    <table class="w-full text-left border-collapse min-w-[1600px]">
+    <table class="w-full text-left border-collapse" style="min-width: 1600px !important; width: 100% !important;">
       <thead>
         <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 text-xs uppercase font-extrabold">
-          <th class="w-12 text-center py-3.5 px-2">စဉ်</th>
-          <th class="w-24 py-3.5 px-2">စတင်ရက်</th>
-          <th class="w-24 py-3.5 px-2">ထွက်ရက်</th>
-          <th class="w-28 py-3.5 px-2">အမျိုးအစား</th>
-          <th class="w-36 py-3.5 px-2">ယောဂီအမည်</th>
-          <th class="w-32 py-3.5 px-2">အဘအမည်</th>
-          <th class="w-36 py-3.5 px-2">မှတ်ပုံတင်</th>
-          <th class="w-24 py-3.5 px-2">မွေးသက္ကရာဇ်</th>
-          <th class="w-16 text-center py-3.5 px-2">အသက်</th>
-          <th class="w-16 text-center py-3.5 px-2">ကျား/မ</th>
-          <th class="w-28 py-3.5 px-2">ယောဂီဖုန်း</th>
-          <th class="w-28 py-3.5 px-2">အိမ်ဖုန်း</th>
-          <!-- 🌟 နေရပ်လိပ်စာ ကော်လံအား သဘာဝကျကျ အကျယ်ချဲ့ထားသည် -->
-          <th class="min-w-[220px] max-w-[340px] py-3.5 px-3">နေရပ်လိပ်စာ</th>
-          <!-- 🌟 လုပ်ဆောင်ချက် ကော်လံအောက် စာလုံးမထပ်စေရန် Shadow & Border ခံထားသည် -->
-          <th class="w-28 text-center right-0 sticky bg-[#080d1a] py-3.5 px-2 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">လုပ်ဆောင်ချက်</th>
+          <th style="width: 50px !important; min-width: 50px !important; text-align: center !important;" class="py-3.5 px-2 font-mono">စဉ်</th>
+          <th style="width: 100px !important; min-width: 100px !important; white-space: nowrap !important;" class="py-3.5 px-2">စတင်ရက်</th>
+          <th style="width: 100px !important; min-width: 100px !important; white-space: nowrap !important;" class="py-3.5 px-2">ထွက်ရက်</th>
+          <th style="width: 110px !important; min-width: 110px !important; white-space: nowrap !important;" class="py-3.5 px-2">အမျိုးအစား</th>
+          <th style="width: 150px !important; min-width: 150px !important; white-space: nowrap !important;" class="py-3.5 px-2">ယောဂီအမည်</th>
+          <th style="width: 140px !important; min-width: 140px !important; white-space: nowrap !important;" class="py-3.5 px-2">အဘအမည်</th>
+          <th style="width: 170px !important; min-width: 170px !important; white-space: nowrap !important;" class="py-3.5 px-2 font-mono">မှတ်ပုံတင်</th>
+          <th style="width: 110px !important; min-width: 110px !important; white-space: nowrap !important;" class="py-3.5 px-2">မွေးသက္ကရာဇ်</th>
+          <th style="width: 70px !important; min-width: 70px !important; text-align: center !important;" class="py-3.5 px-2">အသက်</th>
+          <th style="width: 70px !important; min-width: 70px !important; text-align: center !important;" class="py-3.5 px-2">ကျား/မ</th>
+          <th style="width: 130px !important; min-width: 130px !important; white-space: nowrap !important;" class="py-3.5 px-2 font-mono">ယောဂီဖုန်း</th>
+          <th style="width: 130px !important; min-width: 130px !important; white-space: nowrap !important;" class="py-3.5 px-2 font-mono">အိမ်ဖုန်း</th>
+          <!-- 🌟 နေရပ်လိပ်စာအား 260px ဖြင့် အကျယ်ချဲ့ထားသည် -->
+          <th style="width: 260px !important; min-width: 260px !important; max-width: 380px !important;" class="py-3.5 px-3">နေရပ်လိပ်စာ</th>
+          <!-- 🌟 လုပ်ဆောင်ချက် အောက်သို့ စာလုံးမထပ်စေရန် Shadow & Border ခံထားသည် -->
+          <th style="width: 100px !important; min-width: 100px !important; text-align: center !important;" class="right-0 sticky bg-[#080d1a] py-3.5 px-2 z-10 border-l border-amber-500/30 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">လုပ်ဆောင်ချက်</th>
         </tr>
       </thead>
       <tbody id="yogi-table-body">
@@ -128,7 +129,7 @@
         <i class="fa-solid fa-chevron-left text-[10px]"></i> Previous
       </button>
 
-      <button id="btn-yogi-next-page" onclick="nextYogiPage()" class="px-3.5 py-2 rounded-lg border border-amber-500/30 bg-[#080d1a] hover:bg-[#1e293b] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all cursor-pointer">
+      <button id="btn-next-page" onclick="nextYogiPage()" class="px-3.5 py-2 rounded-lg border border-amber-500/30 bg-[#080d1a] hover:bg-[#1e293b] text-amber-200 disabled:opacity-40 font-bold flex items-center gap-2 transition-all cursor-pointer">
         Next <i class="fa-solid fa-chevron-right text-[10px]"></i>
       </button>
     </div>
@@ -223,7 +224,7 @@
 
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important;">
           <label style="font-size: 12px !important; font-weight: 700 !important; color: #f1f5f9 !important; margin: 0 !important; line-height: 1.2 !important;">ကျား / မ</label>
-          <select id="yogi-gender" style="width: 100% !important; height: 38px !important; padding: 0 8px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; box-sizing: border-box !important; outline: none !important;">
+          <select id="yogi-gender" style="width: 100% !important; height: 38px !important; padding: 0 8px !important; background-color: #020617 !important; border: 1px solid #334155 !important; border-radius: 10px !important; color: #f8fafc !important; font-size: 12px !important; font-weight: 700 !important; box-sizing: border-box !important; outline: none !important;">
             <option value="ကျား">ကျား</option>
             <option value="မ">မ</option>
           </select>
