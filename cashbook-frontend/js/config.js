@@ -5,7 +5,7 @@
 
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
 
-// 🌟 စာအုပ် အတိုကောက် နှင့် D1 Table အမည် အပြည့်အစုံ ချိတ်ဆက်မှု
+// 🌟 စာအုပ် အတိုကောက် နှင့် D1 Table အမည် အပြည့်အစုံ ချိတ်ဆက်မှု 
 const TABLE_MAP = {
   '1CB': '1CB Bank (General)', 
   '2CB': '2CB Bank (Meal)', 
