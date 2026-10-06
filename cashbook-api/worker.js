@@ -3,7 +3,7 @@
 // ===================================================================
  
 const PBKDF2_ITER = 100000; 
-const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000; 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TRF_RE = /^(TRF_.+)_(OUT|IN)$/;
 const LEGACY_ID_RE = /^(?:CB|INV|YOGI)-(\d+)$/;
