@@ -1,4 +1,4 @@
-// ===================================================================
+// =================================================================== 
 // js/config.js - Sāsana ERP System Configuration & API Endpoint Setup   
 // 100% Aligned with D1 Database Schema Standard (v3.1 Universal Transfer)
 // ===================================================================
