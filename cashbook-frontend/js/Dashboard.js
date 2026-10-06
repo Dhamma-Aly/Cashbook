@@ -63,7 +63,6 @@ window.switchDashboardTab = function(tabName) {
     if (tabBadge) tabBadge.textContent = "စခန်းတွင်း Active ယောဂီများ";
 
   } else if (tabName === 'contact') {
-    // 🌟 ၄ ခုမြောက် "ဆက်သွယ်ရန်" Section ကို ဖွင့်လှစ်ပေးခြင်း
     if (contactSection) contactSection.classList.remove("hidden");
     if (contactTabBtn) {
       contactTabBtn.classList.add(...activeClasses);
@@ -76,7 +75,7 @@ window.switchDashboardTab = function(tabName) {
 /**
  * 📊 Main Dashboard View Render Function (Instant Cache-First Engine)
  */
-window.renderDashboardView = async function() {
+window.renderDashboardView = async function(isSilent = false) {
   const container = document.getElementById("view-container");
 
   if (container && !document.getElementById("home-bank-table")) {
@@ -400,6 +399,10 @@ window.renderDashboardView = async function() {
   } catch (_) {}
 
   // Background Fresh Sync
+  if (typeof window.showLoading === 'function' && !isSilent) {
+    window.showLoading(true);
+  }
+  
   try {
     const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
     if (typeof fetchFunc === 'function') {
@@ -410,7 +413,11 @@ window.renderDashboardView = async function() {
       }
     }
   } catch (error) {
-    console.error("Silent background dashboard sync:", error);
+    console.warn("Silent background dashboard sync ignored error.");
+  } finally {
+    if (typeof window.showLoading === 'function' && !isSilent) {
+      window.showLoading(false);
+    }
   }
 };
 
