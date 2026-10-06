@@ -1,4 +1,4 @@
-<!-- view/Dashboard.html - Home Dashboard Fragment (4 Sub-Tabs with Contact Hub) -->
+<!-- view/Dashboard.html - Home Dashboard Fragment (Executive Contact Hub without Padetha Box) -->
 
 <div class="h-full flex flex-col space-y-4 sm:space-y-5">
 
@@ -37,7 +37,7 @@
     </div>
   </div>
 
-  <!-- 💡 Sub-Tab Control Bar (🌟 Tab ၄ ခု ပါဝင်လာသည်) -->
+  <!-- 💡 Sub-Tab Control Bar -->
   <div class="flex items-center justify-between bg-[#0f172a] border border-amber-500/20 p-2 sm:p-2.5 rounded-xl shadow-xl shrink-0 gap-2 overflow-x-auto" style="-webkit-overflow-scrolling: touch;">
     <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
       <!-- 1. ရန်ပုံငွေ အကျဉ်းချုပ် Tab -->
@@ -58,7 +58,7 @@
         <span>ယောဂီ ပေါင်းချုပ်</span>
       </button>
 
-      <!-- 🌟 4. ဆက်သွယ်ရန် (Contact) Tab အသစ် -->
+      <!-- 4. ဆက်သွယ်ရန် Tab -->
       <button id="tab-dash-contact" onclick="switchDashboardTab('contact')" class="px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer shrink-0">
         <i class="fa-solid fa-address-book text-amber-400/70"></i>
         <span>ဆက်သွယ်ရန်</span>
@@ -77,7 +77,7 @@
     </div>
   </div>
 
-  <!-- Section 1: Fund Summary Table (ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ် - စာအုပ် ၁၀ အုပ်) -->
+  <!-- Section 1: Fund Summary Table -->
   <div id="dash-fund-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden">
     <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
@@ -94,7 +94,7 @@
     </div>
   </div>
 
-  <!-- Section 2: Book Summary Table (စာအုပ်စာရင်း - ပဒေသာပင် ၄ အုပ်) -->
+  <!-- Section 2: Book Summary Table -->
   <div id="dash-padetha-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden hidden">
     <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
@@ -111,7 +111,7 @@
     </div>
   </div>
 
-  <!-- Section 3: Yogi Summary Table (ယောဂီပေါင်းချုပ်စာရင်း) -->
+  <!-- Section 3: Yogi Summary Table -->
   <div id="dash-yogi-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden hidden">
     <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
@@ -128,134 +128,114 @@
     </div>
   </div>
 
-  <!-- 🌟 Section 4: Contact & Location Hub (ဆက်သွယ်ရန်နှင့် တည်နေရာ အချက်အလက်များ) -->
+  <!-- 🌟 Section 4: Contact Hub (Executive Clean Design - No Padetha Box) -->
   <div id="dash-contact-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-y-auto hidden" style="-webkit-overflow-scrolling: touch;">
     
-    <!-- Header -->
+    <!-- Top Header -->
     <div class="px-4 sm:px-6 py-3.5 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
-      <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
+      <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2.5">
         <i class="fa-solid fa-location-dot text-amber-400"></i> ဓမ္မအလင်းရောင်တောရရိပ်သာ တည်နေရာနှင့် ဆက်သွယ်ရန်
       </h3>
-      <span class="text-[10px] sm:text-[11px] font-bold text-amber-400/80 bg-amber-500/10 border border-amber-500/20 px-2.5 sm:px-3 py-1 rounded-lg">
+      <span class="text-[10px] sm:text-[11px] font-bold text-amber-400/90 bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
         ပြင်ဦးလွင်မြို့
       </span>
     </div>
 
-    <!-- Content Body (2-Column Grid) -->
+    <!-- Main Content Grid (ဘယ်/ညာ ၂ ခြမ်းခွဲ သပ်ရပ်သော ဒီဇိုင်း) -->
     <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
       
-      <!-- 🏛️ ဘယ်ဘက်ခြမ်း (၇ ကော်လံ) - ရိပ်သာမိတ်ဆက်၊ လိပ်စာ၊ ဖုန်း နှင့် အလှူငွေဌာန -->
+      <!-- 🏛️ ဘယ်ဘက်ခြမ်း (၇ ကော်လံ) - ရိပ်သာမိတ်ဆက် နှင့် ဆက်သွယ်ရန် Card များ -->
       <div class="lg:col-span-7 space-y-4">
         
-        <!-- ရိပ်သာမိတ်ဆက် ကတ် -->
-        <div class="p-4 sm:p-5 rounded-xl bg-[#080d1a] border border-amber-500/20 shadow-md">
-          <div class="flex items-center gap-3 mb-2.5">
-            <div class="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
-              <i class="fa-solid fa-dharmachakra text-lg"></i>
+        <!-- ရိပ်သာမိတ်ဆက် Header Card (3D Logo ပါဝင်သည်) -->
+        <div class="p-4 sm:p-5 rounded-2xl bg-[#080d1a] border border-amber-500/25 shadow-lg">
+          <div class="flex items-center gap-3.5 mb-3">
+            <div class="w-12 h-12 rounded-2xl bg-[#0e172e] border border-amber-500/30 flex items-center justify-center p-2 shrink-0 shadow-md">
+              <img src="favicon.svg" alt="Sāsana ERP Logo" class="w-full h-full object-contain">
             </div>
             <div>
-              <h4 class="text-sm sm:text-base font-extrabold text-amber-200">ဓမ္မအလင်းရောင်တောရရိပ်သာ (ပြင်ဦးလွင်မြို့)</h4>
-              <p class="text-[11px] font-semibold text-amber-400/80">(လယ်တီမူ အနာဂါမ်ဆရာသက်ကြီးနည်း - အမြဲတမ်းတရားစခန်း)</p>
+              <h4 class="text-sm sm:text-base font-extrabold text-gold-gradient">ဓမ္မအလင်းရောင်တောရရိပ်သာ</h4>
+              <p class="text-[11px] font-bold text-amber-400/80 mt-0.5">ပြင်ဦးလွင်မြို့ (လယ်တီမူ အနာဂါမ်ဆရာသက်ကြီးနည်း)</p>
             </div>
           </div>
-          <p class="text-xs text-slate-300 leading-relaxed mt-2">
+          <p class="text-xs text-slate-300 leading-relaxed">
             ဓမ္မအလင်းရောင်တောရရိပ်သာသည် ၂၀၁၀ ခုနှစ်တွင် ဆရာတော် ဦးသောဘနမှ ဦးစီး၍ စတင်တည်ထောင်ခဲ့ပါသည်။ အမြဲတမ်းတရားစခန်းဖြစ်ပြီး ယောဂီများ အချိန်မရွေး လာရောက်တရားအားထုတ်နိုင်ပါသည်။
           </p>
         </div>
 
-        <!-- အဓိက ဆက်သွယ်ရန် Info Cards (Click-to-Call & Direct Links) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <!-- ၁။ ရိပ်သာလိပ်စာ Card -->
+        <div class="p-4 rounded-2xl bg-[#080d1a] border border-amber-500/20 hover:border-amber-500/40 transition-all flex items-start gap-3.5 shadow-md">
+          <div class="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/25 text-amber-400 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid fa-map-pin text-sm"></i>
+          </div>
+          <div class="text-xs flex-1">
+            <p class="text-[11px] font-black uppercase text-amber-400/80 mb-1 tracking-wider">ရိပ်သာလိပ်စာ</p>
+            <p class="text-slate-100 font-medium leading-relaxed">
+              ဓမ္မအလင်းရောင်တောရရိပ်သာ၊ ထုံးကုန်း၊ (၈)မိုင်ကျော်၊ မန္တလေး-လားရှိုး ကားလမ်းမကြီး၊ ပြင်ဦးလွင်မြို့။
+            </p>
+          </div>
+        </div>
+
+        <!-- ၂။ ဖုန်းနံပါတ်များ Card (Click-to-Call ခလုတ်များ) -->
+        <div class="p-4 rounded-2xl bg-[#080d1a] border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-start gap-3.5 shadow-md">
+          <div class="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+            <i class="fa-solid fa-phone-volume text-sm"></i>
+          </div>
+          <div class="text-xs flex-1">
+            <p class="text-[11px] font-black uppercase text-emerald-400/80 mb-2 tracking-wider">ဆက်သွယ်ရန် ဖုန်းနံပါတ်များ (Click to Call)</p>
+            <div class="flex flex-wrap gap-2.5 font-mono">
+              <a href="tel:09402627759" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-2 font-bold text-xs shadow-sm">
+                <i class="fa-solid fa-phone text-[10px]"></i> 09-402627759
+              </a>
+              <a href="tel:09777656388" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-2 font-bold text-xs shadow-sm">
+                <i class="fa-solid fa-phone text-[10px]"></i> 09-777656388
+              </a>
+              <a href="tel:09402730481" class="px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-2 font-bold text-xs shadow-sm">
+                <i class="fa-solid fa-phone text-[10px]"></i> 09-402730481
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- ၃။ Email နှင့် Facebook Page (ဘေးချင်းယှဉ် ကတ် ၂ ခု) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
           
-          <!-- လိပ်စာ -->
-          <div class="sm:col-span-2 p-3.5 rounded-xl bg-[#080d1a] border border-amber-500/20 flex items-start gap-3">
-            <div class="p-2 rounded-lg bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
-              <i class="fa-solid fa-map-pin text-sm"></i>
-            </div>
-            <div class="text-xs">
-              <p class="font-extrabold text-amber-300 mb-0.5">ရိပ်သာလိပ်စာ</p>
-              <p class="text-slate-200 leading-relaxed">
-                ဓမ္မအလင်းရောင်တောရရိပ်သာ၊ ထုံးကုန်း၊ (၈)မိုင်ကျော်၊ မန္တလေး-လားရှိုး ကားလမ်းမကြီး၊ ပြင်ဦးလွင်မြို့။
-              </p>
-            </div>
-          </div>
-
-          <!-- ဖုန်းနံပါတ်များ (နှိပ်လိုက်ရုံဖြင့် ဖုန်းတန်းခေါ်နိုင်သည်) -->
-          <div class="sm:col-span-2 p-3.5 rounded-xl bg-[#080d1a] border border-emerald-500/20 flex items-start gap-3">
-            <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 mt-0.5">
-              <i class="fa-solid fa-phone-volume text-sm"></i>
-            </div>
-            <div class="text-xs flex-1">
-              <p class="font-extrabold text-emerald-300 mb-1.5">ဆက်သွယ်ရန် ဖုန်းနံပါတ်များ (Click to Call)</p>
-              <div class="flex flex-wrap gap-2 font-mono font-bold">
-                <a href="tel:09402627759" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
-                  <i class="fa-solid fa-phone text-[10px]"></i> 09-402627759
-                </a>
-                <a href="tel:09777656388" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
-                  <i class="fa-solid fa-phone text-[10px]"></i> 09-777656388
-                </a>
-                <a href="tel:09402730481" class="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
-                  <i class="fa-solid fa-phone text-[10px]"></i> 09-402730481
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <!-- Email -->
-          <div class="p-3.5 rounded-xl bg-[#080d1a] border border-sky-500/20 flex items-center gap-3">
-            <div class="p-2 rounded-lg bg-sky-500/10 text-sky-400 shrink-0">
+          <!-- Email Card -->
+          <div class="p-4 rounded-2xl bg-[#080d1a] border border-sky-500/20 hover:border-sky-500/40 transition-all flex items-center gap-3.5 shadow-md">
+            <div class="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/25 text-sky-400 flex items-center justify-center shrink-0">
               <i class="fa-solid fa-envelope text-sm"></i>
             </div>
-            <div class="text-xs truncate">
-              <p class="font-extrabold text-sky-300 mb-0.5">အီးမေးလ် (Email)</p>
-              <a href="mailto:dhammaaly@gmail.com" class="text-slate-300 hover:text-sky-300 transition font-mono truncate block">
+            <div class="text-xs min-w-0 flex-1">
+              <p class="text-[10px] font-black uppercase text-sky-400/80 mb-0.5 tracking-wider">အီးမေးလ် (Email)</p>
+              <a href="mailto:dhammaaly@gmail.com" class="text-slate-200 hover:text-sky-300 transition font-mono font-bold truncate block">
                 dhammaaly@gmail.com
               </a>
             </div>
           </div>
 
-          <!-- Facebook Page Link -->
-          <div class="p-3.5 rounded-xl bg-[#080d1a] border border-blue-500/20 flex items-center gap-3">
-            <div class="p-2 rounded-lg bg-blue-500/10 text-blue-400 shrink-0">
-              <i class="fa-brands fa-facebook text-sm"></i>
+          <!-- Facebook Page Card -->
+          <div class="p-4 rounded-2xl bg-[#080d1a] border border-blue-500/20 hover:border-blue-500/40 transition-all flex items-center gap-3.5 shadow-md">
+            <div class="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/25 text-blue-400 flex items-center justify-center shrink-0">
+              <i class="fa-brands fa-facebook text-base"></i>
             </div>
-            <div class="text-xs">
-              <p class="font-extrabold text-blue-300 mb-0.5">Facebook Page</p>
-              <a href="https://www.facebook.com/share/p/19mtBjuhq9/?mibextid=WC7FNe" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1">
-                <span>Page သို့ သွားမည်</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            <div class="text-xs min-w-0 flex-1">
+              <p class="text-[10px] font-black uppercase text-blue-400/80 mb-0.5 tracking-wider">Facebook Page</p>
+              <a href="https://www.facebook.com/share/p/19mtBjuhq9/?mibextid=WC7FNe" target="_blank" rel="noopener noreferrer" class="text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1.5">
+                <span>Page သို့ သွားမည်</span>
+                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
               </a>
             </div>
           </div>
 
         </div>
 
-        <!-- အလှူငွေ လက်ခံဌာန သတင်းစကား (ပဒေသာပင် ၄ မျိုး) -->
-        <div class="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-[#080d1a] to-transparent border border-amber-500/30">
-          <h5 class="text-xs font-black text-amber-300 mb-2 flex items-center gap-2">
-            <i class="fa-solid fa-hand-holding-heart text-amber-400"></i> အလှူတော် မင်္ဂလာ ပဒေသာပင်များ
-          </h5>
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-bold">
-            <div class="p-2 rounded-lg bg-[#0f172a] border border-amber-500/20 text-amber-200 text-center">
-              (၁) ဆွမ်းပဒေသာပင်
-            </div>
-            <div class="p-2 rounded-lg bg-[#0f172a] border border-rose-500/20 text-rose-300 text-center">
-              (၂) ဆေးပဒေသာပင်
-            </div>
-            <div class="p-2 rounded-lg bg-[#0f172a] border border-sky-500/20 text-sky-300 text-center">
-              (၃) ရေ/မီး ပဒေသာပင်
-            </div>
-            <div class="p-2 rounded-lg bg-[#0f172a] border border-emerald-500/20 text-emerald-300 text-center">
-              (၄) အထွေထွေ အလှူတော်
-            </div>
-          </div>
-        </div>
-
       </div>
 
-      <!-- 🗺️ ညာဘက်ခြမ်း (၅ ကော်လံ) - တည်နေရာ Google Maps Iframe -->
+      <!-- 🗺️ ညာဘက်ခြမ်း (၅ ကော်လံ) - Interactive Google Maps Embed -->
       <div class="lg:col-span-5 flex flex-col space-y-3">
         
-        <div class="flex-1 min-h-[300px] sm:min-h-[360px] rounded-xl overflow-hidden border border-amber-500/30 shadow-xl bg-[#080d1a] relative">
-          <!-- Google Maps Iframe -->
+        <!-- Google Maps Iframe Container (အပြည့်အဝ ပေါ်စေမည့် အမြင့်) -->
+        <div class="flex-1 min-h-[320px] sm:min-h-[360px] rounded-2xl overflow-hidden border border-amber-500/25 shadow-2xl bg-[#080d1a] relative">
           <iframe 
             src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d3816.12345678!2d96.5668084!3d22.0676051!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e0!3m2!1sen!2smm!4v1234567890" 
             class="w-full h-full border-0 absolute inset-0"
@@ -266,14 +246,14 @@
           </iframe>
         </div>
 
-        <!-- Google Maps App ဖြင့် တိုက်ရိုက် လမ်းကြောင်းကြည့်ရန် ခလုတ် -->
+        <!-- Google Maps App Direct Navigation Button -->
         <a 
           href="https://maps.google.com/?q=22.0676051,96.5668084" 
           target="_blank" 
           rel="noopener noreferrer" 
-          class="w-full py-2.5 px-4 rounded-xl bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-300 text-xs font-black transition flex items-center justify-center gap-2 shadow-md">
+          class="w-full py-3 px-4 rounded-xl bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-300 text-xs font-black transition-all flex items-center justify-center gap-2 shadow-md">
           <i class="fa-solid fa-map-location-dot text-amber-400"></i>
-          <span>Google Maps App ဖြင့် လမ်းကြောင်းကြည့်မည်</span>
+          <span>Google Maps App ဖြင့် လမ်းကြောင်းဖွင့်မည်</span>
           <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
         </a>
 
