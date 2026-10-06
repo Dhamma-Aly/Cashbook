@@ -63,13 +63,13 @@ window.switchDashboardTab = function(tabName) {
     if (tabBadge) tabBadge.textContent = "စခန်းတွင်း Active ယောဂီများ";
 
   } else if (tabName === 'contact') {
-    // 🌟 ဆက်သွယ်ရန် Section ဖွင့်လှစ်ခြင်း
+    // 🌟 ၄ ခုမြောက် "ဆက်သွယ်ရန်" Section ကို ဖွင့်လှစ်ပေးခြင်း
     if (contactSection) contactSection.classList.remove("hidden");
     if (contactTabBtn) {
       contactTabBtn.classList.add(...activeClasses);
       contactTabBtn.classList.remove(...inactiveClasses);
     }
-    if (tabBadge) tabBadge.textContent = "(ပြင်ဦးလွင်မြို့)";
+    if (tabBadge) tabBadge.textContent = "ပြင်ဦးလွင်မြို့";
   }
 };
 
