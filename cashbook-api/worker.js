@@ -1,5 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.3 (Auto Rolling Balance Report)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.4 (Grouped Sorting & Filter Fix)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;               // Workers ၏ ခွင့်ပြုသည့် အမြင့်ဆုံး
@@ -117,7 +117,6 @@ async function verifyPassword(pw, stored) {
     const calc = await hashPassword(pw, b64uToBytes(salt), parseInt(iter, 10));
     return { ok: safeEqual(calc, stored), upgrade: false };
   }
-  // 🌟 D1 ထဲမှ Plain Text များကို တိုက်ရိုက်စစ်ဆေးပေးမည်
   return { ok: stored !== '' && safeEqual(pw, stored), upgrade: true }; 
 }
 
@@ -346,9 +345,6 @@ function formatYogi(rows, rawSheet, table) {
   };
 }
 
-// ===================================================================
-// ROUTE HANDLERS
-// ===================================================================
 async function handleLogin(c) {
   const b = await readJson(c.request);
   const username = str(b.username), password = str(b.password);
@@ -358,7 +354,6 @@ async function handleLogin(c) {
     `SELECT id, username, password, role, name FROM users WHERE username = ? LIMIT 1`
   ).bind(username).first();
   
-  // 🌟 Plaintext များကို တိုက်ရိုက် စစ်ဆေးပေးပြီး အလိုအလျောက် Upgrade ပြုလုပ်မည်
   const check = row ? await verifyPassword(password, String(row.password || '')) : { ok: false };
   if (!check.ok) throw new HttpError(401, 'အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။');
 
@@ -688,7 +683,7 @@ async function handleYogi(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
-// 🌟 REPORT ALGORITHM (Auto Running Balance Setup & Category Fix)
+// 🌟 REPORT ALGORITHM (Auto Running Balance Setup, Category Grouping & Skipping Transfers)
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'အရုဏ်ဆွမ်း', keywords: ['အရုဏ်'] },
@@ -711,7 +706,7 @@ const PREDEFINED_EXPENSE = [
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
 ];
 
-const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ']);
+const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ', 'လွှဲပြောင်းရရှိ']);
 
 async function handleReport(c) {
   const { url, env } = c;
@@ -720,13 +715,12 @@ async function handleReport(c) {
   const targetYear = url.searchParams.get('year') || todayMM().slice(0, 4);
   if (!/^\d{4}$/.test(targetYear)) throw new HttpError(400, 'Invalid year');
 
-  // 🌟 (၁) ယခင်နှစ်များမှ အစပြု၍ လက်ကျန်ငွေ တွက်ချက်ရန် ယခုနှစ်အထိ ဒေတာအားလုံးကို ဆွဲယူမည်
   const { results } = await env.DB.prepare(
     `SELECT date, title, sub_title, COALESCE(income,0) as income, COALESCE(expense,0) as expense
      FROM "${table}" WHERE strftime('%Y', date) <= ? ORDER BY date ASC`
   ).bind(targetYear).all();
 
-  const mk = (defs, type) => defs.map((s, i) => ({ srNo: i + 1, type, ...s, months: Array(12).fill(0), total: 0 }));
+  const mk = (defs, type) => defs.map((s, i) => ({ type, ...s, months: Array(12).fill(0), total: 0 }));
   const incRows = mk(PREDEFINED_INCOME, 'ဝင်ငွေ');
   const expRows = mk(PREDEFINED_EXPENSE, 'ထွက်ငွေ');
   const dynInc = {}, dynExp = {};
@@ -736,7 +730,7 @@ async function handleReport(c) {
     const hit = find(rows, t, st, txt);
     if (hit) { hit.months[m] += amt; return; }
     const k = `${t || fallback}_${st || 'အထွေထွေ'}`;
-    if (!dyn[k]) dyn[k] = { srNo: 0, type, category: t || fallback, subcategory: st || 'အထွေထွေ', months: Array(12).fill(0), total: 0 };
+    if (!dyn[k]) dyn[k] = { type, category: t || fallback, subcategory: st || 'အထွေထွေ', months: Array(12).fill(0), total: 0 };
     dyn[k].months[m] += amt;
   };
 
@@ -746,7 +740,9 @@ async function handleReport(c) {
 
   (results || []).forEach(r => {
     const t = str(r.title), st = str(r.sub_title);
-    if (REPORT_SKIP_TITLES.has(t)) return;
+    
+    // 🌟 (၁) EXCLUSION FIX: ဝင်ငွေ မဟုတ်သော အတွင်းလွှဲပြောင်းမှုများကို အစီရင်ခံစာမှ လုံးဝဖယ်ရှားမည်
+    if (REPORT_SKIP_TITLES.has(t) || t.includes('လွှဲပြောင်း') || st.includes('လွှဲပြောင်း') || t.includes('စာရင်းပြောင်း')) return;
     
     const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0;
     const rYear = r.date.slice(0, 4);
@@ -767,14 +763,12 @@ async function handleReport(c) {
     }
   });
 
-  // 🌟 (၂) လစဉ် Opening Balance များကို တွက်ချက်ခြင်း (Math Magic)
   const openingBalances = Array(12).fill(0);
   openingBalances[0] = runningBalance;
   for(let i = 1; i < 12; i++) {
     openingBalances[i] = openingBalances[i-1] + monthlyNetCurrentYear[i-1];
   }
 
-  // 🌟 (၃) စာရင်းဖွင့်လက်ကျန် Row အား အစားထိုးခြင်း
   const openingRow = incRows.find(r => r.category === 'စာရင်းဖွင့်' && r.subcategory === 'စာရင်းဖွင့်လက်ကျန်');
   if (openingRow) {
     for(let i = 0; i < 12; i++) {
@@ -782,13 +776,36 @@ async function handleReport(c) {
     }
   }
 
-  Object.values(dynInc).forEach(x => { x.srNo = incRows.length + 1; incRows.push(x); });
-  Object.values(dynExp).forEach(x => { x.srNo = expRows.length + 1; expRows.push(x); });
+  Object.values(dynInc).forEach(x => { incRows.push(x); });
+  Object.values(dynExp).forEach(x => { expRows.push(x); });
+
+  // 🌟 (၂) GROUPING & SORTING FIX: ခေါင်းစဉ်တူရာ အချင်းချင်း စုစည်း၍ ညီညာစွာ စီပေးမည်
+  function sortReportRows(rows, predefinedList) {
+    const catOrder = [...new Set(predefinedList.map(x => x.category))];
+    rows.sort((a, b) => {
+      let catA = catOrder.indexOf(a.category);
+      let catB = catOrder.indexOf(b.category);
+      if (catA === -1) catA = 999;
+      if (catB === -1) catB = 999;
+      if (catA !== catB) return catA - catB;
+      
+      let subA = predefinedList.findIndex(x => x.category === a.category && x.subcategory === a.subcategory);
+      let subB = predefinedList.findIndex(x => x.category === b.category && x.subcategory === b.subcategory);
+      if (subA === -1) subA = 999;
+      if (subB === -1) subB = 999;
+      if (subA !== subB) return subA - subB;
+      
+      return a.subcategory.localeCompare(b.subcategory);
+    });
+    rows.forEach((r, i) => r.srNo = i + 1);
+  }
+
+  sortReportRows(incRows, PREDEFINED_INCOME);
+  sortReportRows(expRows, PREDEFINED_EXPENSE);
 
   const incomeTotals = Array(12).fill(0), expenseTotals = Array(12).fill(0);
   let grandIncomeTotal = 0, grandExpenseTotal = 0;
 
-  // 🌟 (၄) စာရင်းဖွင့်လက်ကျန် Row ၏ နှစ်ချုပ် (Total) ကို ကာကွယ်ခြင်း
   incRows.forEach(r => { 
     delete r.keywords; 
     r.months.forEach((a, i) => { incomeTotals[i] += a; }); 
@@ -807,7 +824,6 @@ async function handleReport(c) {
     grandExpenseTotal += r.total; 
   });
   
-  // 🌟 (၅) Bottom Row: Net Closing Balance for each Month
   const balanceTotals = incomeTotals.map((v, i) => v - expenseTotals[i]);
 
   return c.J({
