@@ -1,39 +1,43 @@
 // ===================================================================
 // js/Dashboard.js - Home Dashboard View Renderer & Tab Controller
-// Instant 0-Second Load with 3 Sub-Tabs (Fund, Padetha Books, Yogi)
+// Instant 0-Second Load with 4 Sub-Tabs (Fund, Padetha, Yogi, Contact)
 // ===================================================================
 
 const DASH_CACHE_KEY = 'sasana_dashboard_cache';
 
 /**
- * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ အကျဉ်းချုပ် <-> စာအုပ်စာရင်း <-> ယောဂီ ပေါင်းချုပ်)
+ * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ <-> စာအုပ်စာရင်း <-> ယောဂီ <-> ဆက်သွယ်ရန်)
  */
 window.switchDashboardTab = function(tabName) {
   const fundSection = document.getElementById("dash-fund-section");
   const padethaSection = document.getElementById("dash-padetha-section");
   const yogiSection = document.getElementById("dash-yogi-section");
+  const contactSection = document.getElementById("dash-contact-section");
 
   const fundTabBtn = document.getElementById("tab-dash-fund");
   const padethaTabBtn = document.getElementById("tab-dash-padetha");
   const yogiTabBtn = document.getElementById("tab-dash-yogi");
+  const contactTabBtn = document.getElementById("tab-dash-contact");
   const tabBadge = document.getElementById("dash-tab-badge");
 
   const activeClasses = ["text-amber-300", "bg-[#1e293b]", "border-amber-500/30", "font-black", "shadow-sm"];
   const inactiveClasses = ["text-amber-400/60", "font-bold", "hover:text-amber-200"];
 
-  // Hide all sections first
+  // ၁။ Section အားလုံးကို အရင် ဝှက်ထားမည်
   if (fundSection) fundSection.classList.add("hidden");
   if (padethaSection) padethaSection.classList.add("hidden");
   if (yogiSection) yogiSection.classList.add("hidden");
+  if (contactSection) contactSection.classList.add("hidden");
 
-  // Reset all tab buttons
-  [fundTabBtn, padethaTabBtn, yogiTabBtn].forEach(btn => {
+  // ၂။ Tab ခလုတ် ၄ ခုလုံးကို Inactive ပုံစံ ပြောင်းမည်
+  [fundTabBtn, padethaTabBtn, yogiTabBtn, contactTabBtn].forEach(btn => {
     if (btn) {
       btn.classList.remove(...activeClasses);
       btn.classList.add(...inactiveClasses);
     }
   });
 
+  // ၃။ ရွေးချယ်လိုက်သော Tab အလိုက် ဖွင့်လှစ်ပြသခြင်း
   if (tabName === 'fund') {
     if (fundSection) fundSection.classList.remove("hidden");
     if (fundTabBtn) {
@@ -57,6 +61,15 @@ window.switchDashboardTab = function(tabName) {
       yogiTabBtn.classList.remove(...inactiveClasses);
     }
     if (tabBadge) tabBadge.textContent = "စခန်းတွင်း Active ယောဂီများ";
+
+  } else if (tabName === 'contact') {
+    // 🌟 ဆက်သွယ်ရန် Section ဖွင့်လှစ်ခြင်း
+    if (contactSection) contactSection.classList.remove("hidden");
+    if (contactTabBtn) {
+      contactTabBtn.classList.add(...activeClasses);
+      contactTabBtn.classList.remove(...inactiveClasses);
+    }
+    if (tabBadge) tabBadge.textContent = "(ပြင်ဦးလွင်မြို့)";
   }
 };
 
@@ -202,7 +215,7 @@ window.renderDashboardView = async function() {
       bankTableElem.innerHTML = fundHtml;
     }
 
-    // 🌟 3. BOOK SUMMARY TABLE (ပဒေသာပင် ၄ အုပ် - စဉ် | စာအုပ်အမည် | ဝင်ငွေ | ဘဏ်အပ်နှံ | လက်ကျန်)
+    // 3. BOOK SUMMARY TABLE (ပဒေသာပင် ၄ အုပ်)
     if (padethaTableElem) {
       let padethaHtml = `
       <div class="overflow-x-auto">
@@ -225,7 +238,6 @@ window.renderDashboardView = async function() {
       let totalPadethaBalance = 0;
 
       PADETHA_SPECS.forEach((spec, idx) => {
-        // Backend မှ ပို့လိုက်သော padethaSummary ထဲမှ ရှာဖွေခြင်း
         const row = padethaSummary.find(p => p.table_name === spec.tableName) || {
           income: 0,
           expense: 0,
@@ -250,7 +262,6 @@ window.renderDashboardView = async function() {
         </tr>`;
       });
 
-      // 🌟 စုစုပေါင်း စာကြောင်း (Grand Total Row)
       padethaHtml += `
         <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 shadow-2xl">
           <td class="text-center py-4 px-3 font-mono text-amber-500/60 font-bold">-</td>
