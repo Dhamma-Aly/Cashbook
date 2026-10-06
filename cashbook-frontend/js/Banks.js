@@ -1,7 +1,7 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
 // Clean Architecture: Fully driven by window.CONFIG & view/Banks.html
-// Features: 100% Smart Omni-Search (Searches Date, Title, Desc, Income, Expense, Balance, Subtitle, Voucher, Receiver)
+// Features: 100% Balanced Typography (Description & Sub-Title Harmony)
 // Supports Myanmar Numerals & Comma-Free Fuzzy Number Search
 // ===================================================================
 
@@ -108,7 +108,7 @@ function updateLedgerKPIs(kpis) {
 }
 
 // -------------------------------------------------------------------
-// 🔍 SMART OMNI-SEARCH FILTER ENGINE (အစွမ်းထက် ဘက်စုံ ရှာဖွေမှုစနစ်)
+// 🔍 SMART OMNI-SEARCH FILTER ENGINE
 // -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
@@ -117,7 +117,6 @@ function applyLedgerSearchFilter() {
   if (!rawQuery) {
     bankFilteredEntries = bankAllEntries;
   } else {
-    // ရှာဖွေသည့် စကားလုံးအား အင်္ဂလိပ်ဂဏန်း၊ ကော်မာမပါသော ဂဏန်းတို့ဖြင့် ပြောင်းလဲစစ်ဆေးခြင်း
     const engQuery = window.toEnglishDigits(rawQuery);
     const cleanNumQuery = engQuery.replace(/,/g, '');
 
@@ -142,7 +141,6 @@ function applyLedgerSearchFilter() {
       const bookText = (e.book_name || '').toLowerCase();
       const myText = (e.month_year || formatMonthYear(e.date)).toLowerCase();
 
-      // စာသားစစ်ဆေးမှု
       const textMatches = [
         dateText, titleText, subTitleText, descText, 
         receiverText, bookText, myText, (e.voucher_no || '').toLowerCase(), voucherEng
@@ -150,7 +148,6 @@ function applyLedgerSearchFilter() {
 
       if (textMatches) return true;
 
-      // ဝင်ငွေ၊ ထွက်ငွေ၊ လက်ကျန် ဂဏန်းများ စစ်ဆေးမှု (ကော်မာပါပါ မပါပါ ရှာဖွေနိုင်သည်)
       const numMatches = [
         incStr, incFmt, expStr, expFmt, balStr, balFmt
       ].some(n => n.includes(cleanNumQuery) || n.includes(rawQuery) || n.includes(engQuery));
@@ -213,9 +210,10 @@ function renderLedgerTable() {
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
+      // 🌟 ၁၃px font-medium ဖြင့် ပြတ်သားကြည်လင်အောင် ညှိထားသော အကြောင်းအရာ
       const escapedDesc = (entry.description || '').replace(/"/g, '&quot;');
       const descHtml = entry.description 
-        ? `<div class="text-slate-200 text-xs leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
+        ? `<div class="text-slate-100 text-[13px] leading-relaxed font-medium whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
       tableHTML += `
@@ -223,11 +221,17 @@ function renderLedgerTable() {
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
+          
+          <!-- 🌟 4. အကြောင်းအရာ: 13px font-medium ဖြင့် ဖတ်ရလွယ်ကူသည် -->
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
+          
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
-          <td class="font-semibold text-amber-200 whitespace-nowrap px-2">${entry.sub_title || "-"}</td>
+          
+          <!-- 🌟 8. ခေါင်းစဉ်ခွဲ: font-medium text-[12.5px] ဖြင့် အချိုးညီအောင် ညှိထားသည် -->
+          <td class="font-medium text-amber-200/90 whitespace-nowrap px-2 text-[12.5px]">${entry.sub_title || "-"}</td>
+          
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
           <td class="whitespace-nowrap px-2">${receiverBadge}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
@@ -417,6 +421,9 @@ window.onEntryCategoryChange = function(selectedCategory) {
 window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
+// -------------------------------------------------------------------
+// Save Form
+// -------------------------------------------------------------------
 window.saveEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
