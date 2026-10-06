@@ -245,24 +245,17 @@
             <span class="sm:hidden"><span id="sync-failed-count-mobile">0</span></span>
           </div>
 
-          <!-- ၂။ သပ်ရပ်သော Online/Offline Status Chip -->
+          <!-- ၂။ သပ်ရပ်သော Online/Offline Status Chip (🌟 Wifi Icon ဖြင့်) -->
           <div id="network-status-badge" class="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="network-status-text" class="hidden sm:inline">Online</span>
+            <!-- Content will be injected by updateNetworkStatus() -->
           </div>
 
-          <!-- ၃။ လေဝင်လေထွက်ကောင်းသော Live Calendar & Clock Chip -->
-          <div id="live-clock-badge" class="hidden md:flex h-9 items-center gap-2 px-3.5 rounded-xl text-xs font-mono text-slate-300 bg-[#0b1329] border border-slate-700/60 shadow-sm shrink-0">
-            <i class="fa-regular fa-clock text-amber-400 text-xs"></i>
-            <span id="live-clock-display">--:-- --</span>
-          </div>
-
-          <!-- ၄။ ရာထူးတံဆိပ်ပါဝင်သော Luxury User Badge -->
-          <div id="user-badge" class="h-9 px-3 sm:px-3.5 rounded-xl text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 flex items-center gap-2 shadow-sm shrink-0">
+          <!-- ၃။ ရာထူးနှင့် နာရီ ပေါင်းစပ်ထားသော Badge (🌟 Date | Time | User format) -->
+          <div id="user-badge" class="h-9 px-3 sm:px-3.5 rounded-xl text-xs font-mono font-medium text-slate-200 bg-[#0f172a] border border-amber-500/30 flex items-center gap-2 shadow-sm shrink-0">
             <div class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">
               <i class="fa-solid fa-user-shield"></i>
             </div>
-            <span id="current-user-display" class="whitespace-nowrap font-medium text-slate-200">Admin</span>
+            <span id="current-user-display" class="whitespace-nowrap">Loading...</span>
           </div>
 
         </div>
@@ -313,17 +306,17 @@
 
   <!-- 🌟 Real-Time Live Clock & Network Status Scripts -->
   <script>
+    // 🌟 Wifi Icon အစိမ်းလေး ပြပြီး Online, Wifi ကို မျဉ်းစောင်းဖြတ်ထားတဲ့ အနီရောင် (Slashed) Offline
     function updateNetworkStatus() {
       const badge = document.getElementById('network-status-badge');
-      const text = document.getElementById('network-status-text');
-      if (!badge || !text) return;
+      if (!badge) return;
 
       if (navigator.onLine) {
         badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="network-status-text" class="hidden sm:inline">Online</span>`;
+        badge.innerHTML = `<i class="fa-solid fa-wifi animate-pulse"></i><span id="network-status-text" class="hidden sm:inline">Online</span>`;
       } else {
         badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-rose-500/10 text-rose-400 border border-rose-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span id="network-status-text" class="hidden sm:inline">Offline</span>`;
+        badge.innerHTML = `<span class="fa-stack" style="width: 1em; height: 1em; line-height: 1em; font-size: 13px;"><i class="fa-solid fa-wifi fa-stack-1x text-rose-400"></i><i class="fa-solid fa-slash fa-stack-1x text-rose-500"></i></span><span id="network-status-text" class="hidden sm:inline">Offline</span>`;
       }
     }
 
@@ -332,10 +325,10 @@
     window.addEventListener('load', updateNetworkStatus);
     updateNetworkStatus();
 
-    // 🌟 Live Header Clock & User Badge (ကျပ်ညှပ်မှုမရှိဘဲ Dot ဖြင့် သန့်ရှင်းစွာ ပြသခြင်း)
+    // 🌟 Combined Badge: 2026-10-06 | Tue: 5:38 Pm | Admin (စီမံအုပ်ချုပ်သူ)
     function updateLiveHeaderClock() {
-      const clockEl = document.getElementById("live-clock-display");
       const userEl = document.getElementById("current-user-display");
+      if (!userEl) return;
 
       const now = new Date();
       const yyyy = now.getFullYear();
@@ -347,20 +340,14 @@
 
       let hours = now.getHours();
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      const ampm = hours >= 12 ? 'PM' : 'AM';
+      const ampm = hours >= 12 ? 'Pm' : 'Am';
       hours = hours % 12 || 12;
       const timeStr = `${hours}:${minutes} ${ampm}`;
 
-      if (clockEl) {
-        clockEl.innerHTML = `${yyyy}-${mm}-${dd} (${dayName}) <span class="text-slate-500 mx-1.5">•</span> <span class="text-amber-300 font-bold">${timeStr}</span>`;
-      }
+      const username = localStorage.getItem('sasana_user_name') || 'Admin';
+      const displayName = localStorage.getItem('sasana_display_name') || 'စီမံအုပ်ချုပ်သူ';
 
-      if (userEl && !userEl.dataset.initialized) {
-        const username = localStorage.getItem('sasana_user_name') || 'Admin';
-        const displayName = localStorage.getItem('sasana_display_name') || 'စီမံအုပ်ချုပ်သူ';
-        userEl.innerHTML = `${username} <span class="text-amber-400 font-bold text-xs">(${displayName})</span>`;
-        userEl.dataset.initialized = "true";
-      }
+      userEl.innerHTML = `${yyyy}-${mm}-${dd} <span class="text-slate-500 mx-1.5">|</span> ${dayName}: ${timeStr} <span class="text-slate-500 mx-1.5">|</span> <span class="text-amber-400 font-bold">${username} (${displayName})</span>`;
     }
 
     setInterval(updateLiveHeaderClock, 1000);
