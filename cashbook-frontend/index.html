@@ -235,22 +235,29 @@
           <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-slate-100 tracking-wide truncate">Home Dashboard</h1>
         </div>
 
-        <!-- 🌟 နိုင်ငံတကာ စံနှုန်းမီ သပ်ရပ်ကျယ်ဝန်းသော Header Status Indicators (ကျပ်ညှပ်မှု ကင်းဝေးစေသည်) -->
+        <!-- 🌟 နိုင်ငံတကာ စံနှုန်းမီ သပ်ရပ်ကျယ်ဝန်းသော Header Status Indicators -->
         <div class="flex items-center gap-2 sm:gap-3 shrink-0">
           
-          <!-- ၁။ သပ်ရပ်သော Online/Offline Status Chip -->
-          <div id="network-status-badge" class="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span id="network-status-text">Online</span>
+          <!-- ၁။ Offline Sync Error Badge (Failed ဖြစ်မှသာ ပေါ်မည်) -->
+          <div id="sync-error-badge" class="hidden h-9 px-3 rounded-xl text-xs font-bold text-rose-300 bg-rose-500/10 border border-rose-500/30 items-center gap-2 shadow-sm shrink-0 cursor-pointer" onclick="if(typeof window.retryFailedSync === 'function') window.retryFailedSync();" title="မအောင်မြင်သော စာရင်းများ ပြန်လည်ပေးပို့ရန် နှိပ်ပါ">
+            <i class="fa-solid fa-cloud-arrow-up animate-pulse"></i>
+            <span class="hidden sm:inline">Sync Failed: <span id="sync-failed-count">0</span></span>
+            <span class="sm:hidden"><span id="sync-failed-count-mobile">0</span></span>
           </div>
 
-          <!-- ၂။ လေဝင်လေထွက်ကောင်းသော Live Calendar & Clock Chip (ဖုန်းတွင် နေရာချုံ့ပေးပြီး ကွန်ပျူတာတွင် သပ်ရပ်စွာ ပေါ်စေသည်) -->
+          <!-- ၂။ သပ်ရပ်သော Online/Offline Status Chip -->
+          <div id="network-status-badge" class="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="network-status-text" class="hidden sm:inline">Online</span>
+          </div>
+
+          <!-- ၃။ လေဝင်လေထွက်ကောင်းသော Live Calendar & Clock Chip -->
           <div id="live-clock-badge" class="hidden md:flex h-9 items-center gap-2 px-3.5 rounded-xl text-xs font-mono text-slate-300 bg-[#0b1329] border border-slate-700/60 shadow-sm shrink-0">
             <i class="fa-regular fa-clock text-amber-400 text-xs"></i>
             <span id="live-clock-display">--:-- --</span>
           </div>
 
-          <!-- ၃။ ရာထူးတံဆိပ်ပါဝင်သော Luxury User Badge -->
+          <!-- ၄။ ရာထူးတံဆိပ်ပါဝင်သော Luxury User Badge -->
           <div id="user-badge" class="h-9 px-3 sm:px-3.5 rounded-xl text-xs font-bold text-amber-300 bg-[#0f172a] border border-amber-500/30 flex items-center gap-2 shadow-sm shrink-0">
             <div class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">
               <i class="fa-solid fa-user-shield"></i>
@@ -273,6 +280,26 @@
     <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
 
+  <!-- 🌟 Soft Re-Authentication Modal (Session Expired ဖြစ်ပါက Data မပျက်စေရန်) -->
+  <div id="reauth-modal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.95); backdrop-filter: blur(8px);">
+    <div style="width: 100%; max-width: 380px; background-color: #090d16; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.95);">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <i class="fa-solid fa-lock text-amber-400 text-3xl mb-3"></i>
+        <h2 style="font-size: 16px; font-weight: 800; color: #fef08a; margin: 0;">Session သက်တမ်းကုန်သွားပါပြီ</h2>
+        <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">လုံခြုံရေးအရ စနစ်သို့ ပြန်လည်ဝင်ရောက်ပေးပါ။ သင်ရေးသားဆဲ ဒေတာများ မပျက်သွားပါ။</p>
+      </div>
+      <form id="reauth-form" onsubmit="handleReAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="text-align: center; font-size: 13px; color: #cbd5e1; font-weight: 700;" id="reauth-username-display">User</div>
+        <input type="password" id="reauth-password" required placeholder="လျှို့ဝှက်နံပါတ် (Password) အား ရိုက်ထည့်ပါ" style="width: 100%; height: 42px; padding: 0 14px; background-color: #050811; border: 1px solid #334155; border-radius: 10px; color: #f8fafc; font-size: 13px; outline: none;" class="focus:border-amber-400">
+        <div id="reauth-error" class="hidden" style="color: #fb7185; font-size: 11px; font-weight: 600; text-align: center;"></div>
+        <div style="display: flex; gap: 10px; margin-top: 8px;">
+          <button type="button" onclick="cancelReAuth()" style="flex: 1; padding: 10px; border-radius: 10px; background-color: #1e293b; color: #cbd5e1; font-size: 12px; font-weight: 700; border: none; cursor: pointer;">Cancel / Logout</button>
+          <button type="submit" style="flex: 1; padding: 10px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #020617; font-size: 12px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">ဆက်လက်ဝင်ရောက်မည်</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Consolidated Scripts -->
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
@@ -293,10 +320,10 @@
 
       if (navigator.onLine) {
         badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="network-status-text">Online</span>`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span id="network-status-text" class="hidden sm:inline">Online</span>`;
       } else {
         badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-rose-500/10 text-rose-400 border border-rose-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span id="network-status-text">Offline</span>`;
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-400"></span><span id="network-status-text" class="hidden sm:inline">Offline</span>`;
       }
     }
 
@@ -324,12 +351,10 @@
       hours = hours % 12 || 12;
       const timeStr = `${hours}:${minutes} ${ampm}`;
 
-      // 🌟 နာရီနှင့် ရက်စွဲအား မျက်စိအေးစေသော Dot • ဖြင့် ရှင်းလင်းစွာ ပြသခြင်း
       if (clockEl) {
         clockEl.innerHTML = `${yyyy}-${mm}-${dd} (${dayName}) <span class="text-slate-500 mx-1.5">•</span> <span class="text-amber-300 font-bold">${timeStr}</span>`;
       }
 
-      // 🌟 User Badge ပေါ်တွင် မြန်မာလို ရာထူး သပ်ရပ်စွာ ပေါ်စေခြင်း
       if (userEl && !userEl.dataset.initialized) {
         const username = localStorage.getItem('sasana_user_name') || 'Admin';
         const displayName = localStorage.getItem('sasana_display_name') || 'စီမံအုပ်ချုပ်သူ';
