@@ -1,12 +1,11 @@
 // ===================================================================
 // js/auth.js - Sāsana ERP Pure D1 Auth Controller
-// Features: Auto-Bootstrap on Login, Version Sync & Burmese Role Display
+// Features: Auto-Bootstrap on Login, Soft Re-Auth Modal & Role Config
 // ===================================================================
 
 (function () {
   "use strict";
 
-  // 🇲🇲 မြန်မာလို ရာထူးအမည်များ အလိုအလျောက် ချိတ်ဆက်ပေးသော စံနှုန်း
   const ROLE_BURMESE_MAP = {
     'Admin': 'စီမံအုပ်ချုပ်သူ',
     'Finance': 'ဘဏ္ဍာရေး',
@@ -15,7 +14,6 @@
     'Viewer': 'ကြည့်ရှုသူ'
   };
 
-  // 🚨 1. Version Sync with config.js (Unifies App Version)
   const getAppVersion = () => {
     return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.0_D1_ENTERPRISE";
   };
@@ -30,9 +28,6 @@
     localStorage.setItem("sasana_app_version", targetVersion);
   }
 
-  // -----------------------------------------------------------------
-  // 👤 2. User Info Helpers
-  // -----------------------------------------------------------------
   window.getCurrentUser = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     if (!token) return null;
@@ -46,7 +41,6 @@
   window.getCurrentUserDisplayName = function () {
     const role = window.getCurrentUserRole();
     const storedName = localStorage.getItem("sasana_display_name");
-    // မြန်မာလို အမည်ရှိပါက ယူမည်၊ မရှိပါက ရာထူးအလိုက် မြန်မာလို အလိုအလျောက် ပြသမည်
     if (storedName && storedName !== window.getCurrentUser()) {
       return storedName;
     }
@@ -54,13 +48,9 @@
   };
 
   window.canUserEdit = function () {
-    const role = window.getCurrentUserRole();
-    return role !== "Viewer";
+    return window.getCurrentUserRole() !== "Viewer";
   };
 
-  // -----------------------------------------------------------------
-  // 🏛️ 3. Workspace UI & User Badge Renderer
-  // -----------------------------------------------------------------
   window.showWorkspace = function () {
     document.documentElement.className = "dark is-authed";
     const loginOverlay = document.getElementById("login-overlay");
@@ -69,25 +59,18 @@
     if (loginOverlay) loginOverlay.classList.add("hidden");
     if (workspace) workspace.classList.remove("hidden");
 
-    // Header Display (Date & Role Badge)
     const liveUserEl = document.getElementById("current-user-display") || document.getElementById("live-user-name");
     if (liveUserEl) {
       const today = new Date();
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
-      const formattedDate = `${yyyy}-${mm}-${dd}`;
       const username = window.getCurrentUser() || "Admin";
       const displayName = window.getCurrentUserDisplayName();
-      
-      // 🌟 "2026-10-02 | Admin (စီမံအုပ်ချုပ်သူ)" ဟု ခန့်ညားစွာ ပြသပေးခြင်း
-      liveUserEl.textContent = `${formattedDate} | ${username} (${displayName})`;
+      liveUserEl.textContent = `${yyyy}-${mm}-${dd} | ${username} (${displayName})`;
     }
   };
 
-  // -----------------------------------------------------------------
-  // 🔒 4. Login Overlay UI
-  // -----------------------------------------------------------------
   window.showLoginOverlay = function () {
     document.documentElement.className = "dark not-authed";
     const loginOverlay = document.getElementById("login-overlay");
@@ -97,9 +80,6 @@
     if (workspace) workspace.classList.add("hidden");
   };
 
-  // -----------------------------------------------------------------
-  // ⏰ 5. Check Existing Auth Session on Page Load
-  // -----------------------------------------------------------------
   window.checkExistingSession = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
@@ -115,9 +95,6 @@
     }
   };
 
-  // -----------------------------------------------------------------
-  // 🚀 6. Login Submission Handler
-  // -----------------------------------------------------------------
   window.handleLoginSubmit = async function (event) {
     if (event && event.preventDefault) event.preventDefault();
 
@@ -145,10 +122,7 @@
     }
 
     try {
-      const baseUrl = (window.CONFIG && (window.CONFIG.API_BASE_URL || window.CONFIG.API_URL))
-        || (window.APP_CONFIG && (window.APP_CONFIG.API_BASE_URL || window.APP_CONFIG.API_URL))
-        || "https://cashbook-api.dhammaaly.workers.dev";
-
+      const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) || "https://cashbook-api.dhammaaly.workers.dev";
       const res = await fetch(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -162,39 +136,24 @@
         const expiresAt = Date.now() + expiresInMs;
         const userObj = json.user || { username, role: username, name: username };
 
-        // Local Storage သိမ်းဆည်းခြင်း
         localStorage.setItem("sasana_auth_token", json.token);
         localStorage.setItem("sasana_user_name", userObj.username);
         localStorage.setItem("sasana_user_role", userObj.role || username);
         localStorage.setItem("sasana_display_name", userObj.name || ROLE_BURMESE_MAP[userObj.role] || userObj.username);
         localStorage.setItem("sasana_token_expires_at", String(expiresAt));
 
-        // Yogi Session Compatibility
         localStorage.setItem("yogi_auth_token", json.token);
         localStorage.setItem("yogi_user_name", userObj.username);
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (passwordInput) passwordInput.value = "";
-
-        // UI ဖွင့်လှစ်ခြင်း
         window.showWorkspace();
 
-        // 🚀 Login ဝင်သည်နှင့် တစ်ပြိုင်နက် စာအုပ်အားလုံးကို Background မှ ကြိုတင်ဆွဲယူစေခြင်း (Preload)
-        if (typeof window.bootstrapAppData === "function") {
-          window.bootstrapAppData();
-        }
+        if (typeof window.bootstrapAppData === "function") window.bootstrapAppData();
+        if (typeof window.switchTab === "function") window.switchTab("Home");
+        else if (typeof window.initApp === "function") window.initApp();
 
-        // Dashboard သို့ တန်းသွားခြင်း
-        if (typeof window.switchTab === "function") {
-          window.switchTab("Home");
-        } else if (typeof window.initApp === "function") {
-          window.initApp();
-        }
-
-        // Live Sync စတင်ခြင်း
-        if (typeof window.startLiveSync === "function") {
-          window.startLiveSync();
-        }
+        if (typeof window.startLiveSync === "function") window.startLiveSync();
 
       } else {
         if (errDiv) {
@@ -206,11 +165,9 @@
     } catch (err) {
       console.error("[Login Exception]", err);
       if (errDiv) {
-        if (!navigator.onLine) {
-          errDiv.textContent = "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။";
-        } else {
-          errDiv.textContent = "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
-        }
+        errDiv.textContent = !navigator.onLine 
+          ? "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။" 
+          : "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
         errDiv.classList.remove("hidden");
       }
     } finally {
@@ -221,9 +178,94 @@
     }
   };
 
-  // -----------------------------------------------------------------
-  // 🚪 7. Logout Handlers
-  // -----------------------------------------------------------------
+  // 🌟 Soft Re-Authentication Logic (Session Expire ဖြစ်၍ Modal ခေါ်ချိန်)
+  window.showReAuthModal = function() {
+    const modal = document.getElementById("reauth-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      const userDisplay = document.getElementById("reauth-username-display");
+      if (userDisplay) {
+        userDisplay.textContent = window.getCurrentUser() || 'User';
+      }
+      const pwdInput = document.getElementById("reauth-password");
+      if (pwdInput) {
+        pwdInput.value = "";
+        setTimeout(() => pwdInput.focus(), 100);
+      }
+    } else {
+      window.handleLogoutSilent(); // Modal HTML မရှိပါက ပုံမှန် Logout သာလုပ်မည်
+    }
+  };
+
+  window.handleReAuthSubmit = async function(event) {
+    if (event && event.preventDefault) event.preventDefault();
+    
+    const passwordInput = document.getElementById("reauth-password");
+    const errDiv = document.getElementById("reauth-error");
+    const submitBtn = event.target ? event.target.querySelector("button[type='submit']") : null;
+    const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "";
+
+    const username = window.getCurrentUser();
+    const password = passwordInput ? passwordInput.value.trim() : "";
+
+    if (!password) return;
+
+    if (errDiv) errDiv.classList.add("hidden");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin text-sm"></i>`;
+    }
+
+    try {
+      const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) || "https://cashbook-api.dhammaaly.workers.dev";
+      const res = await fetch(`${baseUrl}/api/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.ok && json.success && json.token) {
+        const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
+        const expiresAt = Date.now() + expiresInMs;
+
+        localStorage.setItem("sasana_auth_token", json.token);
+        localStorage.setItem("yogi_auth_token", json.token);
+        localStorage.setItem("sasana_token_expires_at", String(expiresAt));
+        localStorage.setItem("yogi_token_expires_at", String(expiresAt));
+
+        if (passwordInput) passwordInput.value = "";
+        document.getElementById("reauth-modal").classList.add("hidden");
+
+        // 🌟 Authentication အောင်မြင်ပါက ရပ်နေသော Auto Sync ကို ချက်ချင်းပြန်လုပ်ပေးမည်
+        if (typeof window.triggerBackgroundSync === "function") {
+          window.triggerBackgroundSync();
+        }
+
+      } else {
+        if (errDiv) {
+          errDiv.textContent = json.error || "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
+          errDiv.classList.remove("hidden");
+        }
+      }
+    } catch (err) {
+      if (errDiv) {
+        errDiv.textContent = "ကွန်ရက် အမှားဖြစ်ပေါ်နေပါသည်။ အင်တာနက်စစ်ဆေးပါ။";
+        errDiv.classList.remove("hidden");
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnHtml;
+      }
+    }
+  };
+
+  window.cancelReAuth = function() {
+    window.handleLogoutSilent();
+  };
+
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
       if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
@@ -242,7 +284,6 @@
     window.showLoginOverlay();
   };
 
-  // Init Session Check on Load
   document.addEventListener("DOMContentLoaded", () => {
     window.checkExistingSession();
   });
