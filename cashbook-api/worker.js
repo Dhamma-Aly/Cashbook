@@ -1,5 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.1 (Universal Transfer Clean)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.2 (Bulk Import Ready)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;
@@ -140,7 +140,7 @@ function corsHeaders(request, env) {
 }
 
 // -------------------------------------------------------------------
-// Row normalizers
+// Row normalizers (no နှင့် balance ကိုပါ D1 ထဲ ထည့်သွင်းနိုင်ရန် ဖြည့်စွက်ထားပါသည်)
 // -------------------------------------------------------------------
 function normLedger(b, table) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -154,10 +154,15 @@ function normLedger(b, table) {
   }
   if (income < 0 || expense < 0) throw new HttpError(400, 'Amount must not be negative');
   if (!title) title = income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ';
+  const no = parseInt(b.no, 10);
+  const balance = b.balance !== undefined ? num(b.balance) : 0;
+
   return {
+    ...(Number.isInteger(no) ? { no } : {}),
     date, title, sub_title,
     description: str(b.description) || sub_title || title || 'စာရင်းထည့်သွင်းခြင်း',
     income, expense,
+    balance,
     voucher_no: str(b.voucher_no),
     receiver: BANK_TABLES.has(table) ? 'Bank' : (str(b.receiver) || 'User 1'),
     month_year: formatMonthYear(date),
@@ -171,7 +176,10 @@ function normInventory(b) {
   if (!description) throw new HttpError(400, 'description is required');
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
   if (!DATE_RE.test(date)) throw new HttpError(400, 'Invalid date (YYYY-MM-DD)');
+  const no = parseInt(b.no, 10);
+
   return {
+    ...(Number.isInteger(no) ? { no } : {}),
     date, description,
     location: str(b.location) || 'စတို',
     category: str(b.category) || 'အထွေထွေ',
@@ -187,7 +195,10 @@ function normInventory(b) {
 function normYogi(b, table) {
   const name = str(b.name);
   if (!name) throw new HttpError(400, 'name is required');
+  const no = parseInt(b.no, 10);
+
   return {
+    ...(Number.isInteger(no) ? { no } : {}),
     start_date: str(b.start_date) || todayMM(),
     end_date: str(b.end_date),
     yogi_type: str(b.yogi_type || b.category) || (table === 'Camp Yogi' ? 'စခန်းဝင်' : 'အမြဲနေ'),
@@ -236,7 +247,7 @@ async function deleteTransferGroup(env, gid) {
 }
 
 // -------------------------------------------------------------------
-// Query Book
+// Query Book (စဉ် နံပါတ် အစဉ်လိုက် တွက်ချက်ခြင်း)
 // -------------------------------------------------------------------
 async function queryBook(env, table, rawSheet) {
   const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY date ASC, id ASC`).all();
@@ -391,6 +402,61 @@ async function handleEntries(c) {
     return c.J({ success: true, deleted: changes(r) });
   }
   throw new HttpError(405, 'Method not allowed');
+}
+
+// -------------------------------------------------------------------
+// 🌟 GOOGLE SHEETS BULK IMPORT (Clean & Batch Overwrite)
+// -------------------------------------------------------------------
+async function handleBulkImport(c) {
+  const { env } = c;
+  const b = await readJson(c.request);
+  const rawTable = str(b.table);
+  const clearExisting = b.clearExisting === true;
+  const rawRows = Array.isArray(b.rows) ? b.rows : [];
+
+  let table, kind;
+  if (TABLE_MAP[rawTable]) {
+    table = TABLE_MAP[rawTable];
+    kind = 'ledger';
+  } else if (rawTable === 'Inventory') {
+    table = 'Inventory';
+    kind = 'inventory';
+  } else if (['Permanent Yogi', 'Camp Yogi', '12Yogi', '13Yogi'].includes(rawTable)) {
+    table = resolveYogiTable(rawTable);
+    kind = 'yogi';
+  } else {
+    throw new HttpError(400, `Unknown or invalid table: "${rawTable}"`);
+  }
+
+  // ၁။ စာအုပ်အဟောင်းအား D1 ထဲမှ အရင်ရှင်းလင်းခြင်း
+  if (clearExisting) {
+    await env.DB.prepare(`DELETE FROM "${table}"`).run();
+  }
+
+  if (rawRows.length === 0) {
+    return c.J({ success: true, count: 0, table, message: 'Table cleared successfully' });
+  }
+
+  // ၂။ အချက်အလက်များအား Batch (၈၀ ခုစီ) ခွဲ၍ D1 သို့ တပြိုင်တည်း ထည့်သွင်းခြင်း
+  const CHUNK_SIZE = 80;
+  let insertedCount = 0;
+
+  for (let i = 0; i < rawRows.length; i += CHUNK_SIZE) {
+    const slice = rawRows.slice(i, i + CHUNK_SIZE);
+    const stmts = slice.map((item, idx) => {
+      const rowData = { ...item };
+      if (rowData.no === undefined) {
+        rowData.no = i + idx + 1;
+      }
+      const normalized = NORM[kind](rowData, table);
+      return upsertStmt(env, table, normalized);
+    });
+
+    await env.DB.batch(stmts);
+    insertedCount += slice.length;
+  }
+
+  return c.J({ success: true, count: insertedCount, table });
 }
 
 // -------------------------------------------------------------------
@@ -864,6 +930,7 @@ async function route(c) {
   if (path === '/api/home-summary' && method === 'GET') return handleHomeSummary(c);
   if (path === '/api/entries') return handleEntries(c);
   if (path === '/api/transfer') return handleTransfer(c);
+  if (path === '/api/bulk-import' && method === 'POST') return handleBulkImport(c);
   if (path === '/api/inventory') return handleInventory(c);
   if (path.startsWith('/api/yogi')) return handleYogi(c);
   if (path === '/api/report' && method === 'GET') return handleReport(c);
