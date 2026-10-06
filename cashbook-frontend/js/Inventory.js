@@ -1,5 +1,5 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller
+// js/Inventory.js - Inventory Management Logic & Controller 
 // 100% Aligned with D1 "Inventory" Schema (date, description, remark, etc.)
 // Features: Instant 0-Second Cache, Natural Typography & Polished Sticky Actions
 // ===================================================================
