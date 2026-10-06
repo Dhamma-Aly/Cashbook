@@ -1,4 +1,4 @@
-// ====================================================================
+// ===================================================================
 // SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.1 (Universal Transfer Clean)
 // ===================================================================
 
@@ -236,7 +236,7 @@ async function deleteTransferGroup(env, gid) {
 }
 
 // -------------------------------------------------------------------
-// Query Book (စဉ် နံပါတ် အစဉ်လိုက် တွက်ချက်မှု)
+// Query Book
 // -------------------------------------------------------------------
 async function queryBook(env, table, rawSheet) {
   const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY date ASC, id ASC`).all();
@@ -248,7 +248,7 @@ async function queryBook(env, table, rawSheet) {
     const uid = row.unique_id || `CB-${row.id}`;
     return {
       id: row.id,
-      no: idx + 1, // 🌟 စာအုပ်၏ သဘာဝ အစဉ်လိုက်နံပါတ် (1, 2, 3...)
+      no: idx + 1,
       uniqueId: uid, unique_id: uid,
       sheet_name: rawSheet, date: row.date, entry_date: row.date,
       category: row.title || (inc > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ'), title: row.title || '',
@@ -262,7 +262,7 @@ async function queryBook(env, table, rawSheet) {
 }
 
 // -------------------------------------------------------------------
-// Universal Transfer Builder (ဘဏ် ၃ ခု နှင့် User 1, 2, 3 လွတ်လပ်စွာ လွှဲပြောင်းခွင့်)
+// Universal Transfer Builder
 // -------------------------------------------------------------------
 function buildTransfer(b, src) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -281,7 +281,6 @@ function buildTransfer(b, src) {
     title: 'စာရင်းပြောင်း', income: 0, expense: 0, ...o,
   }];
 
-  // ၁။ User အချင်းချင်း လွှဲပြောင်းခြင်း (User 1, 2, 3)
   const targetUser = USERS.find(u => target.includes(u));
   if (targetUser && !target.includes('Bank') && !target.includes('ဘဏ်')) {
     if (targetUser === sender && !BANK_TABLES.has(src)) {
@@ -293,7 +292,6 @@ function buildTransfer(b, src) {
     ] };
   }
 
-  // ၂။ ဘဏ်စာရင်းများသို့ လွှဲပြောင်းခြင်း (Bank Deposit / Bank to Bank)
   let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
   if (!targetBank && (target.includes('1CB') || target.includes('အထွေထွေ'))) targetBank = '1CB Bank (General)';
   if (!targetBank && (target.includes('2CB') || target.includes('ဆွမ်း'))) targetBank = '2CB Bank (Meal)';
@@ -315,7 +313,6 @@ function buildTransfer(b, src) {
     }
   }
 
-  // ပင်မစာအုပ်မှ ဘဏ်သို့ အပ်နှံခြင်း
   return { gid, rows: [
     mk(src, 'OUT', { sub_title: 'ဘဏ်အပ်နှံခြင်း', description: str(b.description) || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`, expense: amt, receiver: sender }),
     [targetBank, { ...mk(targetBank, 'IN', {})[1], title: 'ဘဏ်အပ်ငွေ', sub_title: 'ဘဏ်အပ်နှံခြင်း', description: `${src} [${sender}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`, income: amt, receiver: 'Bank' }],
@@ -366,7 +363,6 @@ async function handleEntries(c) {
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
 
-  // 🌟 လက်ခံစာအုပ် (_IN) မှ Edit/Delete လုပ်ခြင်းအား တားမြစ်ခြင်း
   if (key.uid && key.uid.endsWith('_IN')) {
     throw new HttpError(400, 'ဤစာရင်းသည် လက်ခံစာရင်း (Incoming Transfer) ဖြစ်သောကြောင့် မူရင်းလွှဲပို့သည့် စာအုပ်မှသာ ပြင်ဆင်/ဖျက်ပစ်နိုင်ပါသည်ခင်ဗျာ။');
   }
@@ -881,4 +877,18 @@ async function route(c) {
 export default {
   async fetch(request, env) {
     const cors = corsHeaders(request, env);
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cor
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
+
+    const J = (data, status = 200) => new Response(JSON.stringify(data), {
+      status, headers: { ...cors, 'Content-Type': 'application/json; charset=utf-8' },
+    });
+    const url = new URL(request.url);
+    try {
+      return await route({ request, env, url, path: url.pathname, method: request.method, J, user: null });
+    } catch (err) {
+      if (err instanceof HttpError) return J({ success: false, error: err.message }, err.status);
+      console.error('[Worker Error]', err);
+      return J({ success: false, error: env.DEBUG === '1' ? String(err.message) : 'Internal server error' }, 500);
+    }
+  },
+};
