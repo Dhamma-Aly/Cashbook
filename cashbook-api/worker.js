@@ -1,19 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4 (hardened)
-//
-// ပြင်ဆင်ချက်များ:
-//  1. Token ကို HMAC-SHA256 နဲ့ sign လုပ်ပြီး server မှာ တကယ်စစ်ခြင်း (exp ပါ)
-//  2. Password ကို PBKDF2 hash (ရှိပြီးသား plaintext များကို login ဝင်ချိန် auto-upgrade)
-//  3. Viewer role ကို server ဘက်မှာပါ ကန့်သတ်ခြင်း
-//  4. Table/column အားလုံးကို allow-list နဲ့ကန့်ထားခြင်း (SQL injection ပိတ်)
-//  5. Entry သိမ်း/ပြင်/ဖျက် ကို မှန်ကန်သော စာအုပ်ထဲ (book_name / ?sheet=) သို့ ရောက်စေခြင်း
-//  6. /api/transfer (atomic batch) ထည့်သွင်းခြင်း
-//  7. /api/sync မှာ CREATE / UPDATE / DELETE + item တစ်ခုချင်း status ပြန်ပေးခြင်း
-//  8. Yogi အမျိုးအစားကို yogi_type ဖြင့်အရင်ခွဲခြင်း၊ မြန်မာစံတော်ချိန် ရက်စွဲ သုံးခြင်း
-//
-// လိုအပ်သော setup:
-//   npx wrangler secret put AUTH_SECRET        (ရှည်လျားသော random string)
-//   wrangler.toml → [vars] ALLOWED_ORIGIN = "https://<frontend-domain>"
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.1 (Terminal-Free)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;               // Workers ၏ ခွင့်ပြုသည့် အမြင့်ဆုံး
@@ -24,6 +10,9 @@ const LEGACY_ID_RE = /^(?:CB|INV|YOGI)-(\d+)$/;
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const enc = new TextEncoder();
 const dec = new TextDecoder();
+
+// 🌟 Terminal မလိုဘဲ အလိုအလျောက် အလုပ်လုပ်မည့် Default Secret Key
+const getSecret = (env) => env.AUTH_SECRET || 'SASANA_DEFAULT_SECRET_KEY_2026_!@#';
 
 class HttpError extends Error {
   constructor(status, message) { super(message); this.status = status; }
@@ -46,7 +35,6 @@ const BANK_TABLES = new Set(['1CB Bank (General)', '2CB Bank (Meal)', '3CB Bank 
 const ALL_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
 const BANK_SHEETS = ['1CB', '2CB', '3CB'];
 
-// စာအုပ် → ဘဏ်အပ်မည့် ဘဏ် (config.js ၏ TRANSFER_MAPPING နှင့် တူညီ)
 const TRANSFER_BANK = {
   '1General Book': '1CB Bank (General)', '2Meal Book': '2CB Bank (Meal)',
   '3Hall Book': '1CB Bank (General)', '4Pagoda Book': '1CB Bank (General)',
@@ -61,7 +49,7 @@ const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင�
 // -------------------------------------------------------------------
 const str = (v, d = '') => (v === null || v === undefined) ? d : String(v).trim();
 const num = (v) => { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
-const todayMM = () => new Date(Date.now() + 6.5 * 3600 * 1000).toISOString().slice(0, 10); // UTC+6:30
+const todayMM = () => new Date(Date.now() + 6.5 * 3600 * 1000).toISOString().slice(0, 10);
 
 function formatMonthYear(dateStr) {
   const m = /^(\d{4})-(\d{2})/.exec(String(dateStr || ''));
@@ -84,16 +72,15 @@ async function readJson(request) {
   try {
     const b = await request.json();
     if (b && typeof b === 'object') return b;
-  } catch (_) { /* fallthrough */ }
+  } catch (_) { }
   throw new HttpError(400, 'Invalid JSON body');
 }
 
-// unique_id (သို့) id ကို ခွဲထုတ်ခြင်း — "OR" မသုံးဘဲ တစ်ခုတည်းဖြင့်သာ ရှာမည်
 function parseKey(body, params) {
   const pick = (k) => body?.[k] ?? params?.get(k) ?? null;
   const uid = str(pick('unique_id') ?? pick('uniqueId'));
   if (uid) {
-    const m = LEGACY_ID_RE.exec(uid);          // unique_id မရှိသော အဟောင်း row များ (CB-12 စသည်)
+    const m = LEGACY_ID_RE.exec(uid);
     return m ? { id: +m[1] } : { uid };
   }
   const id = parseInt(pick('id'), 10);
@@ -130,7 +117,8 @@ async function verifyPassword(pw, stored) {
     const calc = await hashPassword(pw, b64uToBytes(salt), parseInt(iter, 10));
     return { ok: safeEqual(calc, stored), upgrade: false };
   }
-  return { ok: stored !== '' && safeEqual(pw, stored), upgrade: true }; // legacy plaintext
+  // 🌟 D1 ထဲမှ Plain Text များကို တိုက်ရိုက်စစ်ဆေးပေးမည်
+  return { ok: stored !== '' && safeEqual(pw, stored), upgrade: true }; 
 }
 
 const hmacKey = (secret) => crypto.subtle.importKey(
@@ -138,7 +126,7 @@ const hmacKey = (secret) => crypto.subtle.importKey(
 
 async function signToken(env, payload) {
   const body = b64u(enc.encode(JSON.stringify(payload)));
-  const sig = await crypto.subtle.sign('HMAC', await hmacKey(env.AUTH_SECRET), enc.encode(body));
+  const sig = await crypto.subtle.sign('HMAC', await hmacKey(getSecret(env)), enc.encode(body));
   return `tok_${body}.${b64u(sig)}`;
 }
 
@@ -148,7 +136,7 @@ async function verifyToken(env, request) {
     if (!h.startsWith('Bearer tok_')) return null;
     const [body, sig] = h.slice(11).trim().split('.');
     if (!body || !sig) return null;
-    const ok = await crypto.subtle.verify('HMAC', await hmacKey(env.AUTH_SECRET), b64uToBytes(sig), enc.encode(body));
+    const ok = await crypto.subtle.verify('HMAC', await hmacKey(getSecret(env)), b64uToBytes(sig), enc.encode(body));
     if (!ok) return null;
     const p = JSON.parse(dec.decode(b64uToBytes(body)));
     return p.exp > Date.now() ? p : null;
@@ -174,7 +162,7 @@ function corsHeaders(request, env) {
 }
 
 // -------------------------------------------------------------------
-// Row normalizers (ပြင်ပမှ ဝင်လာသော field အမည်များကို DB column သို့ ပြောင်းခြင်း)
+// Row normalizers
 // -------------------------------------------------------------------
 function normLedger(b, table) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -240,7 +228,7 @@ function normYogi(b, table) {
 const NORM = { ledger: normLedger, inventory: normInventory, yogi: normYogi };
 
 // -------------------------------------------------------------------
-// SQL builders (table / column အမည်များသည် အထက်ပါ allow-list မှသာ လာသည်)
+// SQL builders
 // -------------------------------------------------------------------
 function upsertStmt(env, table, row) {
   const keys = Object.keys(row);
@@ -270,7 +258,7 @@ async function deleteTransferGroup(env, gid) {
 }
 
 // -------------------------------------------------------------------
-// Formatters (GET / bootstrap နှစ်မျိုးလုံး ဤ function များကို သုံးသည်)
+// Formatters
 // -------------------------------------------------------------------
 async function queryBook(env, table, rawSheet) {
   const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY date ASC, id ASC`).all();
@@ -315,7 +303,6 @@ function formatInventory(rows) {
   return { success: true, data, kpis: { kitchen, dhammaHall, sim, store, totalQty, totalItems: rows.length } };
 }
 
-// ယောဂီ အမျိုးအစားခွဲခြင်း — yogi_type (category) ကို အရင်သုံး၊ အဟောင်းဒေတာအတွက်သာ နာမည်ကို ကြည့်သည်
 function classifyYogi(row) {
   const type = str(row.yogi_type), name = str(row.name);
   if (YOGI_CATS.includes(type)) return type;
@@ -370,10 +357,12 @@ async function handleLogin(c) {
   const row = await c.env.DB.prepare(
     `SELECT id, username, password, role, name FROM users WHERE username = ? LIMIT 1`
   ).bind(username).first();
+  
+  // 🌟 Plaintext များကို တိုက်ရိုက် စစ်ဆေးပေးပြီး အလိုအလျောက် Upgrade ပြုလုပ်မည်
   const check = row ? await verifyPassword(password, String(row.password || '')) : { ok: false };
   if (!check.ok) throw new HttpError(401, 'အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။');
 
-  if (check.upgrade) {   // plaintext → hash သို့ အလိုအလျောက် ပြောင်းခြင်း
+  if (check.upgrade) {   
     await c.env.DB.prepare(`UPDATE users SET password = ? WHERE id = ?`)
       .bind(await hashPassword(password), row.id).run();
   }
@@ -418,19 +407,6 @@ async function handleBootstrap(c) {
   });
 }
 
-// -------------------------------------------------------------------
-// Offline batch sync
-// -------------------------------------------------------------------
-function syncTarget(item) {
-  const raw = str(item.table);
-  if (TABLE_MAP[raw]) return [TABLE_MAP[raw], 'ledger'];
-  if (raw === 'Inventory') return ['Inventory', 'inventory'];
-  if (['Permanent Yogi', 'Camp Yogi', '12Yogi', '13Yogi'].includes(raw)) {
-    return [resolveYogiTable(item.data?.sheet_type || item.data?.book_name || raw), 'yogi'];
-  }
-  throw new HttpError(400, `Table not allowed: ${raw}`);
-}
-
 async function handleSync(c) {
   const { env } = c;
   const body = await readJson(c.request);
@@ -441,7 +417,14 @@ async function handleSync(c) {
     const qid = item?.qid ?? null;
     try {
       const action = str(item?.action).toUpperCase();
-      const [table, kind] = syncTarget(item);
+      let table, kind;
+      const raw = str(item.table);
+      if (TABLE_MAP[raw]) { table = TABLE_MAP[raw]; kind = 'ledger'; }
+      else if (raw === 'Inventory') { table = 'Inventory'; kind = 'inventory'; }
+      else if (['Permanent Yogi', 'Camp Yogi', '12Yogi', '13Yogi'].includes(raw)) {
+        table = resolveYogiTable(item.data?.sheet_type || item.data?.book_name || raw); kind = 'yogi';
+      } else throw new HttpError(400, `Table not allowed: ${raw}`);
+
       if (action === 'CREATE' || action === 'UPDATE') {
         const row = NORM[kind]({ ...(item.data || {}), unique_id: uid || item.data?.unique_id }, table);
         await upsertStmt(env, table, row).run();
@@ -466,9 +449,6 @@ async function handleSync(c) {
   return c.J({ success: true, count: results.length, failed, results });
 }
 
-// -------------------------------------------------------------------
-// Home dashboard
-// -------------------------------------------------------------------
 async function handleHomeSummary(c) {
   const { env } = c;
   const fundSummary = {};
@@ -534,9 +514,6 @@ async function handleHomeSummary(c) {
   return c.J({ success: true, kpis: { totalFund, totalBank, totalCash, totalCount }, fundSummary, padethaSummary, yogiSummary: { resident, retreat } });
 }
 
-// -------------------------------------------------------------------
-// Ledger entries: /api/entries
-// -------------------------------------------------------------------
 async function handleEntries(c) {
   const { url, method, env } = c;
   const sheetParam = url.searchParams.get('sheet') || url.searchParams.get('book');
@@ -575,10 +552,6 @@ async function handleEntries(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
-// -------------------------------------------------------------------
-// Transfers (atomic): /api/transfer
-// body: { sheet|book_name, date, amount, receiver(sender), target, voucher_no, description, group_id? }
-// -------------------------------------------------------------------
 function buildTransfer(b, src) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
   if (!DATE_RE.test(date)) throw new HttpError(400, 'Invalid date (YYYY-MM-DD)');
@@ -632,13 +605,10 @@ async function handleTransfer(c) {
     LEDGER_TABLES.forEach(t => stmts.push(env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(`${gid}_OUT`, `${gid}_IN`)));
   }
   rows.forEach(([t, row]) => stmts.push(upsertStmt(env, t, row)));
-  await env.DB.batch(stmts);   // အားလုံး အောင်မြင်မှ သိမ်းမည် (transaction)
+  await env.DB.batch(stmts);   
   return c.J({ success: true, group_id: gid, unique_id: `${gid}_OUT` });
 }
 
-// -------------------------------------------------------------------
-// Inventory: /api/inventory
-// -------------------------------------------------------------------
 async function handleInventory(c) {
   const { url, method, env } = c;
   if (method === 'GET') {
@@ -666,9 +636,6 @@ async function handleInventory(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
-// -------------------------------------------------------------------
-// Yogi: /api/yogi, /api/yogi/checkout, /api/yogi/reactivate
-// -------------------------------------------------------------------
 async function handleYogi(c) {
   const { url, method, env, path } = c;
   const sheetParam = url.searchParams.get('sheet');
@@ -692,7 +659,6 @@ async function handleYogi(c) {
 
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
-  // unique_id ဖြင့်ဆိုလျှင် နှစ်ဇယားလုံးတွင် ရှာနိုင်သည်၊ numeric id ဖြင့်ဆိုလျှင် sheet ကို ဖော်ပြရမည်
   if (key.id && !explicit) throw new HttpError(400, 'sheet_type is required when using numeric id');
   const tables = explicit ? [resolveYogiTable(explicit)] : ['Permanent Yogi', 'Camp Yogi'];
   const [where, val] = keyWhere(key);
@@ -722,9 +688,6 @@ async function handleYogi(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
-// -------------------------------------------------------------------
-// Annual report: /api/report
-// -------------------------------------------------------------------
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'အရုဏ်ဆွမ်း', keywords: ['အရုဏ်'] },
@@ -741,7 +704,7 @@ const PREDEFINED_EXPENSE = [
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်', keywords: ['အထွေထွေအသုံး', 'အုပ်ချုပ်မှု'] },
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
 ];
-const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ']);   // စာအုပ်အချင်းချင်း လွှဲခြင်းများကို အစီရင်ခံစာမှ ချန်ထားသည်
+const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ']);
 
 async function handleReport(c) {
   const { url, env } = c;
@@ -796,7 +759,6 @@ async function handleReport(c) {
 // ===================================================================
 async function route(c) {
   const { env, path, method } = c;
-  if (!env.AUTH_SECRET) throw new HttpError(500, 'Server misconfigured: AUTH_SECRET is not set');
 
   if (path === '/api/login' && method === 'POST') return handleLogin(c);
 
