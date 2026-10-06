@@ -58,7 +58,7 @@ window.renderReportView = async function(isSilent = false) {
       applyReportFilters();
     }
   } catch (err) {
-    console.error("Report Fetch Error from D1:", err);
+    if (!isSilent) console.error("Report Fetch Error from D1:", err);
   } finally {
     if (!isSilent && typeof window.showLoading === 'function') {
       window.showLoading(false);
