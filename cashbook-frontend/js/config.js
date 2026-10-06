@@ -1,6 +1,6 @@
 // =================================================================== 
 // js/config.js - Sāsana ERP System Configuration & API Endpoint Setup   
-// 100% Aligned with D1 Database Schema Standard (v3.1 Universal Transfer)
+// 100% Aligned with D1 Database Schema Standard (v3.1 Universal Transfer) 
 // ===================================================================
 
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
