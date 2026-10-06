@@ -10,14 +10,12 @@ let ledgerCurrentPage = 1;
 let bankAllEntries = [];      
 let bankFilteredEntries = []; 
 
-// 🌟 မြန်မာဂဏန်း (၀-၉) အား အင်္ဂလိပ်ဂဏန်း (0-9) သို့ အလိုအလျောက် ပြောင်းပေးသော Engine
 window.toEnglishDigits = function(str) {
   if (str === null || str === undefined) return '';
   const myanmarDigits = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
   return String(str).replace(/[၀-၉]/g, (ch) => myanmarDigits.indexOf(ch));
 };
 
-// 🌟 ငွေပမာဏ ကော်မာနှင့် မြန်မာဂဏန်းများ ရှင်းထုတ်ပြီး Float အဖြစ် ပြောင်းပေးခြင်း
 window.parseAmount = function(val) {
   if (val === null || val === undefined || val === '') return 0;
   const eng = window.toEnglishDigits(val);
@@ -107,9 +105,6 @@ function updateLedgerKPIs(kpis) {
   setText("kpi-count", (k.count || 0).toLocaleString());
 }
 
-// -------------------------------------------------------------------
-// 🔍 SMART OMNI-SEARCH FILTER ENGINE
-// -------------------------------------------------------------------
 function applyLedgerSearchFilter() {
   const searchInput = document.getElementById("search-input");
   const rawQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -210,7 +205,6 @@ function renderLedgerTable() {
         ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${displayReceiver}</span>` 
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 ၁၃px font-medium ဖြင့် ပြတ်သားကြည်လင်အောင် ညှိထားသော အကြောင်းအရာ
       const escapedDesc = (entry.description || '').replace(/"/g, '&quot;');
       const descHtml = entry.description 
         ? `<div class="text-slate-100 text-[13px] leading-relaxed font-medium whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${entry.description}</div>`
@@ -222,14 +216,12 @@ function renderLedgerTable() {
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${entry.date || "-"}</td>
           <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${titleText}</span></td>
           
-          <!-- 🌟 4. အကြောင်းအရာ: 13px font-medium ဖြင့် ဖတ်ရလွယ်ကူသည် -->
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
           
-          <!-- 🌟 8. ခေါင်းစဉ်ခွဲ: font-medium text-[12.5px] ဖြင့် အချိုးညီအောင် ညှိထားသည် -->
           <td class="font-medium text-amber-200/90 whitespace-nowrap px-2 text-[12.5px]">${entry.sub_title || "-"}</td>
           
           <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${entry.voucher_no || "-"}</td>
@@ -435,11 +427,9 @@ window.saveEntryForm = async function(event) {
   const subcatEl = document.getElementById("entry-subcategory");
   const sub_title = subcatEl ? subcatEl.value : "";
   
-  // ဘောက်ချာနံပါတ် (၆-၀၀၀၁ မှ 6-0001 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
   const rawVoucher = document.getElementById("entry-voucher").value.trim();
   const voucher_no = window.toEnglishDigits(rawVoucher);
 
-  // ငွေပမာဏ (၁၅,၀၀၀ မှ 15000 သို့ အလိုအလျောက် ပြောင်းလဲခြင်း)
   const rawAmount = document.getElementById("entry-amount").value.trim();
   const amount = window.parseAmount(rawAmount);
   
@@ -468,31 +458,15 @@ window.saveEntryForm = async function(event) {
         const recipientDesc = `${receiver} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`;
 
         const payload1 = {
-          unique_id: `${transferGroupId}_OUT`,
-          book_name: '1General Book',
-          date,
-          title: 'စာရင်းပြောင်း',
-          sub_title: `${targetUser} သို့ လွှဲပြောင်း`,
-          voucher_no,
-          description: senderDesc,
-          receiver: receiver,
-          income: 0,
-          expense: amount,
-          month_year
+          unique_id: `${transferGroupId}_OUT`, book_name: '1General Book', date, title: 'စာရင်းပြောင်း',
+          sub_title: `${targetUser} သို့ လွှဲပြောင်း`, voucher_no, description: senderDesc, receiver: receiver,
+          income: 0, expense: amount, month_year
         };
 
         const payload2 = {
-          unique_id: `${transferGroupId}_IN`,
-          book_name: '1General Book',
-          date,
-          title: 'စာရင်းပြောင်း',
-          sub_title: `${receiver} ထံမှ လွှဲပြောင်းရရှိ`,
-          voucher_no,
-          description: recipientDesc,
-          receiver: targetUser,
-          income: amount,
-          expense: 0,
-          month_year
+          unique_id: `${transferGroupId}_IN`, book_name: '1General Book', date, title: 'စာရင်းပြောင်း',
+          sub_title: `${receiver} ထံမှ လွှဲပြောင်းရရှိ`, voucher_no, description: recipientDesc, receiver: targetUser,
+          income: amount, expense: 0, month_year
         };
 
         await window.saveCashbookEntryAPI(payload1, isEdit);
@@ -509,31 +483,15 @@ window.saveEntryForm = async function(event) {
         const bankIncomeDesc = `${currentTable} [${receiver}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`;
 
         const payload1 = {
-          unique_id: `${transferGroupId}_OUT`,
-          book_name: currentTable,
-          date,
-          title: 'စာရင်းပြောင်း',
-          sub_title: 'ဘဏ်အပ်နှံခြင်း',
-          voucher_no,
-          description: bankDesc,
-          receiver: receiver,
-          income: 0,
-          expense: amount,
-          month_year
+          unique_id: `${transferGroupId}_OUT`, book_name: currentTable, date, title: 'စာရင်းပြောင်း',
+          sub_title: 'ဘဏ်အပ်နှံခြင်း', voucher_no, description: bankDesc, receiver: receiver,
+          income: 0, expense: amount, month_year
         };
 
         const payload2 = {
-          unique_id: `${transferGroupId}_IN`,
-          book_name: targetBank,
-          date,
-          title: 'ဘဏ်အပ်ငွေ',
-          sub_title: 'ဘဏ်အပ်နှံခြင်း',
-          voucher_no,
-          description: bankIncomeDesc,
-          receiver: 'Bank',
-          income: amount,
-          expense: 0,
-          month_year
+          unique_id: `${transferGroupId}_IN`, book_name: targetBank, date, title: 'ဘဏ်အပ်ငွေ',
+          sub_title: 'ဘဏ်အပ်နှံခြင်း', voucher_no, description: bankIncomeDesc, receiver: 'Bank',
+          income: amount, expense: 0, month_year
         };
 
         await window.saveCashbookEntryAPI(payload1, isEdit);
@@ -549,25 +507,16 @@ window.saveEntryForm = async function(event) {
     const expense = cleanType === "ထွက်ငွေ" ? amount : 0;
 
     const payload = {
-      unique_id: unique_id || crypto.randomUUID(),
-      book_name: currentTable,
-      date,
-      title: title || cleanType,
-      sub_title: sub_title || '-',
-      voucher_no,
-      description,
-      receiver,
-      income,
-      expense,
-      month_year
+      unique_id: unique_id || crypto.randomUUID(), book_name: currentTable, date, title: title || cleanType,
+      sub_title: sub_title || '-', voucher_no, description, receiver, income, expense, month_year
     };
 
     const res = await window.saveCashbookEntryAPI(payload, isEdit);
     if (res && res.success) {
       if (typeof window.closeEntryModal === 'function') window.closeEntryModal();
       await window.renderBankView(currentTable);
-    } else {
-      alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+    } else if (res && res.status !== 401) { // 🌟 Added 401 Check to prevent alert overlapping ReAuth Modal
+      alert("စာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
     }
   } catch (err) {
     console.error("Save Entry Error:", err);
@@ -656,7 +605,10 @@ window.deleteEntry = async function(uid) {
       await window.deleteCashbookEntryAPI(`${groupId}_IN`).catch(() => {});
       await window.deleteCashbookEntryAPI(uid).catch(() => {});
     } else {
-      await window.deleteCashbookEntryAPI(uid);
+      const res = await window.deleteCashbookEntryAPI(uid);
+      if (res && !res.success && res.status !== 401) { // 🌟 Added 401 Check
+        alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
+      }
     }
 
     await window.renderBankView(window.currentTable || window.currentSheet);
