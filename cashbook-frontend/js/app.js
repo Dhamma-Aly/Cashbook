@@ -39,12 +39,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+// 🌟 Sync Event Listener (Sync Failed ဖြစ်ပါက Error Badge ကို UI တွင်ပြသရန်)
+window.addEventListener('sasana-sync-complete', (e) => {
+  const { synced, failed } = e.detail || { synced: 0, failed: 0 };
+  const errBadge = document.getElementById('sync-error-badge');
+  if (errBadge) {
+    if (failed > 0) {
+      errBadge.classList.remove('hidden');
+      errBadge.classList.add('flex');
+      const countEl = document.getElementById('sync-failed-count');
+      if (countEl) countEl.textContent = failed;
+    } else {
+      errBadge.classList.add('hidden');
+      errBadge.classList.remove('flex');
+    }
+  }
+});
+
 window.initApp = function() {
   const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
   if (user) {
     if (typeof window.showWorkspace === 'function') window.showWorkspace();
 
-    // 🚀 Bootstrap Preload: စာအုပ်အားလုံး၏ ဒေတာများကို နောက်ကွယ်မှ အသံတိတ် ကြိုတင်ဆွဲယူထားခြင်း
+    // 🚀 Bootstrap Preload
     if (typeof window.bootstrapAppData === 'function') {
       window.bootstrapAppData();
     }
@@ -104,7 +121,6 @@ window.startLiveSync = function() {
     const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
     if (document.hidden || openModal) return;
 
-    // အကယ်၍ Offline တန်းစီထားသော ဒေတာများရှိပါက Background Sync လုပ်ပေးခြင်း
     if (typeof window.triggerBackgroundSync === 'function') {
       window.triggerBackgroundSync();
     }
@@ -138,18 +154,16 @@ window.refreshCurrentTabSilent = function() {
 // 3. 🚀 View Router & Navigation (0-Second Template Cached)
 // ===================================================================
 window.switchTab = async function(tabIdentifier) {
-  // 💡 config.js ထံမှ D1 Table အမည် အစစ်အမှန်ကို တိုက်ရိုက် ဆွဲယူခြင်း
   const targetKey = String(tabIdentifier || 'Home').trim();
   const d1Table = (window.CONFIG?.TABLE_MAP && window.CONFIG.TABLE_MAP[targetKey]) || targetKey;
 
   window.currentTable = d1Table;
-  window.currentSheet = d1Table; // Backward Compatibility Alias
+  window.currentSheet = d1Table;
   
   if (window.innerWidth < 768) {
     window.closeMobileSidebar();
   }
 
-  // 💡 config.js ရှိ TABLE_TITLES ထံမှ ခေါင်းစဉ် အတိအကျ ရယူခြင်း
   const titleEl = document.getElementById('page-title');
   if (titleEl) {
     const title = window.CONFIG?.TABLE_TITLES?.[d1Table] || 
@@ -158,7 +172,6 @@ window.switchTab = async function(tabIdentifier) {
     titleEl.textContent = title;
   }
 
-  // Active Navigation Styling
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
   });
@@ -186,7 +199,6 @@ window.switchTab = async function(tabIdentifier) {
       container.innerHTML = await window.fetchTemplate('view/report-system.html');
       if (typeof window.renderReportView === 'function') window.renderReportView();
     } else {
-      // D1 Bank & Ledger စာအုပ်များ
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
       if (typeof window.renderBankView === 'function') {
         window.renderBankView(d1Table);
@@ -199,10 +211,9 @@ window.switchTab = async function(tabIdentifier) {
   }
 };
 
-// 💡 ၀ စက္ကန့်ဖြင့် ချက်ချင်း Render ဖြစ်စေရန် Template Cache Engine
 window.fetchTemplate = async function(path) {
   if (templateCache[path]) {
-    return templateCache[path]; // Memory ထဲမှ ချက်ချင်း ပြန်ပေးခြင်း (0ms delay)
+    return templateCache[path]; 
   }
 
   try {
@@ -221,7 +232,7 @@ window.fetchTemplate = async function(path) {
     
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
     const html = await res.text();
-    templateCache[path] = html; // နောင်တစ်ကြိမ်အတွက် Cache ထဲ ထည့်ထားမည်
+    templateCache[path] = html; 
     return html;
   } catch (err) {
     console.error('Template Fetch Error:', err);
@@ -269,12 +280,9 @@ window.openAddEntryModal = function() {
   const typeSelect = document.getElementById("entry-type");
   if (typeSelect) {
     typeSelect.value = "ဝင်ငွေ";
-    if (typeof window.onEntryTypeChange === 'function') {
-      window.onEntryTypeChange("ဝင်ငွေ");
-    }
+    if (typeof window.onEntryTypeChange === 'function') window.onEntryTypeChange("ဝင်ငွေ");
   }
 
-  // Bank စာအုပ်များတွင် Receiver အား Auto "Bank" သတ်မှတ်ခြင်း
   const currentTable = window.currentTable || '';
   const isBankTable = currentTable.includes('Bank');
   const receiverInput = document.getElementById("entry-receiver");
@@ -368,7 +376,6 @@ window.closeInvModal = function() {
   if (modal) modal.classList.add('hidden');
 };
 
-// Global Loading Spinner
 window.showLoading = function(show) {
   const overlay = document.getElementById('loading-overlay');
   if (!overlay) return;
