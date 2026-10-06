@@ -10,7 +10,6 @@ let currentInvPage = 1;
 let invAllEntries = [];
 let invFilteredEntries = [];
 
-// Helper: Format YYYY-MM-DD or YYYY-MM to Aug-26, Sep-26, etc.
 function formatMonthYear(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
@@ -20,16 +19,12 @@ function formatMonthYear(dateStr) {
   return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-// -------------------------------------------------------------------
-// 🚀 Main View Renderer (Instant Cache-First Engine)
-// -------------------------------------------------------------------
 window.renderInventoryView = async function(isSilent = false) {
   currentInvPage = 1;
   window.currentTable = "Inventory";
   window.currentSheet = "Inventory";
   window.currentSheetKey = "Inventory";
 
-  // ၁။ Cache ရှိပါက ဝ စက္ကန့်ဖြင့် ချက်ချင်း အရင်ထုတ်ပြမည် (Loading မစောင့်ရပါ)
   try {
     const cachedStr = localStorage.getItem(INV_CACHE_KEY);
     if (cachedStr) {
@@ -42,12 +37,10 @@ window.renderInventoryView = async function(isSilent = false) {
     }
   } catch (_) {}
 
-  // ၂။ ကက်ရှ်မရှိသေးလျှင် Loading ပြမည်
   if (!isSilent && invAllEntries.length === 0 && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
 
-  // ၃။ နောက်ကွယ်မှ D1 Database အချက်အလက်အသစ်ကို အသံတိတ် ဆွဲယူပြီး Update လုပ်ခြင်း
   try {
     const res = await window.fetchInventoryDataAPI();
     if (res && res.success) {
@@ -122,14 +115,12 @@ function renderInventoryTable() {
       const dateText = entry.date || entry.entry_date || "-";
       const monthYearFormatted = entry.month_year || formatMonthYear(dateText);
 
-      // 🌟 နိုင်ငံတကာ စံနှုန်းမီ သဘာဝကျသော ပစ္စည်းအမည် (Natural Width + Tooltip)
       const rawDesc = entry.description || entry.item_desc || entry.item_name || "";
       const escapedDesc = rawDesc.replace(/"/g, '&quot;');
       const descHtml = rawDesc
         ? `<div class="min-w-[240px] max-w-[420px] text-slate-100 text-xs leading-relaxed font-semibold whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${rawDesc}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
-      // 🌟 သပ်ရပ်သော မှတ်ချက် (Remark)
       const rawRemark = entry.remark || entry.note || "";
       const escapedRemark = rawRemark.replace(/"/g, '&quot;');
       const remarkHtml = rawRemark
@@ -173,7 +164,6 @@ function renderInventoryTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-// Search & Pagination Controls
 window.onInvSearchInput = function() {
   currentInvPage = 1;
   applyInventoryFilter();
@@ -194,7 +184,6 @@ window.prevInvPage = function() {
   }
 };
 
-// Modal Openers
 window.openAddInvModal = function() {
   const modal = document.getElementById("inv-entry-modal");
   const form = document.getElementById("inv-entry-form");
@@ -220,9 +209,6 @@ window.closeInvModal = function() {
   if (modal) modal.classList.add("hidden");
 };
 
-// -------------------------------------------------------------------
-// 💾 Save / Edit / Delete Inventory Submissions (D1 Schema Aligned)
-// -------------------------------------------------------------------
 window.saveInventoryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -240,22 +226,8 @@ window.saveInventoryForm = async function(event) {
 
   const payload = {
     unique_id: unique_id || crypto.randomUUID(),
-    date,
-    location,
-    category,
-    description,
-    unit,
-    qty,
-    remark,
-    month_year,
-    book_name: "Inventory",
-    
-    // UI ချိတ်ဆက်မှု compatibility
-    uniqueId: unique_id,
-    entry_date: date,
-    item_desc: description,
-    item_name: description,
-    note: remark
+    date, location, category, description, unit, qty, remark, month_year, book_name: "Inventory",
+    uniqueId: unique_id, entry_date: date, item_desc: description, item_name: description, note: remark
   };
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
@@ -264,8 +236,8 @@ window.saveInventoryForm = async function(event) {
     if (res && res.success) {
       window.closeInvModal();
       await window.renderInventoryView();
-    } else {
-      alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+    } else if (res && res.status !== 401) { // 🌟 Added 401 Check
+      alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
     }
   } catch (err) {
     console.error("Save Inventory Error:", err);
@@ -313,8 +285,8 @@ window.deleteInvEntry = async function(uid) {
     const res = await window.deleteInventoryEntryAPI(uid);
     if (res && res.success) {
       await window.renderInventoryView();
-    } else {
-      alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res && res.error ? res.error : ""));
+    } else if (res && res.status !== 401) { // 🌟 Added 401 Check
+      alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
     }
   } catch (err) {
     console.error("Delete Inventory Error:", err);
@@ -324,7 +296,6 @@ window.deleteInvEntry = async function(uid) {
   }
 };
 
-// CSV Export
 window.exportInventoryCSV = function() {
   if (!invFilteredEntries || invFilteredEntries.length === 0) {
     alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
