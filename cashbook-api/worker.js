@@ -1,5 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.1 (Terminal-Free)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.2 (Terminal-Free + Updated Report)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;               // Workers ၏ ခွင့်ပြုသည့် အမြင့်ဆုံး
@@ -688,6 +688,7 @@ async function handleYogi(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
+// 🌟 Report Categories (လမ်းပြင်ဆင်စရိတ် ထပ်ထည့်ထားသည်)
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'အရုဏ်ဆွမ်း', keywords: ['အရုဏ်'] },
@@ -701,6 +702,7 @@ const PREDEFINED_EXPENSE = [
   { category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'သင်္ကန်းတရားစခန်း အသုံးစရိတ်', keywords: ['သင်္ကန်း', 'တရားစခန်း'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ကျောင်းပစ္စည်းဝယ်ယူခြင်း', keywords: ['ကျောင်းပစ္စည်း', 'ပစ္စည်းဝယ်'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ဆ/ဥ ပြုပြင်စရိတ်', keywords: ['ဆ/ဥ'] },
+  { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'လမ်းပြင်ဆင်စရိတ်', keywords: ['လမ်းပြင်', 'လမ်း'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်', keywords: ['အထွေထွေအသုံး', 'အုပ်ချုပ်မှု'] },
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
 ];
