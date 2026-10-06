@@ -1,5 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.2 (Terminal-Free + Updated Report)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js)  — v4.3 (Auto Rolling Balance Report)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;               // Workers ၏ ခွင့်ပြုသည့် အမြင့်ဆုံး
@@ -688,69 +688,130 @@ async function handleYogi(c) {
   throw new HttpError(405, 'Method not allowed');
 }
 
-// 🌟 Report Categories (လမ်းပြင်ဆင်စရိတ် ထပ်ထည့်ထားသည်)
+// 🌟 REPORT ALGORITHM (Auto Running Balance Setup & Category Fix)
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'အရုဏ်ဆွမ်း', keywords: ['အရုဏ်'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'နေ့ဆွမ်း', keywords: ['နေ့ဆွမ်း'] },
   { category: 'ဆွမ်းအလှူ', subcategory: 'တနေ့တာဆွမ်း', keywords: ['တနေ့တာ', 'တစ်နေ့တာ'] },
+  { category: 'ဆွမ်းအလှူ', subcategory: 'အထွေထွေ', keywords: ['ဆွမ်းအလှူ အထွေထွေ'] },
   { category: 'အထွေထွေ', subcategory: 'လမ်းအလှူ', keywords: ['လမ်းအလှူ'] },
   { category: 'အထွေထွေ', subcategory: 'အခြားအလှူ', keywords: ['အခြားအလှူ'] },
+  { category: 'အထွေထွေ', subcategory: 'အထွေထွေ', keywords: ['အထွေထွေ'] },
 ];
+
 const PREDEFINED_EXPENSE = [
   { category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'မီးဖိုချောင်အသုံးစရိတ်', keywords: ['မီးဖို'] },
   { category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'သင်္ကန်းတရားစခန်း အသုံးစရိတ်', keywords: ['သင်္ကန်း', 'တရားစခန်း'] },
+  { category: 'ဆွမ်းစရိတ်ကုန်ကျခြင်း', subcategory: 'အထွေထွေ', keywords: ['ဆွမ်းစရိတ် အထွေထွေ'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ကျောင်းပစ္စည်းဝယ်ယူခြင်း', keywords: ['ကျောင်းပစ္စည်း', 'ပစ္စည်းဝယ်'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'ဆ/ဥ ပြုပြင်စရိတ်', keywords: ['ဆ/ဥ'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'လမ်းပြင်ဆင်စရိတ်', keywords: ['လမ်းပြင်', 'လမ်း'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်', keywords: ['အထွေထွေအသုံး', 'အုပ်ချုပ်မှု'] },
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
 ];
+
 const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ']);
 
 async function handleReport(c) {
   const { url, env } = c;
   const rawSheet = url.searchParams.get('sheet') || '4GB';
   const table = ledgerTable(rawSheet);
-  const year = url.searchParams.get('year') || todayMM().slice(0, 4);
-  if (!/^\d{4}$/.test(year)) throw new HttpError(400, 'Invalid year');
+  const targetYear = url.searchParams.get('year') || todayMM().slice(0, 4);
+  if (!/^\d{4}$/.test(targetYear)) throw new HttpError(400, 'Invalid year');
 
+  // 🌟 (၁) ယခင်နှစ်များမှ အစပြု၍ လက်ကျန်ငွေ တွက်ချက်ရန် ယခုနှစ်အထိ ဒေတာအားလုံးကို ဆွဲယူမည်
   const { results } = await env.DB.prepare(
-    `SELECT title, sub_title, CAST(strftime('%m', date) AS INTEGER) as month_num, COALESCE(income,0) as income, COALESCE(expense,0) as expense
-     FROM "${table}" WHERE strftime('%Y', date) = ? ORDER BY date ASC`).bind(year).all();
+    `SELECT date, title, sub_title, COALESCE(income,0) as income, COALESCE(expense,0) as expense
+     FROM "${table}" WHERE strftime('%Y', date) <= ? ORDER BY date ASC`
+  ).bind(targetYear).all();
 
   const mk = (defs, type) => defs.map((s, i) => ({ srNo: i + 1, type, ...s, months: Array(12).fill(0), total: 0 }));
-  const incRows = mk(PREDEFINED_INCOME, 'ဝင်ငွေ'), expRows = mk(PREDEFINED_EXPENSE, 'ထွက်ငွေ');
+  const incRows = mk(PREDEFINED_INCOME, 'ဝင်ငွေ');
+  const expRows = mk(PREDEFINED_EXPENSE, 'ထွက်ငွေ');
   const dynInc = {}, dynExp = {};
-  const find = (rows, t, st, txt) =>
-    rows.find(x => x.category === t && x.subcategory === st) || rows.find(x => x.keywords.some(k => txt.includes(k)));
+
+  const find = (rows, t, st, txt) => rows.find(x => x.category === t && x.subcategory === st) || rows.find(x => x.keywords && x.keywords.some(k => txt.includes(k)));
   const add = (rows, dyn, type, fallback, t, st, txt, m, amt) => {
     const hit = find(rows, t, st, txt);
-    if (hit) { hit.months[m] += amt; hit.total += amt; return; }
+    if (hit) { hit.months[m] += amt; return; }
     const k = `${t || fallback}_${st || 'အထွေထွေ'}`;
     if (!dyn[k]) dyn[k] = { srNo: 0, type, category: t || fallback, subcategory: st || 'အထွေထွေ', months: Array(12).fill(0), total: 0 };
-    dyn[k].months[m] += amt; dyn[k].total += amt;
+    dyn[k].months[m] += amt;
   };
 
+  let runningBalance = 0;
+  const monthlyNetCurrentYear = Array(12).fill(0);
+  const manualOpeningsCurrentYear = Array(12).fill(0);
+
   (results || []).forEach(r => {
-    const m = (parseInt(r.month_num, 10) || 1) - 1;
     const t = str(r.title), st = str(r.sub_title);
-    if (m < 0 || m > 11 || REPORT_SKIP_TITLES.has(t)) return;
-    const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0, txt = `${t} ${st}`;
-    if (inc > 0) add(incRows, dynInc, 'ဝင်ငွေ', 'အခြားဝင်ငွေ', t, st, txt, m, inc);
-    if (exp > 0) add(expRows, dynExp, 'ထွက်ငွေ', 'အခြားထွက်ငွေ', t, st, txt, m, exp);
+    if (REPORT_SKIP_TITLES.has(t)) return;
+    
+    const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0;
+    const rYear = r.date.slice(0, 4);
+    
+    if (rYear < targetYear) {
+      runningBalance += (inc - exp);
+    } else if (rYear === targetYear) {
+      const rMonth = parseInt(r.date.slice(5, 7), 10) - 1;
+      monthlyNetCurrentYear[rMonth] += (inc - exp);
+      
+      const txt = `${t} ${st}`;
+      if (t === 'စာရင်းဖွင့်' || st === 'စာရင်းဖွင့်လက်ကျန်') {
+        manualOpeningsCurrentYear[rMonth] += inc;
+      } else {
+        if (inc > 0) add(incRows, dynInc, 'ဝင်ငွေ', 'အခြားဝင်ငွေ', t, st, txt, rMonth, inc);
+      }
+      if (exp > 0) add(expRows, dynExp, 'ထွက်ငွေ', 'အခြားထွက်ငွေ', t, st, txt, rMonth, exp);
+    }
   });
+
+  // 🌟 (၂) လစဉ် Opening Balance များကို တွက်ချက်ခြင်း (Math Magic)
+  const openingBalances = Array(12).fill(0);
+  openingBalances[0] = runningBalance;
+  for(let i = 1; i < 12; i++) {
+    openingBalances[i] = openingBalances[i-1] + monthlyNetCurrentYear[i-1];
+  }
+
+  // 🌟 (၃) စာရင်းဖွင့်လက်ကျန် Row အား အစားထိုးခြင်း
+  const openingRow = incRows.find(r => r.category === 'စာရင်းဖွင့်' && r.subcategory === 'စာရင်းဖွင့်လက်ကျန်');
+  if (openingRow) {
+    for(let i = 0; i < 12; i++) {
+      openingRow.months[i] = openingBalances[i] + manualOpeningsCurrentYear[i];
+    }
+  }
+
   Object.values(dynInc).forEach(x => { x.srNo = incRows.length + 1; incRows.push(x); });
   Object.values(dynExp).forEach(x => { x.srNo = expRows.length + 1; expRows.push(x); });
 
   const incomeTotals = Array(12).fill(0), expenseTotals = Array(12).fill(0);
   let grandIncomeTotal = 0, grandExpenseTotal = 0;
-  incRows.forEach(r => { delete r.keywords; r.months.forEach((a, i) => { incomeTotals[i] += a; }); grandIncomeTotal += r.total; });
-  expRows.forEach(r => { delete r.keywords; r.months.forEach((a, i) => { expenseTotals[i] += a; }); grandExpenseTotal += r.total; });
+
+  // 🌟 (၄) စာရင်းဖွင့်လက်ကျန် Row ၏ နှစ်ချုပ် (Total) ကို ကာကွယ်ခြင်း
+  incRows.forEach(r => { 
+    delete r.keywords; 
+    r.months.forEach((a, i) => { incomeTotals[i] += a; }); 
+    if (r.category === 'စာရင်းဖွင့်' && r.subcategory === 'စာရင်းဖွင့်လက်ကျန်') {
+      r.total = openingBalances[0] + manualOpeningsCurrentYear.reduce((a,b)=>a+b, 0);
+    } else {
+      r.total = r.months.reduce((a,b)=>a+b, 0);
+    }
+    grandIncomeTotal += r.total; 
+  });
+  
+  expRows.forEach(r => { 
+    delete r.keywords; 
+    r.months.forEach((a, i) => { expenseTotals[i] += a; }); 
+    r.total = r.months.reduce((a,b)=>a+b, 0);
+    grandExpenseTotal += r.total; 
+  });
+  
+  // 🌟 (၅) Bottom Row: Net Closing Balance for each Month
   const balanceTotals = incomeTotals.map((v, i) => v - expenseTotals[i]);
 
   return c.J({
-    success: true, sheet: rawSheet, book: table, year,
+    success: true, sheet: rawSheet, book: table, year: targetYear,
     data: { incomeRows: incRows, incomeTotals, grandIncomeTotal, expenseRows: expRows, expenseTotals,
       grandExpenseTotal, balanceTotals, grandNetBalance: grandIncomeTotal - grandExpenseTotal },
   });
