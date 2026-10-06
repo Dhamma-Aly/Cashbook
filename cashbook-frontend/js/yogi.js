@@ -7,8 +7,8 @@
 const YOGI_CACHE_PREFIX = 'sasana_yogi_cache_';
 const yogiRowsPerPage = 15;
 
-let currentYogiTable = 'Permanent Yogi'; // D1 Standard: 'Permanent Yogi' or 'Camp Yogi'
-let currentYogiStatus = 'Active';        // 'Active' or 'Inactive'
+let currentYogiTable = 'Permanent Yogi'; 
+let currentYogiStatus = 'Active';        
 let allYogiEntries = [];
 let filteredYogiEntries = [];
 let yogiCurrentPage = 1;
@@ -19,7 +19,6 @@ function resolveYogiTable(nameOrKey) {
   return 'Permanent Yogi';
 }
 
-// Helper: Smart NRC Splitter
 function parseNrcString(nrcStr) {
   const result = { state: '12', township: '', type: '(နိုင်)', number: '' };
   if (!nrcStr) return result;
@@ -36,15 +35,11 @@ function parseNrcString(nrcStr) {
   return result;
 }
 
-// 💡 D1 Schema Helper: end_date မရှိပါက Active ဖြစ်သည်
 function isYogiActive(entry) {
   if (entry.status) return entry.status === 'Active';
   return !entry.end_date || entry.end_date.trim() === '' || entry.end_date.trim() === '-';
 }
 
-// -------------------------------------------------------------------
-// 1. Core View Renderer (Instant Cache-First Engine)
-// -------------------------------------------------------------------
 window.renderYogiView = async function(isSilent = false) {
   currentYogiTable = resolveYogiTable(window.currentYogiTable || window.currentSheet || 'Permanent Yogi');
   window.currentYogiTable = currentYogiTable;
@@ -52,7 +47,6 @@ window.renderYogiView = async function(isSilent = false) {
 
   const cacheKey = `${YOGI_CACHE_PREFIX}${currentYogiTable}`;
 
-  // ၁။ Cache ရှိပါက ဝ စက္ကန့်ဖြင့် ချက်ချင်း အရင်ထုတ်ပြမည် (Loading မစောင့်ရပါ)
   try {
     const cachedStr = localStorage.getItem(cacheKey);
     if (cachedStr) {
@@ -65,12 +59,10 @@ window.renderYogiView = async function(isSilent = false) {
     }
   } catch (_) {}
 
-  // ၂။ ကက်ရှ်မရှိသေးလျှင် Loading ပြမည်
   if (!isSilent && allYogiEntries.length === 0 && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
 
-  // ၃။ နောက်ကွယ်မှ D1 Database အချက်အလက်အသစ်ကို အသံတိတ် ဆွဲယူပြီး Update လုပ်ခြင်း
   try {
     const sheetParam = (currentYogiTable === 'Camp Yogi') ? '13Yogi' : '12Yogi';
     const response = await window.fetchYogiDataAPI(sheetParam);
@@ -90,9 +82,6 @@ window.renderYogiView = async function(isSilent = false) {
   }
 };
 
-// -------------------------------------------------------------------
-// 2. Update Active KPI Cards (4-Box Single Row Compatible)
-// -------------------------------------------------------------------
 function updateYogiKPIs(kpis) {
   if (!kpis) return;
   const setElem = (id, val) => {
@@ -107,9 +96,6 @@ function updateYogiKPIs(kpis) {
   setElem('kpi-yogi-total', kpis.totalActiveYogis || kpis.total);
 }
 
-// -------------------------------------------------------------------
-// 3. Status Tab Switcher (Active vs Inactive)
-// -------------------------------------------------------------------
 window.switchYogiStatusTab = function(status) {
   currentYogiStatus = status;
   yogiCurrentPage = 1;
@@ -128,9 +114,6 @@ window.switchYogiStatusTab = function(status) {
   applyYogiFilters();
 };
 
-// -------------------------------------------------------------------
-// 4. Live Search Filter
-// -------------------------------------------------------------------
 window.onYogiSearchInput = function() {
   yogiCurrentPage = 1;
   applyYogiFilters();
@@ -162,9 +145,6 @@ function applyYogiFilters() {
   renderYogiTable();
 }
 
-// -------------------------------------------------------------------
-// 5. Render 14-Column Table Data (D1 Schema Aligned)
-// -------------------------------------------------------------------
 function renderYogiTable() {
   const tbody = document.getElementById('yogi-table-body');
   if (!tbody) return;
@@ -197,7 +177,6 @@ function renderYogiTable() {
     const phoneVal = entry.yogi_phone || entry.phone || '-';
     const categoryVal = entry.yogi_type || entry.category || '-';
 
-    // 🌟 နေရပ်လိပ်စာအား နိုင်ငံတကာ စံနှုန်းအတိုင်း သဘာဝကျကျ ညှိနှိုင်းခြင်း
     const rawAddr = entry.address || '';
     const escapedAddr = rawAddr.replace(/"/g, '&quot;');
     const addrHtml = rawAddr
@@ -246,9 +225,6 @@ function renderYogiTable() {
   updateYogiPaginationInfo(startIndex + 1, endIndex, totalEntries);
 }
 
-// -------------------------------------------------------------------
-// 6. Pagination Controls
-// -------------------------------------------------------------------
 function updateYogiPaginationInfo(start, end, total) {
   const startEl = document.getElementById('yogi-page-start');
   const endEl = document.getElementById('yogi-page-end');
@@ -280,9 +256,6 @@ window.nextYogiPage = function() {
   }
 };
 
-// -------------------------------------------------------------------
-// 7. Modal Form Opener & Edit Handlers
-// -------------------------------------------------------------------
 window.openAddYogiModal = function() {
   const modal = document.getElementById('yogi-entry-modal');
   const form = document.getElementById('yogi-entry-form');
@@ -322,7 +295,6 @@ window.openEditYogiModal = function(uid) {
   document.getElementById('yogi-name').value = entry.name || '';
   document.getElementById('yogi-father-name').value = entry.father_name || '';
 
-  // Smart NRC Splitter
   const parsedNrc = parseNrcString(entry.nrc || entry.full_nrc || '');
   if (document.getElementById('yogi-nrc-state')) document.getElementById('yogi-nrc-state').value = parsedNrc.state || '12';
   if (document.getElementById('yogi-nrc-township')) document.getElementById('yogi-nrc-township').value = parsedNrc.township || '';
@@ -339,7 +311,6 @@ window.openEditYogiModal = function(uid) {
   modal.classList.remove('hidden');
 };
 
-// Category / Gender Smart Detection
 window.onYogiCategoryChange = function(category) {
   const genderSelect = document.getElementById('yogi-gender');
   if (!genderSelect) return;
@@ -377,9 +348,6 @@ window.onYogiNameChange = function(nameString) {
   if (genderSelect) genderSelect.value = gender;
 };
 
-// -------------------------------------------------------------------
-// 8. Save Yogi Form Submission (D1 Schema Aligned)
-// -------------------------------------------------------------------
 window.saveYogiEntryForm = async function(event) {
   if (event && event.preventDefault) event.preventDefault();
 
@@ -391,7 +359,6 @@ window.saveYogiEntryForm = async function(event) {
   const name = document.getElementById('yogi-name').value.trim();
   const father_name = document.getElementById('yogi-father-name').value.trim();
 
-  // NRC Assembly
   const nrc_state = document.getElementById('yogi-nrc-state')?.value || '12';
   const nrc_township = (document.getElementById('yogi-nrc-township')?.value || '').trim();
   const nrc_type = document.getElementById('yogi-nrc-type')?.value || '(နိုင်)';
@@ -411,27 +378,11 @@ window.saveYogiEntryForm = async function(event) {
 
   const isEdit = !!unique_id;
 
-  // 🌟 D1 Schema စံနှုန်းအတိုင်း ပေးပို့ခြင်း
   const payload = {
     unique_id: unique_id || `YOGI-${crypto.randomUUID()}`,
-    sheet_type: currentTable,
-    book_name: currentTable,
-    yogi_type: category,
-    start_date,
-    end_date: '',
-    name,
-    father_name,
-    nrc: full_nrc,
-    dob,
-    age,
-    gender,
-    yogi_phone: phone,
-    home_phone,
-    address,
-    uniqueId: unique_id,
-    category,
-    phone,
-    full_nrc
+    sheet_type: currentTable, book_name: currentTable, yogi_type: category,
+    start_date, end_date: '', name, father_name, nrc: full_nrc, dob, age, gender,
+    yogi_phone: phone, home_phone, address, uniqueId: unique_id, category, phone, full_nrc
   };
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
@@ -441,8 +392,8 @@ window.saveYogiEntryForm = async function(event) {
     if (response && response.success) {
       if (typeof window.closeYogiModal === 'function') window.closeYogiModal();
       await window.renderYogiView(false);
-    } else {
-      alert('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: ' + (response ? response.error : ''));
+    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
+      alert('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: ' + (response.error ? response.error : ''));
     }
   } catch (err) {
     console.error('Save Yogi Error:', err);
@@ -452,9 +403,6 @@ window.saveYogiEntryForm = async function(event) {
   }
 };
 
-// -------------------------------------------------------------------
-// 9. Workflows (Checkout, Reactivate, Delete)
-// -------------------------------------------------------------------
 window.checkoutYogiPrompt = async function(uniqueId, name) {
   const todayStr = new Date().toISOString().split('T')[0];
   const confirmCheckout = confirm(`ယောဂီ "${name}" အား ယနေ့ (${todayStr}) ရက်စွဲဖြင့် စခန်းထွက် (Inactive) စာရင်းသို့ ပြောင်းလဲပါမည်လော။`);
@@ -465,16 +413,13 @@ window.checkoutYogiPrompt = async function(uniqueId, name) {
   try {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
     const response = await window.checkoutYogiAPI({ 
-      unique_id: uniqueId, 
-      uniqueId: uniqueId, 
-      end_date: todayStr,
-      sheet_type: currentTable 
+      unique_id: uniqueId, uniqueId: uniqueId, end_date: todayStr, sheet_type: currentTable 
     });
 
     if (response && response.success) {
       await window.renderYogiView(false);
-    } else {
-      alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
+    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
+      alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
     }
   } catch (err) {
     console.error('Checkout Error:', err);
@@ -493,15 +438,13 @@ window.reactivateYogiPrompt = async function(uniqueId, name) {
   try {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
     const response = await window.reactivateYogiAPI({ 
-      unique_id: uniqueId, 
-      uniqueId: uniqueId, 
-      sheet_type: currentTable 
+      unique_id: uniqueId, uniqueId: uniqueId, sheet_type: currentTable 
     });
 
     if (response && response.success) {
       await window.renderYogiView(false);
-    } else {
-      alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
+    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
+      alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
     }
   } catch (err) {
     console.error('Reactivate Error:', err);
@@ -520,8 +463,8 @@ window.deleteYogiPrompt = async function(uniqueId) {
     const response = await window.deleteYogiAPI(uniqueId, currentTable);
     if (response && response.success) {
       await window.renderYogiView(false);
-    } else {
-      alert('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + (response ? response.error : ''));
+    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
+      alert('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
     }
   } catch (err) {
     console.error('Delete Yogi Error:', err);
@@ -530,9 +473,6 @@ window.deleteYogiPrompt = async function(uniqueId) {
   }
 };
 
-// -------------------------------------------------------------------
-// 10. Smart Helpers: Age & Gender
-// -------------------------------------------------------------------
 function calcAgeFromDoB(dobString) {
   if (!dobString) return 0;
   const dobDate = new Date(dobString);
@@ -572,9 +512,6 @@ function detectGenderFromName(name) {
   return 'ကျား';
 }
 
-// -------------------------------------------------------------------
-// 11. Export Yogi Data to CSV (D1 Schema Aligned)
-// -------------------------------------------------------------------
 window.exportYogiCSV = function() {
   if (!filteredYogiEntries || filteredYogiEntries.length === 0) {
     alert('ထုတ်ယူရန် ဒေတာ မရှိပါ');
