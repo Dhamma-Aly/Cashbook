@@ -1,23 +1,22 @@
 // ===================================================================
-// js/api.js - Offline-First API Client & Sync Engine  — v4
+// js/api.js - Offline-First API Client & Sync Engine  — v4.1 (Optimized)
 //
 // ပြင်ဆင်ချက်များ:
-//  1. Entry သိမ်း/ပြင်/ဖျက် တိုင်းတွင် ?sheet=<စာအုပ်> ပါစေခြင်း (1CB ထဲ မှားမရောက်တော့)
+//  1. Entry သိမ်း/ပြင်/ဖျက် တိုင်းတွင် ?sheet=<စာအုပ်> ပါစေခြင်း
 //  2. Server က ပယ်ချသော error (400/403/404) ကို queue ထဲမထည့်ဘဲ အမှန်တကယ် error ပြခြင်း
-//     — အင်တာနက်ပြတ်တောက်ခြင်း / 5xx ဖြစ်မှသာ queue ထဲ ထည့်ခြင်း
 //  3. Sync လုပ်ပြီး "synced / deleted" ဖြစ်သော item များကိုသာ queue မှ ဖျက်ခြင်း
-//     (မအောင်မြင်သော item များ ဆက်ကျန်၊ ၅ ကြိမ်ပျက်လျှင် failed အဖြစ် မှတ်)
 //  4. Offline မှာ သိမ်းထားသော စာရင်းများကို Cache ထဲ ချက်ချင်းထည့်ပြီး (pending) ပြသခြင်း
-//  5. unique_id ကို request မပို့ခင် payload ထဲ ထည့်ခြင်း (retry လုပ်လည်း ထပ်မနေ)
+//  5. unique_id ကို request မပို့ခင် payload ထဲ ထည့်ခြင်း
 //  6. Yogi offline table အမှား ပြင်ခြင်း၊ Transfer API (atomic) ထည့်ခြင်း
-//  7. Logout / 401 ချိန်တွင် IndexedDB cache ရှင်းခြင်း (clearOfflineCache)
-//  8. Request timeout (20s)၊ Server error message အမှန်ကို UI သို့ ပို့ပေးခြင်း
+//  7. Request timeout (10s) သို့လျှော့ချခြင်း (UX ပိုကောင်းစေရန်)
+//  8. 401 Error ဖြစ်ပါက Data မပျက်စေရန် Soft Re-Auth Modal ပြသပေးခြင်း
+//  9. ရက် ၃၀ ကျော်နေသော Offline Sync Failed Data များအား ရှင်းလင်းပေးခြင်း (Pruning)
 // ===================================================================
 (function () {
   'use strict';
 
   const API_FALLBACK = 'https://cashbook-api.dhammaaly.workers.dev';
-  const REQUEST_TIMEOUT_MS = 20000;
+  const REQUEST_TIMEOUT_MS = 10000; // 🌟 Timeout ကို 10s သို့ လျှော့ချထားသည်
   const MAX_SYNC_ATTEMPTS = 5;
 
   const getApiBaseUrl = () =>
@@ -36,7 +35,7 @@
   };
   const ledgerTableName = (x) => {
     const k = String(x || '').trim();
-    return LEDGER_CODES[k] || k;           // short code → full name; full name ကို မပြောင်း
+    return LEDGER_CODES[k] || k;
   };
   const yogiTableName = (x) => {
     const k = String(x || '').trim();
@@ -71,7 +70,6 @@
     return idbInstance;
   }
 
-  // transaction တစ်ခုအတွက် helper — oncomplete မှ resolve လုပ်သည်
   async function idbRun(store, mode, fn) {
     try {
       const db = await getIDB();
@@ -99,8 +97,6 @@
     ? idbRun('sync_queue', 'readwrite', s => { ids.forEach(id => s.delete(id)); return null; })
     : Promise.resolve(null);
 
-  // Logout ချိန်တွင် ခေါ်ရန် — အခြားသူ၏ ငွေစာရင်း/ယောဂီအချက်အလက်များ device ပေါ်မကျန်စေရန်
-  // (sync_queue ကိုတော့ မဖျက်ပါ — မပို့ရသေးသော ဒေတာ ဆုံးရှုံးမည်စိုး)
   window.clearOfflineCache = async function () {
     await idbClear('cache');
     try {
@@ -108,10 +104,24 @@
     } catch (_) { /* ignore */ }
   };
 
+  // 🌟 Auto-Cleanup for IndexedDB Sync Queue (၃၀ ရက်အထက်ဟောင်းသော Failed Data များ ဖျက်ရန်)
+  window.pruneOldSyncQueue = async function () {
+    try {
+      const queue = await idbQueueGetAll();
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const toDelete = queue.filter(q => (now - (q.timestamp || now)) > THIRTY_DAYS_MS).map(q => q.id);
+      if (toDelete.length > 0) {
+        await idbQueueDelete(toDelete);
+        console.log(`[Pruning] Deleted ${toDelete.length} old failed sync items.`);
+      }
+    } catch (e) {
+      console.warn('Pruning error:', e);
+    }
+  };
+
   // ===================================================================
   // 2. SAFE API REQUEST
-  //   return: server JSON ကိုယ်တိုင် (success:true)  သို့မဟုတ်
-  //           { success:false, error, status?, offline?, data:[], kpis:{} }
   // ===================================================================
   async function safeApiRequest(endpoint, options = {}) {
     const { noCache, ...fetchOpts } = options;
@@ -150,10 +160,15 @@
       }
 
       if (res.status === 401) {
-        await window.clearOfflineCache();
-        if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
+        // 🌟 Token Expired ဖြစ်ပါက Data မပျက်စေရန် Soft Re-Auth Modal ပြမည်
+        if (typeof window.showReAuthModal === 'function') {
+          window.showReAuthModal();
+        } else {
+          await window.clearOfflineCache();
+          if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
+        }
       }
-      if (res.status >= 500) {                       // server ပြဿနာဆိုလျှင် cache ဖြင့် ဆက်ပြသည်
+      if (res.status >= 500) {                       
         const c = await fromCache();
         if (c) return c;
       }
@@ -171,11 +186,10 @@
   }
   window.safeApiRequest = safeApiRequest;
 
-  // အင်တာနက်ပြတ်ခြင်း / server 5xx သာ queue ထဲ ထည့်ရန် သင့်သည်
   const isRetryable = (res) => !!res && (res.offline === true || (res.status >= 500));
 
   // ===================================================================
-  // 3. OPTIMISTIC CACHE PATCH (Offline မှာ သိမ်းထားသော စာရင်းကို ချက်ချင်းမြင်စေရန်)
+  // 3. OPTIMISTIC CACHE PATCH 
   // ===================================================================
   const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
 
@@ -265,7 +279,7 @@
     const res = await safeApiRequest(endpoint, { method, body: JSON.stringify(payload) });
     if (res && res.success) return res;
     if (isRetryable(res)) return enqueue(queueItem, patch, message);
-    return res || { success: false, error: 'Unknown error' };       // 400/401/403/404 → UI သို့ error အမှန် ပို့
+    return res || { success: false, error: 'Unknown error' };       
   }
 
   // ===================================================================
@@ -283,13 +297,19 @@
   window.discardFailedSync = async function () {
     const failed = await window.getFailedSyncItems();
     await idbQueueDelete(failed.map(q => q.id));
+    
+    // UI Update လေး လုပ်ပေးရန်
+    window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced: 0, failed: 0 } }));
     return failed.length;
   };
 
   window.triggerBackgroundSync = async function () {
     if (isSyncing || !navigator.onLine || !getToken()) return;
     const queue = (await idbQueueGetAll()).filter(q => !q.failed).sort((a, b) => a.id - b.id);
-    if (!queue.length) return;
+    if (!queue.length) {
+      window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced: 0, failed: (await window.getFailedSyncItems()).length } }));
+      return;
+    }
 
     isSyncing = true;
     let synced = 0, failed = 0;
@@ -302,12 +322,16 @@
         }),
       });
 
-      if (res.status === 401) {                       // Token သက်တမ်းကုန် — queue ကို မဖျက်ဘဲ login ပြန်ဝင်ခိုင်းသည်
-        await window.clearOfflineCache();
-        if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
+      if (res.status === 401) {                       
+        if (typeof window.showReAuthModal === 'function') {
+          window.showReAuthModal();
+        } else {
+          await window.clearOfflineCache();
+          if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
+        }
         return;
       }
-      if (!res.ok) return;                            // 5xx / 403 — နောက်မှ ပြန်စမ်းမည်
+      if (!res.ok) return;                            
 
       const result = await res.json();
       const byQid = new Map((result.results || []).map(r => [r.qid, r]));
@@ -328,10 +352,11 @@
       isSyncing = false;
     }
 
-    if (synced || failed) {
-      window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced, failed } }));
-      if (synced && typeof window.refreshCurrentTabSilent === 'function') window.refreshCurrentTabSilent();
-    }
+    // 🌟 Update UI for Failed Syncs
+    const totalFailed = (await window.getFailedSyncItems()).length;
+    window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced, failed: totalFailed } }));
+    
+    if (synced && typeof window.refreshCurrentTabSilent === 'function') window.refreshCurrentTabSilent();
   };
 
   window.addEventListener('online', () => window.triggerBackgroundSync());
@@ -343,8 +368,10 @@
   window.bootstrapAppData = async function () {
     if (!navigator.onLine || !getToken()) return;
     try {
+      // 🌟 DB Cleanup
+      await window.pruneOldSyncQueue();
+
       await window.triggerBackgroundSync();
-      // မပို့ရသေးသော offline စာရင်းများ ရှိနေလျှင် cache ကို မလွှမ်းမိုးပါ
       if ((await idbQueueGetAll()).some(q => !q.failed)) return;
 
       const res = await safeApiRequest('/api/bootstrap', { noCache: true });
@@ -405,7 +432,7 @@
       queueItem: { action: 'DELETE', table, data: {}, unique_id: uniqueId },
       patch: async () => {
         await patchCachedList(ledgerEndpoint(table), 'DELETE', { unique_id: uniqueId }, 'ledger');
-        const m = /^(TRF_.+)_(OUT|IN)$/.exec(uniqueId);     // Transfer ဆိုလျှင် တစ်ဖက်ကိုပါ ဖယ်
+        const m = /^(TRF_.+)_(OUT|IN)$/.exec(uniqueId);
         if (m) await patchCachedList(ledgerEndpoint(table), 'DELETE', { unique_id: `${m[1]}_${m[2] === 'OUT' ? 'IN' : 'OUT'}` }, 'ledger');
       },
       message: 'ဖျက်သိမ်းစာရင်းအား မှတ်သားထားပါသည် (လိုင်းရပါက ဖျက်ပေးပါမည်)',
@@ -414,8 +441,7 @@
   window.deleteEntryAPI = window.deleteCashbookEntryAPI;
 
   // -----------------------------------------------------------------
-  // Transfer (ဘဏ်အပ် / User အချင်းချင်း လွှဲပြောင်း) — Server တွင် atomic batch ဖြင့် သိမ်းသည်
-  // payload: { book_name, date, amount, receiver, target, voucher_no, description, group_id? }
+  // Transfer API
   // -----------------------------------------------------------------
   const TRANSFER_OFFLINE = { success: false, offline: true, error: 'စာရင်းပြောင်း (Transfer) လုပ်ရန် အင်တာနက် လိုအပ်ပါသည်။ လိုင်းရပြီးမှ ပြန်လုပ်ပါ။' };
 
