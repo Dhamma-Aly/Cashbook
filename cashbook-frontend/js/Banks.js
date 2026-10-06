@@ -1,7 +1,7 @@
 // ===================================================================
 // js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller
 // Features: Universal Cross-Transfer, Lock on Receiving Entries,
-// Sequential Row Numbering & Complete Edit Data Preservation
+// Sequential Row Numbering & Complete Edit Data Preservation 
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
