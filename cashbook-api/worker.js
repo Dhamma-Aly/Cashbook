@@ -1,5 +1,5 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.2 (Bulk Import Ready)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.3 (Report Bank Deposit Fix)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;
@@ -140,7 +140,7 @@ function corsHeaders(request, env) {
 }
 
 // -------------------------------------------------------------------
-// Row normalizers (no နှင့် balance ကိုပါ D1 ထဲ ထည့်သွင်းနိုင်ရန် ဖြည့်စွက်ထားပါသည်)
+// Row normalizers
 // -------------------------------------------------------------------
 function normLedger(b, table) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -247,7 +247,7 @@ async function deleteTransferGroup(env, gid) {
 }
 
 // -------------------------------------------------------------------
-// Query Book (စဉ် နံပါတ် အစဉ်လိုက် တွက်ချက်ခြင်း)
+// Query Book
 // -------------------------------------------------------------------
 async function queryBook(env, table, rawSheet) {
   const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY date ASC, id ASC`).all();
@@ -405,7 +405,7 @@ async function handleEntries(c) {
 }
 
 // -------------------------------------------------------------------
-// 🌟 GOOGLE SHEETS BULK IMPORT (Clean & Batch Overwrite)
+// GOOGLE SHEETS BULK IMPORT (Clean & Batch Overwrite)
 // -------------------------------------------------------------------
 async function handleBulkImport(c) {
   const { env } = c;
@@ -428,7 +428,6 @@ async function handleBulkImport(c) {
     throw new HttpError(400, `Unknown or invalid table: "${rawTable}"`);
   }
 
-  // ၁။ စာအုပ်အဟောင်းအား D1 ထဲမှ အရင်ရှင်းလင်းခြင်း
   if (clearExisting) {
     await env.DB.prepare(`DELETE FROM "${table}"`).run();
   }
@@ -437,7 +436,6 @@ async function handleBulkImport(c) {
     return c.J({ success: true, count: 0, table, message: 'Table cleared successfully' });
   }
 
-  // ၂။ အချက်အလက်များအား Batch (၈၀ ခုစီ) ခွဲ၍ D1 သို့ တပြိုင်တည်း ထည့်သွင်းခြင်း
   const CHUNK_SIZE = 80;
   let insertedCount = 0;
 
@@ -763,7 +761,7 @@ async function handleYogi(c) {
 }
 
 // -------------------------------------------------------------------
-// Report Handler
+// 🌟 REPORT HANDLER (စာရင်းပြောင်း ဘဏ်အပ်နှံခြင်း အား အသုံးစရိတ်ထဲ ပေါင်းထည့်ပေးထားပါသည်)
 // -------------------------------------------------------------------
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
@@ -785,6 +783,8 @@ const PREDEFINED_EXPENSE = [
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'လမ်းပြင်ဆင်စရိတ်', keywords: ['လမ်းပြင်', 'လမ်း'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်', keywords: ['အထွေထွေအသုံး', 'အုပ်ချုပ်မှု'] },
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
+  // 🌟 အသစ်ဖြည့်စွက်ချက်: စာရင်းပြောင်း (ဘဏ်အပ်နှံခြင်း) အား အသုံးစရိတ် အောက်ဆုံးတန်းတွင် သတ်မှတ်ခြင်း
+  { category: 'စာရင်းပြောင်း', subcategory: 'ဘဏ်အပ်နှံခြင်း', keywords: ['ဘဏ်အပ်နှံခြင်း', 'ဘဏ်အပ်ငွေ'] },
 ];
 
 const REPORT_SKIP_TITLES = new Set(['စာရင်းပြောင်း', 'ဘဏ်အပ်ငွေ', 'လွှဲပြောင်းရရှိ']);
@@ -821,9 +821,16 @@ async function handleReport(c) {
 
   (results || []).forEach(r => {
     const t = str(r.title), st = str(r.sub_title);
-    if (REPORT_SKIP_TITLES.has(t) || t.includes('လွှဲပြောင်း') || st.includes('လွှဲပြောင်း') || t.includes('စာရင်းပြောင်း')) return;
-    
     const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0;
+
+    // 🌟 အဓိက ပြင်ဆင်ချက်: အကယ်၍ "ဘဏ်အပ်နှံခြင်း" (စာရင်းပြောင်း ထွက်ငွေ) ဖြစ်ပါက အသုံးစရိတ်ထဲ ထည့်သွင်းမည် (မကျော်ပါ)
+    const isBankDepositExpense = (t === 'စာရင်းပြောင်း' || st.includes('ဘဏ်အပ်နှံခြင်း')) && st.includes('ဘဏ်အပ်နှံခြင်း') && (exp > 0);
+
+    if (!isBankDepositExpense) {
+      // ဘဏ်အပ်နှံခြင်း မဟုတ်သော User အချင်းချင်း လွှဲပြောင်းမှုများနှင့် အခြား internal transfer များကိုသာ ကျော်မည်
+      if (REPORT_SKIP_TITLES.has(t) || t.includes('လွှဲပြောင်း') || st.includes('လွှဲပြောင်း') || t.includes('စာရင်းပြောင်း')) return;
+    }
+    
     const rYear = r.date.slice(0, 4);
     
     if (rYear < targetYear) {
@@ -939,7 +946,7 @@ async function route(c) {
 }
 
 // ===================================================================
-// 🌟 တစ်ခုတည်းသော EXPORT DEFAULT ENTRY POINT
+// 🌟 EXPORT DEFAULT ENTRY POINT
 // ===================================================================
 export default {
   async fetch(request, env) {
