@@ -1,10 +1,13 @@
 // ===================================================================
-// js/auth.js - Sāsana ERP Pure D1 Auth Controller
-// Features: Auto-Bootstrap on Login, Soft Re-Auth Modal & Role Config
+// js/auth.js - Sāsana ERP Persistent Auth Controller (Long-Lived Session)
+// Features: Persistent Login (Never auto-logout until manual sign out)
 // ===================================================================
 
 (function () {
   "use strict";
+
+  // 🌟 သက်တမ်းကို ၁ နှစ် (ရက်ပေါင်း ၃၆၅ ရက်) သတ်မှတ်ခြင်း
+  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
   const ROLE_BURMESE_MAP = {
     'Admin': 'စီမံအုပ်ချုပ်သူ',
@@ -15,16 +18,13 @@
   };
 
   const getAppVersion = () => {
-    return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.0_D1_ENTERPRISE";
+    return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.1_D1_ENTERPRISE";
   };
 
+  // 🌟 Version ပြောင်းလဲသော်လည်း Login ပျက်မသွားစေရန် Token မဖျက်ဘဲ Version နံပါတ်သာ Update လုပ်ခြင်း
   const storedVersion = localStorage.getItem("sasana_app_version");
   const targetVersion = getAppVersion();
-  if (storedVersion && storedVersion !== targetVersion) {
-    localStorage.removeItem("sasana_auth_token");
-    localStorage.removeItem("yogi_auth_token");
-    localStorage.setItem("sasana_app_version", targetVersion);
-  } else if (!storedVersion) {
+  if (storedVersion !== targetVersion) {
     localStorage.setItem("sasana_app_version", targetVersion);
   }
 
@@ -80,11 +80,13 @@
     if (workspace) workspace.classList.add("hidden");
   };
 
+  // 🌟 Persistent Check: Token ရှိနေသရွေ့ အမြဲတမ်း Workspace ကို တန်းပွင့်စေမည်
   window.checkExistingSession = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
 
-    const isValid = token && expiresAt && Date.now() < expiresAt;
+    // Token ရှိပြီး သက်တမ်း ၁ နှစ်အတွင်း ရှိနေပါက တန်းပွင့်မည်
+    const isValid = Boolean(token && (!expiresAt || Date.now() < expiresAt));
 
     if (isValid) {
       window.showWorkspace();
@@ -132,7 +134,8 @@
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
       if (res.ok && json.success && json.token) {
-        const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
+        // 🌟 သက်တမ်းကို ၁ နှစ် (ONE_YEAR_MS) အဖြစ် သတ်မှတ်ခြင်း
+        const expiresInMs = json.expiresInMs || ONE_YEAR_MS;
         const expiresAt = Date.now() + expiresInMs;
         const userObj = json.user || { username, role: username, name: username };
 
@@ -178,7 +181,7 @@
     }
   };
 
-  // 🌟 Soft Re-Authentication Logic (Session Expire ဖြစ်၍ Modal ခေါ်ချိန်)
+  // 🌟 Soft Re-Authentication Logic
   window.showReAuthModal = function() {
     const modal = document.getElementById("reauth-modal");
     if (modal) {
@@ -193,7 +196,7 @@
         setTimeout(() => pwdInput.focus(), 100);
       }
     } else {
-      window.handleLogoutSilent(); // Modal HTML မရှိပါက ပုံမှန် Logout သာလုပ်မည်
+      window.handleLogoutSilent();
     }
   };
 
@@ -227,7 +230,7 @@
       const json = await res.json().catch(() => ({}));
 
       if (res.ok && json.success && json.token) {
-        const expiresInMs = json.expiresInMs || (24 * 60 * 60 * 1000);
+        const expiresInMs = json.expiresInMs || ONE_YEAR_MS;
         const expiresAt = Date.now() + expiresInMs;
 
         localStorage.setItem("sasana_auth_token", json.token);
@@ -238,7 +241,6 @@
         if (passwordInput) passwordInput.value = "";
         document.getElementById("reauth-modal").classList.add("hidden");
 
-        // 🌟 Authentication အောင်မြင်ပါက ရပ်နေသော Auto Sync ကို ချက်ချင်းပြန်လုပ်ပေးမည်
         if (typeof window.triggerBackgroundSync === "function") {
           window.triggerBackgroundSync();
         }
@@ -266,6 +268,7 @@
     window.handleLogoutSilent();
   };
 
+  // 🌟 Logout ခလုတ်ကို ကိုယ်တိုင် နှိပ်မှသာ စနစ်မှ ထွက်ခွာခြင်း
   window.handleLogout = function () {
     if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
       if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
