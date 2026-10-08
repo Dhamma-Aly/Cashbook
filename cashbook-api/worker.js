@@ -1,9 +1,9 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.4 (Bank Withdrawal Dual-Entry)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.5 (Strict Validation & Anti-Duplicate)
 // ===================================================================
 
 const PBKDF2_ITER = 100000;
-const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 🌟 ၁ နှစ် သက်တမ်း
+const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 🌟 ၁ နှစ် သက်တမ်း (Persistent Login)
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TRF_RE = /^(TRF_.+)_(OUT|IN)$/;
 const LEGACY_ID_RE = /^(?:CB|INV|YOGI)-(\d+)$/;
@@ -154,10 +154,17 @@ function normLedger(b, table) {
   }
   if (income < 0 || expense < 0) throw new HttpError(400, 'Amount must not be negative');
   if (!title) title = income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ';
+
+  // 🌟 (၁) အကြောင်းအရာ (Description) မပါဘဲ သိမ်းတာ လုံးဝ လက်မခံစေရန် တားမြစ်ခြင်း
+  const description = str(b.description);
+  if (!description) {
+    throw new HttpError(400, 'အကြောင်းအရာ (Description) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
+  }
+
   const no = parseInt(b.no, 10);
   const balance = b.balance !== undefined ? num(b.balance) : 0;
 
-  // 🌟 ဘဏ်ထုတ်ငွေ ဖြစ်ပါက ငွေလက်ခံယူသူ User 1 (သို့မဟုတ် ရွေးချယ်သော User) အဖြစ် လက်ခံခွင့်ပြုခြင်း
+  // ဘဏ်ထုတ်ငွေ ဖြစ်ပါက ငွေလက်ခံယူသူ User 1 (သို့မဟုတ် ရွေးချယ်သော User) အဖြစ် လက်ခံခွင့်ပြုခြင်း
   let defaultReceiver = 'User 1';
   if (BANK_TABLES.has(table)) {
     defaultReceiver = (title === 'ဘဏ်ထုတ်ငွေ' || sub_title.includes('ကျောင်းရန်ပုံငွေ')) 
@@ -169,7 +176,7 @@ function normLedger(b, table) {
   return {
     ...(Number.isInteger(no) ? { no } : {}),
     date, title, sub_title,
-    description: str(b.description) || sub_title || title || 'စာရင်းထည့်သွင်းခြင်း',
+    description,
     income, expense,
     balance,
     voucher_no: str(b.voucher_no),
@@ -182,7 +189,7 @@ function normLedger(b, table) {
 
 function normInventory(b) {
   const description = str(b.description || b.item_name || b.item_desc);
-  if (!description) throw new HttpError(400, 'description is required');
+  if (!description) throw new HttpError(400, 'အကြောင်းအရာ (Description) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
   if (!DATE_RE.test(date)) throw new HttpError(400, 'Invalid date (YYYY-MM-DD)');
   const no = parseInt(b.no, 10);
@@ -203,7 +210,7 @@ function normInventory(b) {
 
 function normYogi(b, table) {
   const name = str(b.name);
-  if (!name) throw new HttpError(400, 'name is required');
+  if (!name) throw new HttpError(400, 'ယောဂီအမည် (Name) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
   const no = parseInt(b.no, 10);
 
   return {
@@ -282,7 +289,7 @@ async function queryBook(env, table, rawSheet) {
 }
 
 // -------------------------------------------------------------------
-// 🌟 UNIVERSAL TRANSFER BUILDER (ဘဏ်ထုတ်ငွေ Dual-Entry အပြည့်အစုံ ပါဝင်သည်)
+// Universal Transfer Builder (ဘဏ်ထုတ်ငွေ Dual-Entry အပြည့်အစုံ ပါဝင်သည်)
 // -------------------------------------------------------------------
 function buildTransfer(b, src) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -290,6 +297,7 @@ function buildTransfer(b, src) {
   const amt = num(b.amount || b.expense || b.income);
   if (!(amt > 0)) throw new HttpError(400, 'amount must be greater than 0');
 
+  // 🌟 (၂) Idempotency: Client က ပေးပို့လာသော group_id / unique_id အား ဦးစားပေးသုံးပြီး စာရင်း ၂ ခါ မဝင်စေရန် ထိန်းသိမ်းခြင်း
   const fromUid = TRF_RE.exec(str(b.unique_id));
   const gid = str(b.group_id) || (fromUid && fromUid[1]) || `TRF_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   const sender = BANK_TABLES.has(src) ? 'Bank' : (str(b.receiver) || 'User 1');
@@ -301,10 +309,7 @@ function buildTransfer(b, src) {
     title: 'စာရင်းပြောင်း', income: 0, expense: 0, ...o,
   }];
 
-  // ===================================================================
-  // 🌟 (က) ဘဏ်စာအုပ် (၃) ခုမှ ဘဏ်ထုတ်ငွေ ထွက်လာသည့်အခါ:
-  //      ဘဏ်တွင် ထွက်ငွေ ဖြစ်ပြီး၊ ကျောင်းရန်ပုံငွေစာအုပ် (1General Book) တွင် User 1 ထံ ဝင်ငွေ Auto ဝင်စေမည်
-  // ===================================================================
+  // ဘဏ်စာအုပ် (၃) ခုမှ ဘဏ်ထုတ်ငွေ ထွက်လာသည့်အခါ:
   if (BANK_TABLES.has(src)) {
     const isWithdrawalToSchool = b.title === 'ဘဏ်ထုတ်ငွေ' || 
                                  target.includes('ကျောင်း') || 
@@ -319,7 +324,6 @@ function buildTransfer(b, src) {
       return {
         gid,
         rows: [
-          // ၁။ ဘဏ်စာအုပ်တွင် ထွက်ငွေ (_OUT)
           mk(src, 'OUT', {
             title: 'ဘဏ်ထုတ်ငွေ',
             sub_title: 'ကျောင်းရန်ပုံငွေ စာအုပ်',
@@ -327,7 +331,6 @@ function buildTransfer(b, src) {
             expense: amt,
             receiver: destUser
           }),
-          // ၂။ ကျောင်းရန်ပုံငွေစာအုပ် (1General Book) တွင် ဝင်ငွေ (_IN)
           mk('1General Book', 'IN', {
             title: 'ဘဏ်ထုတ်ငွေ',
             sub_title: `${src} မှ ထုတ်ယူရရှိ`,
@@ -338,7 +341,6 @@ function buildTransfer(b, src) {
         ]
       };
     } else {
-      // ဘဏ်အချင်းချင်း လွှဲပြောင်းခြင်း (Bank to Bank)
       let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
       if (!targetBank) targetBank = src === '1CB Bank (General)' ? '2CB Bank (Meal)' : '1CB Bank (General)';
 
@@ -349,9 +351,7 @@ function buildTransfer(b, src) {
     }
   }
 
-  // ===================================================================
-  // 🌟 (ခ) ပင်မစာအုပ်များတွင် User အချင်းချင်း လွှဲပြောင်းခြင်း (User 1, 2, 3)
-  // ===================================================================
+  // ပင်မစာအုပ်များတွင် User အချင်းချင်း လွှဲပြောင်းခြင်း
   const targetUser = USERS.find(u => target.includes(u));
   if (targetUser && !target.includes('Bank') && !target.includes('ဘဏ်')) {
     if (targetUser === sender && !BANK_TABLES.has(src)) {
@@ -363,9 +363,7 @@ function buildTransfer(b, src) {
     ] };
   }
 
-  // ===================================================================
-  // 🌟 (ဂ) ပင်မစာအုပ်များမှ ဘဏ်သို့ အပ်နှံခြင်း (Book to Bank Deposit)
-  // ===================================================================
+  // ပင်မစာအုပ်များမှ ဘဏ်သို့ အပ်နှံခြင်း
   let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
   if (!targetBank && (target.includes('1CB') || target.includes('အထွေထွေ'))) targetBank = '1CB Bank (General)';
   if (!targetBank && (target.includes('2CB') || target.includes('ဆွမ်း'))) targetBank = '2CB Bank (Meal)';
@@ -413,7 +411,7 @@ async function handleEntries(c) {
   const body = (method === 'POST' || method === 'PUT') ? await readJson(c.request) : null;
   const table = ledgerTable(sheetParam || body?.sheet_name || body?.sheet_code || body?.book_name);
 
-  // 🌟 (၁) ဘဏ်စာအုပ်တွင် "ဘဏ်ထုတ်ငွေ" အဖြစ် သွင်းလိုက်ပါက အလိုအလျောက် Dual-Entry ချိတ်ဆက်ပေးခြင်း
+  // ဘဏ်စာအုပ်တွင် "ဘဏ်ထုတ်ငွေ" အဖြစ် သွင်းလိုက်ပါက အလိုအလျောက် Dual-Entry ချိတ်ဆက်ပေးခြင်း
   if (method === 'POST') {
     const isBankWithdrawal = BANK_TABLES.has(table) && 
       (body.title === 'ဘဏ်ထုတ်ငွေ' || body.category === 'ဘဏ်ထုတ်ငွေ' || str(body.sub_title).includes('ကျောင်းရန်ပုံငွေ'));
@@ -440,7 +438,7 @@ async function handleEntries(c) {
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
 
-  // 🌟 လက်ခံစာအုပ် (_IN) မှ တိုက်ရိုက် Edit/Delete လုပ်ခြင်းအား တားမြစ်ခြင်း
+  // လက်ခံစာအုပ် (_IN) မှ တိုက်ရိုက် Edit/Delete လုပ်ခြင်းအား တားမြစ်ခြင်း
   if (key.uid && key.uid.endsWith('_IN')) {
     throw new HttpError(400, 'ဤစာရင်းသည် လက်ခံစာရင်း (Incoming Transfer) ဖြစ်သောကြောင့် မူရင်းလွှဲပို့သည့် စာအုပ်မှသာ ပြင်ဆင်/ဖျက်ပစ်နိုင်ပါသည်ခင်ဗျာ။');
   }
@@ -512,6 +510,10 @@ async function handleBulkImport(c) {
       const rowData = { ...item };
       if (rowData.no === undefined) {
         rowData.no = i + idx + 1;
+      }
+      // Bulk import အတွက် description အလွတ်ဖြစ်နေပါက title ဖြင့် အရန်သတ်မှတ်ပေးခြင်း
+      if (!rowData.description && rowData.title) {
+        rowData.description = rowData.title;
       }
       const normalized = NORM[kind](rowData, table);
       return upsertStmt(env, table, normalized);
@@ -828,7 +830,7 @@ async function handleYogi(c) {
 }
 
 // -------------------------------------------------------------------
-// 🌟 REPORT HANDLER (စာရင်းပြောင်း ဘဏ်အပ်နှံခြင်း အား အသုံးစရိတ်ထဲ ပေါင်းထည့်ပေးထားပါသည်)
+// 🌟 REPORT HANDLER
 // -------------------------------------------------------------------
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
@@ -850,7 +852,6 @@ const PREDEFINED_EXPENSE = [
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'လမ်းပြင်ဆင်စရိတ်', keywords: ['လမ်းပြင်', 'လမ်း'] },
   { category: 'အုပ်ချုပ်မှုအသုံးစရိတ်', subcategory: 'အထွေထွေအသုံးစရိတ်', keywords: ['အထွေထွေအသုံး', 'အုပ်ချုပ်မှု'] },
   { category: 'ယာဉ်အုပ်စုအသုံးစရိတ်', subcategory: 'ဆီ/ပြုပြင်/ယာဉ်မောင်း/အခြား', keywords: ['ယာဉ်'] },
-  // 🌟 အသစ်ဖြည့်စွက်ချက်: စာရင်းပြောင်း (ဘဏ်အပ်နှံခြင်း) အား အသုံးစရိတ် အောက်ဆုံးတန်းတွင် သတ်မှတ်ခြင်း
   { category: 'စာရင်းပြောင်း', subcategory: 'ဘဏ်အပ်နှံခြင်း', keywords: ['ဘဏ်အပ်နှံခြင်း', 'ဘဏ်အပ်ငွေ'] },
 ];
 
@@ -890,11 +891,9 @@ async function handleReport(c) {
     const t = str(r.title), st = str(r.sub_title);
     const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0;
 
-    // 🌟 အဓိက ပြင်ဆင်ချက်: အကယ်၍ "ဘဏ်အပ်နှံခြင်း" (စာရင်းပြောင်း ထွက်ငွေ) ဖြစ်ပါက အသုံးစရိတ်ထဲ ထည့်သွင်းမည် (မကျော်ပါ)
     const isBankDepositExpense = (t === 'စာရင်းပြောင်း' || st.includes('ဘဏ်အပ်နှံခြင်း')) && st.includes('ဘဏ်အပ်နှံခြင်း') && (exp > 0);
 
     if (!isBankDepositExpense) {
-      // ဘဏ်အပ်နှံခြင်း မဟုတ်သော User အချင်းချင်း လွှဲပြောင်းမှုများနှင့် အခြား internal transfer များကိုသာ ကျော်မည်
       if (REPORT_SKIP_TITLES.has(t) || t.includes('လွှဲပြောင်း') || st.includes('လွှဲပြောင်း') || t.includes('စာရင်းပြောင်း')) return;
     }
     
