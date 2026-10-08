@@ -1,6 +1,6 @@
 // =================================================================== 
 // js/config.js - Sāsana ERP System Configuration & API Endpoint Setup 
-// 100% Aligned with D1 Database Schema Standard (v3.1 Universal Transfer)
+// 100% Aligned with D1 Database Schema Standard (v3.2 Universal & Bank Link)
 // ===================================================================
 
 const WORKER_API_URL = "https://cashbook-api.dhammaaly.workers.dev";
@@ -13,7 +13,7 @@ const TABLE_MAP = {
   '4GB': '1General Book', 
   '5FB': '2Meal Book', 
   '6HB': '3Hall Book', 
-  '7PB': '4Pagoda Book',
+  '7PB': '4Pagoda Book', 
   '8EB': '5Electronic Book', 
   '9MB': '6Medical Book', 
   '10GB': '7Other Book',
@@ -35,7 +35,7 @@ const UNIVERSAL_TRANSFER_TARGETS = [
 window.CONFIG = {
   API_URL: WORKER_API_URL,
   API_BASE_URL: WORKER_API_URL,
-  APP_VERSION: "v3.1_D1_ENTERPRISE",
+  APP_VERSION: "v3.2_D1_ENTERPRISE",
 
   TABLE_MAP: TABLE_MAP,
 
@@ -86,6 +86,15 @@ window.CONFIG = {
   // 🌟 User စာရင်းများ
   AVAILABLE_USERS: ['User 1', 'User 2', 'User 3'],
 
+  // 🌟 ဘဏ် (၃) ခုမှ ကျောင်းရန်ပုံငွေသို့ ငွေထုတ်ယူခြင်းဆိုင်ရာ Default Configuration
+  BANK_WITHDRAWAL_CONFIG: {
+    defaultTitle: 'ဘဏ်ထုတ်ငွေ',
+    defaultSubCategory: 'ကျောင်းရန်ပုံငွေ စာအုပ်',
+    defaultReceiver: 'User 1',
+    defaultDescription: 'ကျောင်းအသုံးစရိတ် ထုတ်ပေးခြင်း (ဘဏ်မှရရှိငွေ)',
+    targetBook: '1General Book'
+  },
+
   // စာအုပ်အလိုက် မူလသတ်မှတ်ထားသော ပုံသေ ချိတ်ဆက်ဘဏ်များ (Default Bank Mapping)
   TRANSFER_MAPPING: {
     '1General Book': { targetBank: '1CB Bank (General)', bankTitle: 'အထွေထွေ ရန်ပုံငွေ (Bank)' },
@@ -123,7 +132,6 @@ window.CONFIG = {
   },
 
   // 🌟 ဝင်ငွေ / ထွက်ငွေ နှင့် စာရင်းပြောင်း ခေါင်းစဉ်များ
-  // (စာအုပ်အုပ်စု အားလုံးတွင် ဘဏ် ၃ ခု နှင့် User 1, 2, 3 အပြန်အလှန် လွှဲပြောင်းခွင့် ထည့်သွင်းထားပါသည်)
   CATEGORY_TREE: {
     'BANKS': {
       'ဝင်ငွေ': {
@@ -133,7 +141,8 @@ window.CONFIG = {
         'အလှူရရှိ': ['တိုက်ရိုက်ဘဏ်လွှဲအလှူ', 'အထွေထွေအလှူ']
       },
       'ထွက်ငွေ': {
-        'ဘဏ်ထုတ်ငွေ': ['အသုံးစရိတ်ငွေထုတ်ခြင်း']
+        // 🌟 အဓိက ပြင်ဆင်ချက်: ဘဏ်ထုတ်ငွေ ရွေးပါက ခေါင်းစဉ်ခွဲတွင် 'ကျောင်းရန်ပုံငွေ စာအုပ်' Auto ဝင်စေရန်
+        'ဘဏ်ထုတ်ငွေ': ['ကျောင်းရန်ပုံငွေ စာအုပ်']
       },
       'စာရင်းပြောင်း': {
         'စာရင်းပြောင်း': UNIVERSAL_TRANSFER_TARGETS
@@ -194,4 +203,3 @@ window.CONFIG.SHEET_TITLES = window.CONFIG.TABLE_TITLES;
 window.CONFIG.SHEET_GROUP_MAP = window.CONFIG.TABLE_GROUP_MAP;
 window.CONFIG.CATEGORY_TREE['4GB'] = window.CONFIG.CATEGORY_TREE['1General Book'];
 window.APP_CONFIG = window.CONFIG;
-
