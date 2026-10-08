@@ -1,9 +1,11 @@
 // ===================================================================
 // js/Dashboard.js - Home Dashboard View Renderer & Tab Controller
 // Instant 0-Second Load with 4 Sub-Tabs (Fund, Padetha, Yogi, Contact)
+// Features: 100% Anti-Flicker, Silent Delta-Sync & Layout Stabilization
 // ===================================================================
 
 const DASH_CACHE_KEY = 'sasana_dashboard_cache';
+let lastRenderedDashboardHash = ''; // 🌟 မလိုအပ်ဘဲ ဇယား အသစ်ပြန်မဆွဲစေရန် ဒေတာတူ/မတူ စစ်ဆေးသည့် Variable
 
 /**
  * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ <-> စာအုပ်စာရင်း <-> ယောဂီ <-> ဆက်သွယ်ရန်)
@@ -73,11 +75,12 @@ window.switchDashboardTab = function(tabName) {
 };
 
 /**
- * 📊 Main Dashboard View Render Function (Instant Cache-First Engine)
+ * 📊 Main Dashboard View Render Function (100% Anti-Flicker & Stable Engine)
  */
 window.renderDashboardView = async function(isSilent = false) {
   const container = document.getElementById("view-container");
 
+  // ၁။ Template မရှိသေးမှသာ အသစ်ဆွဲယူခြင်း
   if (container && !document.getElementById("home-bank-table")) {
     try {
       const fetchFn = window.fetchTemplate || (async (p) => { 
@@ -389,17 +392,28 @@ window.renderDashboardView = async function(isSilent = false) {
     }
   };
 
-  // Instant Cache
-  try {
-    const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
-    if (cachedStr) {
-      const cachedData = JSON.parse(cachedStr);
-      renderHomeData(cachedData);
-    }
-  } catch (_) {}
+  // 🌟 (၂) မျက်နှာပြင်ပေါ်တွင် ဇယားများ ရှိနေပြီးသား ဟုတ်/မဟုတ် စစ်ဆေးခြင်း
+  const hasContentOnScreen = Boolean(
+    document.getElementById("home-bank-table")?.querySelector('table')
+  );
 
-  // Background Fresh Sync
-  if (typeof window.showLoading === 'function' && !isSilent) {
+  // 🌟 (၃) မျက်နှာပြင်ပေါ်တွင် ဒေတာ မရှိသေးမှသာ (ပထမဆုံးအကြိမ်) Cache မှ ထုတ်ပြမည်
+  if (!hasContentOnScreen) {
+    try {
+      const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
+      if (cachedStr) {
+        const cachedData = JSON.parse(cachedStr);
+        lastRenderedDashboardHash = JSON.stringify(cachedData.data || cachedData);
+        renderHomeData(cachedData);
+      }
+    } catch (_) {}
+  }
+
+  // 🌟 (၄) အရေးကြီးဆုံးအချက်:
+  // ဒေတာ ရှိနေပြီးသား ဖြစ်ပါက (သို့မဟုတ် Silent ဖြစ်ပါက) အနက်ရောင် Loading အလွှာကို လုံးဝ မပြတော့ပါ!
+  // ပထမဆုံးအကြိမ် မျက်နှာပြင် ဗလာဖြစ်နေချိန်မှသာ Loading အလွှာ ပေါ်ပါမည်။
+  const shouldShowOverlay = !isSilent && !hasContentOnScreen;
+  if (typeof window.showLoading === 'function' && shouldShowOverlay) {
     window.showLoading(true);
   }
   
@@ -408,14 +422,21 @@ window.renderDashboardView = async function(isSilent = false) {
     if (typeof fetchFunc === 'function') {
       const freshData = await fetchFunc();
       if (freshData && freshData.success) {
+        const freshHash = JSON.stringify(freshData.data || freshData);
         localStorage.setItem(DASH_CACHE_KEY, JSON.stringify(freshData));
-        renderHomeData(freshData);
+
+        // 🌟 (၅) Anti-Flicker: ဒေတာ အပြောင်းအလဲ အမှန်တကယ် ရှိမှသာ (သို့မဟုတ် ဇယား မရှိသေးမှသာ) DOM ကို ရေးဆွဲမည်။
+        // ဒေတာ တူနေပါက DOM ကို လုံးဝ မထိတော့သည့်အတွက် မျက်နှာပြင် လှုပ်ခါခြင်း ၁၀၀% ကင်းဝေးသွားပါမည်။
+        if (freshHash !== lastRenderedDashboardHash || !document.getElementById("home-bank-table")?.querySelector('table')) {
+          lastRenderedDashboardHash = freshHash;
+          renderHomeData(freshData);
+        }
       }
     }
   } catch (error) {
-    console.warn("Silent background dashboard sync ignored error.");
+    console.warn("Silent background dashboard sync warning:", error);
   } finally {
-    if (typeof window.showLoading === 'function' && !isSilent) {
+    if (typeof window.showLoading === 'function' && shouldShowOverlay) {
       window.showLoading(false);
     }
   }
