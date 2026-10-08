@@ -1,7 +1,6 @@
 // ===================================================================
 // js/app.js - Enterprise Main Application Controller & View Router
-// 100% Config-Driven: Directly uses window.CONFIG & D1 Table Names
-// Zero Redundant Dictionaries - Instant 0-Second Template Caching
+// Fixed: 100% Silent Background Sync, Anti-Flicker & Bank Receiver Fix
 // ===================================================================
 
 // Global State Assignments (Directly uses D1 Table Names)
@@ -10,7 +9,8 @@ window.currentSheet = window.currentTable; // Backward Compatibility Alias
 window.currentYogiTable = window.currentYogiTable || 'Permanent Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
 
-const LIVE_SYNC_INTERVAL = 15000; // 15-second Real-time Background Sync
+// 🌟 ၁၅ စက္ကန့်သည် တိုလွန်း၍ မျက်နှာပြင် လှုပ်ခါစေသဖြင့် ၄၅ စက္ကန့်သို့ ငြိမ်သက်အောင် တိုးမြှင့်ထားပါသည်
+const LIVE_SYNC_INTERVAL = 45000; 
 const templateCache = {};         // 0-Second Template Cache Engine
 
 // -------------------------------------------------------------------
@@ -129,6 +129,11 @@ window.startLiveSync = function() {
   }, LIVE_SYNC_INTERVAL);
 };
 
+// ===================================================================
+// 🌟 အဓိက ပြင်ဆင်ချက်:
+// နောက်ကွယ်မှ ဒေတာဆွဲသည့်အခါ မည်သည့် Tab မဆို Loading Screen ကို
+// လုံးဝ မပြစေဘဲ (isSilent = true) ဖြင့် အသံတိတ်သာ ဆွဲစေခြင်း
+// ===================================================================
 window.refreshCurrentTabSilent = function() {
   try {
     const table = window.currentTable;
@@ -138,7 +143,8 @@ window.refreshCurrentTabSilent = function() {
     } else if (table === 'Inventory' || table === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
     } else if (table === 'Home') {
-      if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
+      // 🌟 မူလက (true) မပါခဲ့ဘဲ renderDashboardView() ဟု ခေါ်မိ၍ မှိန်လိုက်လင်းလိုက် ဖြစ်နေရခြင်းကို ပြင်ဆင်ထားပါသည်
+      if (typeof window.renderDashboardView === 'function') window.renderDashboardView(true);
     } else if (table.includes('Report') || table === '14Rep') {
       if (typeof window.renderReportView === 'function') window.renderReportView(true);
     } else {
@@ -187,23 +193,23 @@ window.switchTab = async function(tabIdentifier) {
   try {
     if (d1Table === 'Home') {
       container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
-      if (typeof window.renderDashboardView === 'function') window.renderDashboardView();
+      if (typeof window.renderDashboardView === 'function') window.renderDashboardView(false);
     } else if (d1Table === 'Inventory' || targetKey === '11Inv') {
       container.innerHTML = await window.fetchTemplate('view/Inventory.html');
-      if (typeof window.renderInventoryView === 'function') window.renderInventoryView();
+      if (typeof window.renderInventoryView === 'function') window.renderInventoryView(false);
     } else if (d1Table.includes('Yogi') || targetKey.includes('Yogi')) {
       window.currentYogiTable = d1Table;
       container.innerHTML = await window.fetchTemplate('view/yogi.html');
-      if (typeof window.renderYogiView === 'function') window.renderYogiView(d1Table);
+      if (typeof window.renderYogiView === 'function') window.renderYogiView(false);
     } else if (d1Table.includes('Report') || targetKey.includes('Rep')) {
       container.innerHTML = await window.fetchTemplate('view/report-system.html');
-      if (typeof window.renderReportView === 'function') window.renderReportView();
+      if (typeof window.renderReportView === 'function') window.renderReportView(false);
     } else {
       container.innerHTML = await window.fetchTemplate('view/Banks.html');
       if (typeof window.renderBankView === 'function') {
-        window.renderBankView(d1Table);
+        window.renderBankView(d1Table, false);
       } else if (typeof window.loadSheetView === 'function') {
-        window.loadSheetView();
+        window.loadSheetView(false);
       }
     }
   } catch (err) {
@@ -280,31 +286,8 @@ window.openAddEntryModal = function() {
   const typeSelect = document.getElementById("entry-type");
   if (typeSelect) {
     typeSelect.value = "ဝင်ငွေ";
+    // 🌟 Type ပြောင်းလဲမှုအရ Receiver ၏ Lock အခြေအနေကို onEntryTypeChange က စီမံခန့်ခွဲစေပါမည်
     if (typeof window.onEntryTypeChange === 'function') window.onEntryTypeChange("ဝင်ငွေ");
-  }
-
-  const currentTable = window.currentTable || '';
-  const isBankTable = currentTable.includes('Bank');
-  const receiverInput = document.getElementById("entry-receiver");
-
-  if (receiverInput) {
-    if (isBankTable) {
-      if (receiverInput.tagName === 'SELECT') {
-        const hasBankOpt = Array.from(receiverInput.options).some(opt => opt.value === 'Bank');
-        if (!hasBankOpt) {
-          const bankOpt = document.createElement('option');
-          bankOpt.value = 'Bank';
-          bankOpt.textContent = 'Bank';
-          receiverInput.prepend(bankOpt);
-        }
-      }
-      receiverInput.value = 'Bank';
-      receiverInput.style.pointerEvents = 'none';
-      receiverInput.style.opacity = '0.85';
-    } else {
-      receiverInput.style.pointerEvents = 'auto';
-      receiverInput.style.opacity = '1';
-    }
   }
 
   modal.classList.remove('hidden');
