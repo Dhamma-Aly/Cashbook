@@ -1,278 +1,324 @@
 -- ==============================================================================
--- SASANA ERP - CLOUDFLARE D1 DATABASE SCHEMA
--- Note: User Passwords are NOT stored here for security reasons.
--- Passwords and credentials must only be managed directly within Cloudflare D1.
+-- SASANA ERP - CLOUDFLARE D1 SAFE MIGRATION & 100-YEAR OPTIMIZATION SCHEMA
+-- File: cashbook-api/schema_upgrade.sql
+-- Safe to run on existing production D1 database (Zero data loss, Idempotent)
+-- Note: Do NOT add BEGIN TRANSACTION / COMMIT / PRAGMA for Cloudflare D1.
 -- ==============================================================================
 
--- 0. အသုံးပြုသူများ ဇယား (Users Table)
-CREATE TABLE IF NOT EXISTS "users" (
+-- ==============================================================================
+-- 1. COMPOSITE INDEXES FOR ALL 13 EXISTING TABLES (Full Table Scan ကာကွယ်ရန်)
+-- ==============================================================================
+
+-- Bank Group (3 Books)
+CREATE INDEX IF NOT EXISTS "idx_1cb_date_id"    ON "1CB Bank (General)" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_1cb_updated"    ON "1CB Bank (General)" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_2cb_date_id"    ON "2CB Bank (Meal)" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_2cb_updated"    ON "2CB Bank (Meal)" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_3cb_date_id"    ON "3CB Bank (UZ)" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_3cb_updated"    ON "3CB Bank (UZ)" (updated_at);
+
+-- Ledger Group (7 Books)
+CREATE INDEX IF NOT EXISTS "idx_4gb_date_id"    ON "1General Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_4gb_updated"    ON "1General Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_5fb_date_id"    ON "2Meal Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_5fb_updated"    ON "2Meal Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_6hb_date_id"    ON "3Hall Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_6hb_updated"    ON "3Hall Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_7pb_date_id"    ON "4Pagoda Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_7pb_updated"    ON "4Pagoda Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_8eb_date_id"    ON "5Electronic Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_8eb_updated"    ON "5Electronic Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_9mb_date_id"    ON "6Medical Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_9mb_updated"    ON "6Medical Book" (updated_at);
+
+CREATE INDEX IF NOT EXISTS "idx_10gb_date_id"   ON "7Other Book" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_10gb_updated"   ON "7Other Book" (updated_at);
+
+-- Inventory
+CREATE INDEX IF NOT EXISTS "idx_inv_date_id"    ON "Inventory" (date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_inv_updated"    ON "Inventory" (updated_at);
+
+-- Yogi Group (2 Books)
+CREATE INDEX IF NOT EXISTS "idx_pyogi_start_id" ON "Permanent Yogi" (start_date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_pyogi_end_date" ON "Permanent Yogi" (end_date);
+
+CREATE INDEX IF NOT EXISTS "idx_cyogi_start_id" ON "Camp Yogi" (start_date ASC, id ASC);
+CREATE INDEX IF NOT EXISTS "idx_cyogi_end_date" ON "Camp Yogi" (end_date);
+
+-- ==============================================================================
+-- 2. PRO CACHE & SUMMARY TABLES (Read 99% လျှော့ချရန်)
+-- ==============================================================================
+
+-- 2.1 Book Versions Table (စာအုပ်တစ်အုပ်ချင်းစီ ပြောင်းလဲမှု ရှိ/မရှိ စစ်ဆေးရန် - 13 rows max)
+CREATE TABLE IF NOT EXISTS "book_versions" (
+  table_name TEXT PRIMARY KEY,
+  version INTEGER NOT NULL DEFAULT 1,
+  row_count INTEGER NOT NULL DEFAULT 0,
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 2.2 Monthly Ledger Summary Table (Home Dashboard & Annual Report အတွက်)
+CREATE TABLE IF NOT EXISTS "ledger_summary" (
+  book_name TEXT NOT NULL,
+  ym TEXT NOT NULL,
+  receiver TEXT NOT NULL,
+  title TEXT NOT NULL,
+  sub_title TEXT NOT NULL,
+  total_income REAL NOT NULL DEFAULT 0,
+  total_expense REAL NOT NULL DEFAULT 0,
+  row_count INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (book_name, ym, receiver, title, sub_title)
+);
+
+CREATE INDEX IF NOT EXISTS "idx_ledger_summary_book_ym" ON "ledger_summary" (book_name, ym);
+
+-- 2.3 Audit Logs Table (Pro App ပြင်ဆင်/ဖျက်သိမ်း မှတ်တမ်း)
+CREATE TABLE IF NOT EXISTS "audit_logs" (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT NOT NULL UNIQUE,
-  password TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'Viewer',
-  name TEXT,
+  actor TEXT NOT NULL,
+  role TEXT NOT NULL,
+  action TEXT NOT NULL,
+  target_table TEXT NOT NULL,
+  target_uid TEXT,
+  summary TEXT,
   created_at TEXT DEFAULT (datetime('now'))
 );
 
--- ==============================================================================
--- BANK GROUP (ဘဏ်စာရင်း ၃ ခု)
--- ==============================================================================
-
--- 1. 1CB Bank (General)
-CREATE TABLE IF NOT EXISTS "1CB Bank (General)" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '1CB Bank (General)',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
-
--- 2. 2CB Bank (Meal)
-CREATE TABLE IF NOT EXISTS "2CB Bank (Meal)" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '2CB Bank (Meal)',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
-
--- 3. 3CB Bank (UZ)
-CREATE TABLE IF NOT EXISTS "3CB Bank (UZ)" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '3CB Bank (UZ)',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+CREATE INDEX IF NOT EXISTS "idx_audit_logs_created" ON "audit_logs" (created_at DESC, id DESC);
 
 -- ==============================================================================
--- LEDGER GROUP (ပင်မစာအုပ် ၇ ခု)
+-- 3. BACKFILL "ledger_summary" FROM EXISTING DATA (လက်ရှိစာရင်းများအား ပေါင်းချုပ်သိမ်းခြင်း)
 -- ==============================================================================
+DELETE FROM "ledger_summary";
 
--- 4. 1General Book
-CREATE TABLE IF NOT EXISTS "1General Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '1General Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '1CB Bank (General)',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "1CB Bank (General)"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 5. 2Meal Book
-CREATE TABLE IF NOT EXISTS "2Meal Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '2Meal Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '2CB Bank (Meal)',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "2CB Bank (Meal)"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 6. 3Hall Book
-CREATE TABLE IF NOT EXISTS "3Hall Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '3Hall Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '3CB Bank (UZ)',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "3CB Bank (UZ)"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'Bank'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 7. 4Pagoda Book
-CREATE TABLE IF NOT EXISTS "4Pagoda Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '4Pagoda Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '1General Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "1General Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 8. 5Electronic Book
-CREATE TABLE IF NOT EXISTS "5Electronic Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '5Electronic Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '2Meal Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "2Meal Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 9. 6Medical Book
-CREATE TABLE IF NOT EXISTS "6Medical Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '6Medical Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '3Hall Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "3Hall Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
--- 10. 7Other Book
-CREATE TABLE IF NOT EXISTS "7Other Book" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  title TEXT,
-  sub_title TEXT,
-  description TEXT NOT NULL,
-  income REAL DEFAULT 0,
-  expense REAL DEFAULT 0,
-  balance REAL DEFAULT 0,
-  voucher_no TEXT,
-  receiver TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT '7Other Book',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '4Pagoda Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "4Pagoda Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
+
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '5Electronic Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "5Electronic Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
+
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '6Medical Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "6Medical Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
+
+INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+SELECT
+  '7Other Book',
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), ''),
+  COALESCE(SUM(COALESCE(income, 0)), 0),
+  COALESCE(SUM(COALESCE(expense, 0)), 0),
+  COUNT(*)
+FROM "7Other Book"
+GROUP BY
+  COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+  COALESCE(NULLIF(TRIM(receiver), ''), 'User 1'),
+  COALESCE(TRIM(title), ''),
+  COALESCE(TRIM(sub_title), '');
 
 -- ==============================================================================
--- INVENTORY (ပစ္စည်းစာရင်း)
+-- 4. SEED / SYNC "book_versions" FOR ALL 13 TABLES
 -- ==============================================================================
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('1CB Bank (General)', 1, (SELECT COUNT(*) FROM "1CB Bank (General)"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
 
--- 11. Inventory
-CREATE TABLE IF NOT EXISTS "Inventory" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  date TEXT NOT NULL,
-  location TEXT,
-  category TEXT,
-  description TEXT NOT NULL,
-  unit TEXT,
-  qty REAL DEFAULT 0,
-  remark TEXT,
-  month_year TEXT,
-  book_name TEXT DEFAULT 'Inventory',
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('2CB Bank (Meal)', 1, (SELECT COUNT(*) FROM "2CB Bank (Meal)"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
 
--- ==============================================================================
--- YOGI GROUP (ယောဂီစာရင်း ၂ ခု)
--- ==============================================================================
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('3CB Bank (UZ)', 1, (SELECT COUNT(*) FROM "3CB Bank (UZ)"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
 
--- 12. Permanent Yogi
-CREATE TABLE IF NOT EXISTS "Permanent Yogi" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  start_date TEXT,
-  end_date TEXT,
-  yogi_type TEXT DEFAULT 'အမြဲနေ',
-  name TEXT NOT NULL,
-  father_name TEXT,
-  nrc TEXT,
-  dob TEXT,
-  age INTEGER,
-  gender TEXT,
-  yogi_phone TEXT,
-  home_phone TEXT,
-  address TEXT,
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('1General Book', 1, (SELECT COUNT(*) FROM "1General Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
 
--- 13. Camp Yogi
-CREATE TABLE IF NOT EXISTS "Camp Yogi" (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  no INTEGER,
-  start_date TEXT,
-  end_date TEXT,
-  yogi_type TEXT DEFAULT 'စခန်းဝင်',
-  name TEXT NOT NULL,
-  father_name TEXT,
-  nrc TEXT,
-  dob TEXT,
-  age INTEGER,
-  gender TEXT,
-  yogi_phone TEXT,
-  home_phone TEXT,
-  address TEXT,
-  unique_id TEXT UNIQUE,
-  updated_at TEXT DEFAULT (datetime('now'))
-);
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('2Meal Book', 1, (SELECT COUNT(*) FROM "2Meal Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('3Hall Book', 1, (SELECT COUNT(*) FROM "3Hall Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('4Pagoda Book', 1, (SELECT COUNT(*) FROM "4Pagoda Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('5Electronic Book', 1, (SELECT COUNT(*) FROM "5Electronic Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('6Medical Book', 1, (SELECT COUNT(*) FROM "6Medical Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('7Other Book', 1, (SELECT COUNT(*) FROM "7Other Book"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('Inventory', 1, (SELECT COUNT(*) FROM "Inventory"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('Permanent Yogi', 1, (SELECT COUNT(*) FROM "Permanent Yogi"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
+
+INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+VALUES ('Camp Yogi', 1, (SELECT COUNT(*) FROM "Camp Yogi"), datetime('now'))
+ON CONFLICT(table_name) DO UPDATE SET row_count = excluded.row_count, version = "book_versions".version + 1, updated_at = datetime('now');
