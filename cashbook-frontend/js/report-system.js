@@ -1,7 +1,7 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer (v4.0)
-// Features: Dynamic Future-Proof Years, Anti-Jitter Hash, XSS Safe,
-// Race-Condition Guard, Versioned Sync & Negative Balance Highlight
+// js/report-system.js - Annual & Summary Expense Report Renderer (v4.1)
+// Features: Calm Eye-Comfort Palette, Dynamic Future-Proof Years,
+// Anti-Jitter Hash, XSS Safe, Race-Condition Guard & Versioned Sync
 // ===================================================================
 
 const REPORT_CACHE_PREFIX = 'sasana_report_cache_';
@@ -49,7 +49,7 @@ function syncReportModeButtons() {
     }
     if (btnSummary) {
       btnSummary.style.backgroundColor = "transparent";
-      btnSummary.style.color = "rgba(251, 191, 36, 0.6)";
+      btnSummary.style.color = "#94a3b8";
       btnSummary.style.border = "none";
     }
   } else {
@@ -60,7 +60,7 @@ function syncReportModeButtons() {
     }
     if (btnAnnual) {
       btnAnnual.style.backgroundColor = "transparent";
-      btnAnnual.style.color = "rgba(251, 191, 36, 0.6)";
+      btnAnnual.style.color = "#94a3b8";
       btnAnnual.style.border = "none";
     }
   }
@@ -199,8 +199,8 @@ function renderReportTableHeader() {
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let headerHtml = `
-    <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 uppercase font-extrabold text-xs">
-      <th class="w-20 py-3.5 px-3">အမျိုးအစား</th>
+    <tr class="uppercase font-bold text-xs">
+      <th class="w-24 py-3.5 px-3">အမျိုးအစား</th>
       <th class="min-w-[160px] py-3.5 px-3">ခေါင်းစဉ်</th>
       <th class="min-w-[180px] py-3.5 px-3">ခေါင်းစဉ်ခွဲ</th>`;
 
@@ -209,7 +209,7 @@ function renderReportTableHeader() {
     headerHtml += `<th class="text-right w-24 py-3.5 px-2">${colName}</th>`;
   });
 
-  headerHtml += `<th class="text-right w-28 py-3.5 px-3 bg-amber-500/10 text-amber-300 font-black">စုစုပေါင်း</th></tr>`;
+  headerHtml += `<th class="text-right w-28 py-3.5 px-3 font-bold" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">စုစုပေါင်း</th></tr>`;
   thead.innerHTML = headerHtml;
 }
 
@@ -218,7 +218,7 @@ function renderReportTableBody(rawQuery, engQuery) {
   if (!tbody) return;
 
   if (!rawReportData) {
-    tbody.innerHTML = `<tr><td colspan="16" class="text-center py-12 text-amber-500/60 font-bold"><i class="fa-solid fa-folder-open mr-2"></i> အစီရင်ခံစာ ဒေတာ မရှိသေးပါ။</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="16" class="text-center py-12 font-bold" style="color:#64748b;"><i class="fa-solid fa-folder-open mr-2"></i> အစီရင်ခံစာ ဒေတာ မရှိသေးပါ။</td></tr>`;
     return;
   }
 
@@ -229,12 +229,11 @@ function renderReportTableBody(rawQuery, engQuery) {
   } = rawReportData;
 
   const fmt = (v) => (v !== 0 && v !== null && v !== undefined) ? Number(v).toLocaleString() : '';
-  const fmtBal = (v) => {
+  const fmtBal = (v, isGrand = false) => {
     const n = Number(v || 0);
-    if (n === 0) return `<span class="text-slate-500">-</span>`;
-    return n < 0
-      ? `<span class="text-rose-400">${n.toLocaleString()}</span>`
-      : `<span class="text-amber-300">${n.toLocaleString()}</span>`;
+    if (n === 0) return `<span style="color:#475569;">-</span>`;
+    if (n < 0) return `<span style="color:#fda4af;">${n.toLocaleString()}</span>`;
+    return `<span style="color:${isGrand ? '#fde68a' : '#f8fafc'};">${n.toLocaleString()}</span>`;
   };
 
   const rowMatches = (r) => {
@@ -251,60 +250,70 @@ function renderReportTableBody(rawQuery, engQuery) {
   const filteredIncome = (incomeRows || []).filter(rowMatches);
   filteredIncome.forEach(r => {
     html += `
-      <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
-        <td class="py-2.5 px-3 font-bold text-emerald-400 bg-emerald-500/5 border-r border-emerald-500/10">${escapeReportHtml(r.type || 'ဝင်ငွေ')}</td>
-        <td class="py-2.5 px-3 font-bold text-amber-200">${escapeReportHtml(r.category || '-')}</td>
-        <td class="py-2.5 px-3 font-semibold text-slate-200">${escapeReportHtml(r.subcategory || '-')}</td>`;
+      <tr class="transition text-xs">
+        <td class="py-2.5 px-3 whitespace-nowrap">
+          <span class="inline-flex items-center gap-2 font-medium" style="color:#cbd5e1;">
+            <span style="width:7px;height:7px;border-radius:9999px;background-color:#34d399;display:inline-block;flex-shrink:0;"></span>
+            <span>${escapeReportHtml(r.type || 'ဝင်ငွေ')}</span>
+          </span>
+        </td>
+        <td class="py-2.5 px-3 font-medium" style="color:#e2e8f0;">${escapeReportHtml(r.category || '-')}</td>
+        <td class="py-2.5 px-3" style="color:#94a3b8;">${escapeReportHtml(r.subcategory || '-')}</td>`;
 
     (r.months || []).forEach(mVal => {
-      html += `<td class="text-right py-2.5 px-2 font-mono text-emerald-300">${fmt(mVal)}</td>`;
+      html += `<td class="text-right py-2.5 px-2 font-mono" style="color:#6ee7b7;">${fmt(mVal)}</td>`;
     });
 
-    html += `<td class="text-right py-2.5 px-3 font-mono font-black text-emerald-400 bg-emerald-500/10">${fmt(r.total)}</td></tr>`;
+    html += `<td class="text-right py-2.5 px-3 font-mono font-bold" style="color:#a7f3d0;border-left:1px solid rgba(148,163,184,0.12);background:rgba(16,185,129,0.04);">${fmt(r.total)}</td></tr>`;
   });
 
   // ဝင်ငွေပေါင်း စာကြောင်း
   html += `
-    <tr class="bg-emerald-950/40 border-t-2 border-b-2 border-emerald-500/40 font-extrabold text-emerald-300">
-      <td colspan="3" class="py-3 px-4 text-emerald-300 font-black text-xs uppercase tracking-wider">ဝင်ငွေပေါင်း</td>`;
+    <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.2);border-bottom:1px solid rgba(148,163,184,0.2);">
+      <td colspan="3" class="py-3 px-4 font-bold text-xs uppercase tracking-wider" style="color:#a7f3d0;">ဝင်ငွေပေါင်း</td>`;
   (incomeTotals || []).forEach(amt => {
-    html += `<td class="text-right py-3 px-2 font-mono font-black text-emerald-300">${fmt(amt)}</td>`;
+    html += `<td class="text-right py-3 px-2 font-mono font-bold" style="color:#6ee7b7;">${fmt(amt)}</td>`;
   });
-  html += `<td class="text-right py-3 px-3 font-mono font-black text-emerald-300 bg-emerald-500/20">${fmt(grandIncomeTotal)}</td></tr>`;
+  html += `<td class="text-right py-3 px-3 font-mono font-extrabold" style="color:#a7f3d0;border-left:1px solid rgba(148,163,184,0.16);background:rgba(16,185,129,0.08);">${fmt(grandIncomeTotal)}</td></tr>`;
 
   // B. ထွက်ငွေ ကဏ္ဍ
   const filteredExpense = (expenseRows || []).filter(rowMatches);
   filteredExpense.forEach(r => {
     html += `
-      <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
-        <td class="py-2.5 px-3 font-bold text-rose-400 bg-rose-500/5 border-r border-rose-500/10">${escapeReportHtml(r.type || 'ထွက်ငွေ')}</td>
-        <td class="py-2.5 px-3 font-bold text-amber-200">${escapeReportHtml(r.category || '-')}</td>
-        <td class="py-2.5 px-3 font-semibold text-slate-200">${escapeReportHtml(r.subcategory || '-')}</td>`;
+      <tr class="transition text-xs">
+        <td class="py-2.5 px-3 whitespace-nowrap">
+          <span class="inline-flex items-center gap-2 font-medium" style="color:#cbd5e1;">
+            <span style="width:7px;height:7px;border-radius:9999px;background-color:#fb7185;display:inline-block;flex-shrink:0;"></span>
+            <span>${escapeReportHtml(r.type || 'ထွက်ငွေ')}</span>
+          </span>
+        </td>
+        <td class="py-2.5 px-3 font-medium" style="color:#e2e8f0;">${escapeReportHtml(r.category || '-')}</td>
+        <td class="py-2.5 px-3" style="color:#94a3b8;">${escapeReportHtml(r.subcategory || '-')}</td>`;
 
     (r.months || []).forEach(mVal => {
-      html += `<td class="text-right py-2.5 px-2 font-mono text-rose-300">${fmt(mVal)}</td>`;
+      html += `<td class="text-right py-2.5 px-2 font-mono" style="color:#fda4af;">${fmt(mVal)}</td>`;
     });
 
-    html += `<td class="text-right py-2.5 px-3 font-mono font-black text-rose-400 bg-rose-500/10">${fmt(r.total)}</td></tr>`;
+    html += `<td class="text-right py-2.5 px-3 font-mono font-bold" style="color:#fecdd3;border-left:1px solid rgba(148,163,184,0.12);background:rgba(244,63,94,0.04);">${fmt(r.total)}</td></tr>`;
   });
 
   // ထွက်ငွေပေါင်း စာကြောင်း
   html += `
-    <tr class="bg-rose-950/40 border-t-2 border-b-2 border-rose-500/40 font-extrabold text-rose-300">
-      <td colspan="3" class="py-3 px-4 text-rose-300 font-black text-xs uppercase tracking-wider">ထွက်ငွေပေါင်း</td>`;
+    <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.2);border-bottom:1px solid rgba(148,163,184,0.2);">
+      <td colspan="3" class="py-3 px-4 font-bold text-xs uppercase tracking-wider" style="color:#fecdd3;">ထွက်ငွေပေါင်း</td>`;
   (expenseTotals || []).forEach(amt => {
-    html += `<td class="text-right py-3 px-2 font-mono font-black text-rose-300">${fmt(amt)}</td>`;
+    html += `<td class="text-right py-3 px-2 font-mono font-bold" style="color:#fda4af;">${fmt(amt)}</td>`;
   });
-  html += `<td class="text-right py-3 px-3 font-mono font-black text-rose-300 bg-rose-500/20">${fmt(grandExpenseTotal)}</td></tr>`;
+  html += `<td class="text-right py-3 px-3 font-mono font-extrabold" style="color:#fecdd3;border-left:1px solid rgba(148,163,184,0.16);background:rgba(244,63,94,0.08);">${fmt(grandExpenseTotal)}</td></tr>`;
 
   // C. လက်ကျန် စာကြောင်း
   html += `
-    <tr class="bg-[#080d1a] border-t-2 border-b-2 border-amber-500/50 font-black text-amber-300 text-xs">
-      <td colspan="3" class="py-3.5 px-4 text-amber-300 font-black uppercase tracking-wider">လက်ကျန်ငွေ</td>`;
+    <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.25);" class="font-bold text-xs">
+      <td colspan="3" class="py-3.5 px-4 font-bold uppercase tracking-wider" style="color:#f8fafc;">လက်ကျန်ငွေ</td>`;
   (balanceTotals || []).forEach(amt => {
-    html += `<td class="text-right py-3.5 px-2 font-mono font-black">${fmtBal(amt)}</td>`;
+    html += `<td class="text-right py-3.5 px-2 font-mono font-bold">${fmtBal(amt, false)}</td>`;
   });
-  html += `<td class="text-right py-3.5 px-3 font-mono font-black bg-amber-500/25">${fmtBal(grandNetBalance)}</td></tr>`;
+  html += `<td class="text-right py-3.5 px-3 font-mono font-extrabold text-sm" style="border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.06);">${fmtBal(grandNetBalance, true)}</td></tr>`;
 
   tbody.innerHTML = html;
 }
@@ -350,3 +359,4 @@ window.exportReportCSV = function () {
   link.download = `${currentReportBook}_Report_${currentReportMode}_${currentReportYear}_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
+// === END OF report-system.js ===
