@@ -4,7 +4,7 @@
 // Font/Icon Caching, API Bypass & Safe Background Revalidation
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v4.0-pro-d1';
+const CACHE_NAME = 'sasana-erp-v4.1-pro-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
