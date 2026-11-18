@@ -1,16 +1,92 @@
 // ===================================================================
-// js/Dashboard.js - Home Dashboard View Renderer & Tab Controller
-// Instant 0-Second Load with 4 Sub-Tabs (Fund, Padetha, Yogi, Contact)
-// Features: 100% Anti-Flicker, Silent Delta-Sync & Layout Stabilization
+// js/Dashboard.js - Home Dashboard View Renderer & Tab Controller (v4.0)
+// Features: Summary-Powered 0-Second Load, 4 Sub-Tabs, Valid HTML Matrix,
+// Click-to-Open Book, Admin 1-Click JSON Backup & Anti-Flicker Sync
 // ===================================================================
 
 const DASH_CACHE_KEY = 'sasana_dashboard_cache';
-let lastRenderedDashboardHash = ''; // 🌟 မလိုအပ်ဘဲ ဇယား အသစ်ပြန်မဆွဲစေရန် ဒေတာတူ/မတူ စစ်ဆေးသည့် Variable
+let lastRenderedDashboardHash = '';
+let activeDashTab = 'fund';
+let activeDashFetchToken = 0;
+
+function escapeDashHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function notifyDash(msg, type = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type);
+  } else if (type === 'error' || type === 'warning') {
+    alert(msg);
+  }
+}
+
+function injectAdminBackupButton() {
+  const isAdmin = typeof window.isAdminUser === 'function' && window.isAdminUser();
+  if (!isAdmin) return;
+
+  const badge = document.getElementById('dash-tab-badge');
+  const parent = badge ? badge.parentElement : null;
+  if (!parent || document.getElementById('btn-dash-backup')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'btn-dash-backup';
+  btn.type = 'button';
+  btn.onclick = window.downloadFullSystemBackup;
+  btn.title = 'D1 Database တစ်ခုလုံး JSON Backup သိမ်းဆည်းရန် (Admin)';
+  btn.className = 'px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer';
+  btn.innerHTML = '<i class="fa-solid fa-download text-xs"></i><span class="hidden sm:inline">Backup</span>';
+  parent.insertBefore(btn, badge);
+}
+
+window.downloadFullSystemBackup = async function () {
+  if (typeof window.isAdminUser === 'function' && !window.isAdminUser()) {
+    notifyDash('Admin တစ်ဦးတည်းသာ Full Backup ထုတ်ယူခွင့် ရှိပါသည်။', 'warning');
+    return;
+  }
+  if (!navigator.onLine) {
+    notifyDash('Full Backup ထုတ်ယူရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+  if (typeof window.fetchAdminBackupAPI !== 'function') {
+    notifyDash('Backup API မတွေ့ပါ။', 'error');
+    return;
+  }
+
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+  try {
+    const res = await window.fetchAdminBackupAPI();
+    if (res && res.success && res.tables) {
+      const jsonStr = JSON.stringify(res, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Sasana_ERP_Full_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      notifyDash('Database Full Backup ဖိုင် ထုတ်ယူပြီးပါပြီ', 'success');
+    } else if (!res || res.status !== 401) {
+      notifyDash('Backup ထုတ်ယူခြင်း မအောင်မြင်ပါ: ' + (res?.error || ''), 'error');
+    }
+  } catch (err) {
+    console.error('Backup error:', err);
+    notifyDash('Backup ထုတ်ယူခြင်း မအောင်မြင်ပါ။', 'error');
+  } finally {
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
 
 /**
  * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ <-> စာအုပ်စာရင်း <-> ယောဂီ <-> ဆက်သွယ်ရန်)
  */
-window.switchDashboardTab = function(tabName) {
+window.switchDashboardTab = function (tabName) {
+  activeDashTab = tabName || 'fund';
+
   const fundSection = document.getElementById("dash-fund-section");
   const padethaSection = document.getElementById("dash-padetha-section");
   const yogiSection = document.getElementById("dash-yogi-section");
@@ -25,13 +101,10 @@ window.switchDashboardTab = function(tabName) {
   const activeClasses = ["text-amber-300", "bg-[#1e293b]", "border-amber-500/30", "font-black", "shadow-sm"];
   const inactiveClasses = ["text-amber-400/60", "font-bold", "hover:text-amber-200"];
 
-  // ၁။ Section အားလုံးကို အရင် ဝှက်ထားမည်
-  if (fundSection) fundSection.classList.add("hidden");
-  if (padethaSection) padethaSection.classList.add("hidden");
-  if (yogiSection) yogiSection.classList.add("hidden");
-  if (contactSection) contactSection.classList.add("hidden");
+  [fundSection, padethaSection, yogiSection, contactSection].forEach(sec => {
+    if (sec) sec.classList.add("hidden");
+  });
 
-  // ၂။ Tab ခလုတ် ၄ ခုလုံးကို Inactive ပုံစံ ပြောင်းမည်
   [fundTabBtn, padethaTabBtn, yogiTabBtn, contactTabBtn].forEach(btn => {
     if (btn) {
       btn.classList.remove(...activeClasses);
@@ -39,32 +112,28 @@ window.switchDashboardTab = function(tabName) {
     }
   });
 
-  // ၃။ ရွေးချယ်လိုက်သော Tab အလိုက် ဖွင့်လှစ်ပြသခြင်း
-  if (tabName === 'fund') {
+  if (activeDashTab === 'fund') {
     if (fundSection) fundSection.classList.remove("hidden");
     if (fundTabBtn) {
       fundTabBtn.classList.add(...activeClasses);
       fundTabBtn.classList.remove(...inactiveClasses);
     }
     if (tabBadge) tabBadge.textContent = "(ပမာဏ - MMK)";
-
-  } else if (tabName === 'padetha') {
+  } else if (activeDashTab === 'padetha') {
     if (padethaSection) padethaSection.classList.remove("hidden");
     if (padethaTabBtn) {
       padethaTabBtn.classList.add(...activeClasses);
       padethaTabBtn.classList.remove(...inactiveClasses);
     }
     if (tabBadge) tabBadge.textContent = "(ပဒေသာပင် ၄ အုပ်)";
-
-  } else if (tabName === 'yogi') {
+  } else if (activeDashTab === 'yogi') {
     if (yogiSection) yogiSection.classList.remove("hidden");
     if (yogiTabBtn) {
       yogiTabBtn.classList.add(...activeClasses);
       yogiTabBtn.classList.remove(...inactiveClasses);
     }
     if (tabBadge) tabBadge.textContent = "စခန်းတွင်း Active ယောဂီများ";
-
-  } else if (tabName === 'contact') {
+  } else if (activeDashTab === 'contact') {
     if (contactSection) contactSection.classList.remove("hidden");
     if (contactTabBtn) {
       contactTabBtn.classList.add(...activeClasses);
@@ -75,23 +144,26 @@ window.switchDashboardTab = function(tabName) {
 };
 
 /**
- * 📊 Main Dashboard View Render Function (100% Anti-Flicker & Stable Engine)
+ * 📊 Main Dashboard View Render Function
  */
-window.renderDashboardView = async function(isSilent = false) {
+window.renderDashboardView = async function (isSilent = false) {
+  const fetchToken = ++activeDashFetchToken;
   const container = document.getElementById("view-container");
 
-  // ၁။ Template မရှိသေးမှသာ အသစ်ဆွဲယူခြင်း
   if (container && !document.getElementById("home-bank-table")) {
     try {
-      const fetchFn = window.fetchTemplate || (async (p) => { 
-        const r = await fetch(p); 
-        return await r.text(); 
+      const fetchFn = window.fetchTemplate || (async (p) => {
+        const r = await fetch(p);
+        return await r.text();
       });
       container.innerHTML = await fetchFn("view/Dashboard.html");
     } catch (e) {
       console.warn("Could not fetch view/Dashboard.html:", e);
     }
   }
+
+  injectAdminBackupButton();
+  window.switchDashboardTab(activeDashTab);
 
   const D1_TABLE_SPECS = [
     { key: '1CB', tableName: '1CB Bank (General)', defaultTitle: 'အထွေထွေ ရန်ပုံငွေ (Bank)' },
@@ -107,10 +179,10 @@ window.renderDashboardView = async function(isSilent = false) {
   ];
 
   const PADETHA_SPECS = [
-    { tableName: '2Meal Book', title: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
-    { tableName: '5Electronic Book', title: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
-    { tableName: '6Medical Book', title: 'ဆေးပဒေသာပင် စာအုပ်' },
-    { tableName: '7Other Book', title: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
+    { key: '5FB', tableName: '2Meal Book', title: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
+    { key: '8EB', tableName: '5Electronic Book', title: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
+    { key: '9MB', tableName: '6Medical Book', title: 'ဆေးပဒေသာပင် စာအုပ်' },
+    { key: '10GB', tableName: '7Other Book', title: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
   ];
 
   const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
@@ -134,17 +206,21 @@ window.renderDashboardView = async function(isSilent = false) {
     const yogiSummary = data.yogiSummary || {};
 
     // 1. TOP KPIS
-    const setKpi = (id, val, isCash = false) => {
+    const setKpi = (id, val, baseClass) => {
       const el = document.getElementById(id);
       if (!el) return;
       const num = Number(val || 0);
       el.textContent = `${num.toLocaleString()} MMK`;
-      if (isCash && num < 0) el.className = "text-base font-extrabold text-rose-400 mt-1";
+      if (num < 0) {
+        el.className = "text-base font-extrabold text-rose-400 mt-1 truncate font-mono";
+      } else {
+        el.className = baseClass;
+      }
     };
-    setKpi("kpi-home-fund", kpis.totalFund);
-    setKpi("kpi-home-bank", kpis.totalBank);
-    setKpi("kpi-home-cash", kpis.totalCash, true);
-    
+    setKpi("kpi-home-fund", kpis.totalFund, "text-base font-extrabold text-amber-300 mt-1 truncate font-mono");
+    setKpi("kpi-home-bank", kpis.totalBank, "text-base font-extrabold text-sky-400 mt-1 truncate font-mono");
+    setKpi("kpi-home-cash", kpis.totalCash, "text-base font-extrabold text-emerald-400 mt-1 truncate font-mono");
+
     const countEl = document.getElementById("kpi-home-count");
     if (countEl) countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
 
@@ -178,16 +254,20 @@ window.renderDashboardView = async function(isSilent = false) {
         const u1 = Number(item.user1Balance || 0);
         const u2 = Number(item.user2Balance || 0);
         const u3 = Number(item.user3Balance || 0);
-        const tot = Number(item.totalBalance || (bb + u1 + u2 + u3));
+        const tot = Number(item.totalBalance !== undefined ? item.totalBalance : (bb + u1 + u2 + u3));
 
         sumBank += bb; sumU1 += u1; sumU2 += u2; sumU3 += u3; sumTotal += tot;
 
-        let totalCellHtml = tot < 0 ? `<span class="font-mono font-black text-rose-400">${tot.toLocaleString()}</span>` : (tot === 0 ? `<span class="font-mono font-medium text-slate-600">-</span>` : `<span class="font-mono font-black text-amber-300">${tot.toLocaleString()}</span>`);
+        const totalCellHtml = tot < 0
+          ? `<span class="font-mono font-black text-rose-400">${tot.toLocaleString()}</span>`
+          : (tot === 0
+            ? `<span class="font-mono font-medium text-slate-600">-</span>`
+            : `<span class="font-mono font-black text-amber-300">${tot.toLocaleString()}</span>`);
 
         fundHtml += `
-        <tr class="hover:bg-[#1e293b]/40 transition-colors">
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer" title="စာအုပ်ဖွင့်ကြည့်ရန် နှိပ်ပါ">
           <td class="text-center font-bold text-amber-500/70 py-3 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-3 px-4">${name}</td>
+          <td class="font-bold text-amber-100 py-3 px-4">${escapeDashHtml(name)}</td>
           <td class="text-right py-3 px-4">${formatMoney(bb, "text-sky-300 font-bold")}</td>
           <td class="text-right py-3 px-3">${formatMoney(u1, "text-slate-200 font-semibold")}</td>
           <td class="text-right py-3 px-3">${formatMoney(u2, "text-slate-200 font-semibold")}</td>
@@ -196,7 +276,9 @@ window.renderDashboardView = async function(isSilent = false) {
         </tr>`;
       });
 
-      let grandTotalBadge = sumTotal < 0 ? `<span class="px-3.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono font-black text-sm shadow-sm">${sumTotal.toLocaleString()}</span>` : `<span class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-amber-600/35 border border-amber-400/50 text-amber-200 font-mono font-black text-sm shadow-md shadow-amber-500/15">${sumTotal.toLocaleString()}</span>`;
+      const grandTotalBadge = sumTotal < 0
+        ? `<span class="px-3.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono font-black text-sm shadow-sm">${sumTotal.toLocaleString()}</span>`
+        : `<span class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-amber-600/35 border border-amber-400/50 text-amber-200 font-mono font-black text-sm shadow-md shadow-amber-500/15">${sumTotal.toLocaleString()}</span>`;
 
       fundHtml += `
         <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 shadow-2xl">
@@ -235,32 +317,25 @@ window.renderDashboardView = async function(isSilent = false) {
           </thead>
           <tbody class="divide-y divide-amber-500/10">`;
 
-      let totalPadethaIncome = 0;
-      let totalPadethaExpense = 0;
-      let totalPadethaBalance = 0;
+      let totalPadethaIncome = 0, totalPadethaExpense = 0, totalPadethaBalance = 0;
 
       PADETHA_SPECS.forEach((spec, idx) => {
-        const row = padethaSummary.find(p => p.table_name === spec.tableName) || {
-          income: 0,
-          expense: 0,
-          balance: 0
-        };
-
+        const row = padethaSummary.find(p => p.table_name === spec.tableName) || { income: 0, expense: 0, balance: 0 };
         const inc = Number(row.income || 0);
         const exp = Number(row.expense || 0);
-        const bal = Number(row.balance || (inc - exp));
+        const bal = Number(row.balance !== undefined ? row.balance : (inc - exp));
 
         totalPadethaIncome += inc;
         totalPadethaExpense += exp;
         totalPadethaBalance += bal;
 
         padethaHtml += `
-        <tr class="hover:bg-[#1e293b]/40 transition-colors">
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer" title="စာအုပ်ဖွင့်ကြည့်ရန် နှိပ်ပါ">
           <td class="text-center font-bold text-amber-500/70 py-3 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-3 px-4 text-sm">${spec.title}</td>
+          <td class="font-bold text-amber-100 py-3 px-4 text-sm">${escapeDashHtml(spec.title)}</td>
           <td class="text-right py-3 px-4 font-mono text-emerald-400 font-bold text-sm">${inc ? inc.toLocaleString() : '-'}</td>
           <td class="text-right py-3 px-4 font-mono text-rose-400 font-bold text-sm">${exp ? exp.toLocaleString() : '-'}</td>
-          <td class="text-right py-3 px-4 font-mono text-amber-300 font-black text-sm bg-amber-500/5 border-l border-amber-500/15">${bal.toLocaleString()}</td>
+          <td class="text-right py-3 px-4 font-mono ${bal < 0 ? 'text-rose-400' : 'text-amber-300'} font-black text-sm bg-amber-500/5 border-l border-amber-500/15">${bal.toLocaleString()}</td>
         </tr>`;
       });
 
@@ -274,17 +349,18 @@ window.renderDashboardView = async function(isSilent = false) {
           </td>
           <td class="text-right py-4 px-4 font-mono text-emerald-300 font-black text-sm">${totalPadethaIncome.toLocaleString()}</td>
           <td class="text-right py-4 px-4 font-mono text-rose-300 font-black text-sm">${totalPadethaExpense.toLocaleString()}</td>
-          <td class="text-right py-4 px-4 font-mono text-amber-200 font-black text-sm bg-amber-500/20 border-l border-amber-500/30 shadow-inner">${totalPadethaBalance.toLocaleString()}</td>
+          <td class="text-right py-4 px-4 font-mono ${totalPadethaBalance < 0 ? 'text-rose-300' : 'text-amber-200'} font-black text-sm bg-amber-500/20 border-l border-amber-500/30 shadow-inner">${totalPadethaBalance.toLocaleString()}</td>
         </tr>
       </tbody></table></div>`;
 
       padethaTableElem.innerHTML = padethaHtml;
     }
 
-    // 4. YOGI SUMMARY MATRIX TABLE
+    // 4. YOGI SUMMARY MATRIX TABLE (Valid HTML <thead> / <tbody> Structure)
     if (yogiTableElem) {
       const residentData = yogiSummary.resident || {};
       const retreatData = yogiSummary.retreat || {};
+      const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
       let yogiHtml = `
       <div class="overflow-x-auto">
@@ -306,14 +382,13 @@ window.renderDashboardView = async function(isSilent = false) {
         const item = residentData[cat] || { male: 0, female: 0, total: 0 };
         const m = Number(item.male || 0);
         const f = Number(item.female || 0);
-        const t = Number(item.total || (m + f));
+        const t = Number(item.total !== undefined ? item.total : (m + f));
         resMale += m; resFemale += f; resTotal += t;
-        const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
         yogiHtml += `
-        <tr class="hover:bg-[#1e293b]/40 transition-colors">
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('12Yogi')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer">
           <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-2.5 px-4">${cat}</td>
+          <td class="font-bold text-amber-100 py-2.5 px-4">${escapeDashHtml(cat)}</td>
           <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
           <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
           <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
@@ -327,9 +402,8 @@ window.renderDashboardView = async function(isSilent = false) {
           <td class="text-center font-mono text-sky-300 font-black py-3 px-4">${resMale.toLocaleString()}</td>
           <td class="text-center font-mono text-rose-300 font-black py-3 px-4">${resFemale.toLocaleString()}</td>
           <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${resTotal.toLocaleString()}</td>
-        </tr>`;
-
-      yogiHtml += `
+        </tr>
+          </tbody>
           <thead>
             <tr class="bg-[#080d1a] border-t-2 border-b border-amber-500/40 text-amber-300 font-extrabold uppercase tracking-wider">
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
@@ -347,14 +421,13 @@ window.renderDashboardView = async function(isSilent = false) {
         const item = retreatData[cat] || { male: 0, female: 0, total: 0 };
         const m = Number(item.male || 0);
         const f = Number(item.female || 0);
-        const t = Number(item.total || (m + f));
+        const t = Number(item.total !== undefined ? item.total : (m + f));
         retMale += m; retFemale += f; retTotal += t;
-        const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
 
         yogiHtml += `
-        <tr class="hover:bg-[#1e293b]/40 transition-colors">
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('13Yogi')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer">
           <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-2.5 px-4">${cat}</td>
+          <td class="font-bold text-amber-100 py-2.5 px-4">${escapeDashHtml(cat)}</td>
           <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
           <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
           <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
@@ -367,80 +440,4 @@ window.renderDashboardView = async function(isSilent = false) {
           <td class="py-3 px-4 text-amber-300 font-black">ပေါင်း (စခန်းဝင်)</td>
           <td class="text-center font-mono text-sky-300 font-black py-3 px-4">${retMale.toLocaleString()}</td>
           <td class="text-center font-mono text-rose-300 font-black py-3 px-4">${retFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${retTotal.toLocaleString()}</td>
-        </tr>`;
-
-      const grandMale = resMale + retMale;
-      const grandFemale = resFemale + retFemale;
-      const grandTotal = resTotal + retTotal;
-
-      yogiHtml += `
-        <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 font-black text-amber-300 shadow-2xl">
-          <td class="text-center py-4 px-3 font-mono text-amber-500/60">-</td>
-          <td class="py-4 px-4">
-            <span class="inline-flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
-              <i class="fa-solid fa-users text-amber-400"></i> စုစုပေါင်း ယောဂီ
-            </span>
-          </td>
-          <td class="text-center font-mono text-sky-400 font-black py-4 px-4 text-xs">${grandMale.toLocaleString()}</td>
-          <td class="text-center font-mono text-rose-400 font-black py-4 px-4 text-xs">${grandFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-200 font-black py-4 px-4 bg-amber-500/20 border-l border-amber-500/30 text-sm shadow-inner">${grandTotal.toLocaleString()}</td>
-        </tr>
-      </tbody></table></div>`;
-
-      yogiTableElem.innerHTML = yogiHtml;
-    }
-  };
-
-  // 🌟 (၂) မျက်နှာပြင်ပေါ်တွင် ဇယားများ ရှိနေပြီးသား ဟုတ်/မဟုတ် စစ်ဆေးခြင်း
-  const hasContentOnScreen = Boolean(
-    document.getElementById("home-bank-table")?.querySelector('table')
-  );
-
-  // 🌟 (၃) မျက်နှာပြင်ပေါ်တွင် ဒေတာ မရှိသေးမှသာ (ပထမဆုံးအကြိမ်) Cache မှ ထုတ်ပြမည်
-  if (!hasContentOnScreen) {
-    try {
-      const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
-      if (cachedStr) {
-        const cachedData = JSON.parse(cachedStr);
-        lastRenderedDashboardHash = JSON.stringify(cachedData.data || cachedData);
-        renderHomeData(cachedData);
-      }
-    } catch (_) {}
-  }
-
-  // 🌟 (၄) အရေးကြီးဆုံးအချက်:
-  // ဒေတာ ရှိနေပြီးသား ဖြစ်ပါက (သို့မဟုတ် Silent ဖြစ်ပါက) အနက်ရောင် Loading အလွှာကို လုံးဝ မပြတော့ပါ!
-  // ပထမဆုံးအကြိမ် မျက်နှာပြင် ဗလာဖြစ်နေချိန်မှသာ Loading အလွှာ ပေါ်ပါမည်။
-  const shouldShowOverlay = !isSilent && !hasContentOnScreen;
-  if (typeof window.showLoading === 'function' && shouldShowOverlay) {
-    window.showLoading(true);
-  }
-  
-  try {
-    const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
-    if (typeof fetchFunc === 'function') {
-      const freshData = await fetchFunc();
-      if (freshData && freshData.success) {
-        const freshHash = JSON.stringify(freshData.data || freshData);
-        localStorage.setItem(DASH_CACHE_KEY, JSON.stringify(freshData));
-
-        // 🌟 (၅) Anti-Flicker: ဒေတာ အပြောင်းအလဲ အမှန်တကယ် ရှိမှသာ (သို့မဟုတ် ဇယား မရှိသေးမှသာ) DOM ကို ရေးဆွဲမည်။
-        // ဒေတာ တူနေပါက DOM ကို လုံးဝ မထိတော့သည့်အတွက် မျက်နှာပြင် လှုပ်ခါခြင်း ၁၀၀% ကင်းဝေးသွားပါမည်။
-        if (freshHash !== lastRenderedDashboardHash || !document.getElementById("home-bank-table")?.querySelector('table')) {
-          lastRenderedDashboardHash = freshHash;
-          renderHomeData(freshData);
-        }
-      }
-    }
-  } catch (error) {
-    console.warn("Silent background dashboard sync warning:", error);
-  } finally {
-    if (typeof window.showLoading === 'function' && shouldShowOverlay) {
-      window.showLoading(false);
-    }
-  }
-};
-
-window.loadDashboardView = window.renderDashboardView;
-window.renderHomeView = window.renderDashboardView;
+          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border
