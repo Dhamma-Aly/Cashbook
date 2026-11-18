@@ -1,9 +1,10 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (Enterprise Offline Engine)
-// Features: Full Offline Navigation, Font/Icon Caching, Auto Cache Purge
+// sw.js - Sāsana ERP PWA Service Worker (v4.0 Pro Offline Engine)
+// Features: Auto Old-Cache Purge, Full Offline Navigation,
+// Font/Icon Caching, API Bypass & Safe Background Revalidation
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v3.1-enterprise-d1';
+const CACHE_NAME = 'sasana-erp-v4.0-pro-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
@@ -13,6 +14,7 @@ const STATIC_ASSETS = [
   './favicon.svg',
   './css/style.css',
   './css/tailwind.build.css',
+  './css/fontawesome.min.css',
   './js/config.js',
   './js/api.js',
   './js/auth.js',
@@ -30,13 +32,12 @@ const STATIC_ASSETS = [
 ];
 
 // -------------------------------------------------------------------
-// 1. Install Event: Safe Pre-caching (Promise.allSettled)
+// 1. Install Event: Force Fresh Reload of Static Assets
 // -------------------------------------------------------------------
 self.addEventListener('install', event => {
-  self.skipWaiting(); // တန်းပြီး Activate ဖြစ်စေရန်
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      console.log('[Service Worker]: Pre-caching Static Shell Assets...');
       return Promise.allSettled(
         STATIC_ASSETS.map(url =>
           fetch(url, { cache: 'reload' })
@@ -57,64 +58,67 @@ self.addEventListener('install', event => {
 // -------------------------------------------------------------------
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => {
-          console.log('[Service Worker]: Deleting old cache:', key);
-          return caches.delete(key);
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(
+        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
 // -------------------------------------------------------------------
-// 3. Fetch Event Handler: Offline Navigation Fallback + Stale-While-Revalidate
+// 3. Fetch Event Handler
 // -------------------------------------------------------------------
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // 🛡️ ၁။ GET Request မဟုတ်ပါက (POST/PUT/DELETE) Service Worker က ကြားမဖြတ်ပါ
+  // 🛡️ Non-GET & non-HTTP requests များကို Bypass လုပ်ခြင်း
   if (req.method !== 'GET') return;
-
-  // 🛡️ ၂။ HTTP/HTTPS မဟုတ်သော Schemes (chrome-extension:// စသည်) ကို Bypass လုပ်ခြင်း
   if (!url.protocol.startsWith('http')) return;
 
-  // 🛡️ ၃။ Cloudflare Worker API ခေါ်ယူမှုများကို Cache မလုပ်ဘဲ api.js ၏ IndexedDB စနစ်သို့ တိုက်ရိုက်လွှဲပေးခြင်း
+  // 🛡️ Cloudflare Worker API requests များကို Cache မလုပ်ဘဲ api.js IndexedDB သို့ လွှဲပေးခြင်း
   if (url.hostname.includes('workers.dev') || url.pathname.includes('/api/')) {
     return;
   }
 
-  // 📱 ၄။ SPA Navigation Fallback (လိုင်းမရှိချိန် Refresh နှိပ်ပါက index.html သို့ တန်းပို့ခြင်း)
+  // 📱 Navigation (index.html / ?tab=...) -> Network-First with Offline Fallback
   if (req.mode === 'navigate') {
     event.respondWith(
-      fetch(req).catch(async () => {
-        const cache = await caches.open(CACHE_NAME);
-        const cachedIndex = await cache.match('./index.html') || await cache.match('./');
-        return cachedIndex || new Response('Offline: Sāsana ERP is ready in offline mode.', { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
-      })
+      fetch(req)
+        .then(networkRes => {
+          if (networkRes && networkRes.status === 200) {
+            const copy = networkRes.clone();
+            caches.open(CACHE_NAME).then(c => c.put('./index.html', copy)).catch(() => {});
+          }
+          return networkRes;
+        })
+        .catch(async () => {
+          const cache = await caches.open(CACHE_NAME);
+          const cachedIndex = await cache.match('./index.html') || await cache.match('./');
+          return cachedIndex || new Response('Offline: Sāsana ERP is ready in offline mode.', {
+            headers: { 'Content-Type': 'text/html; charset=utf-8' }
+          });
+        })
     );
     return;
   }
 
-  // ⚡ ၅။ Static Assets, CDN Fonts (FontAwesome, Google Fonts) စသည်တို့အား Cache ပေးခြင်း
+  // ⚡ Static Assets & CDN Fonts -> Stale-While-Revalidate
   event.respondWith(
     caches.match(req).then(cachedResponse => {
       const fetchPromise = fetch(req)
         .then(networkResponse => {
-          // CDN ဖောင့်များ (status 200 သို့မဟုတ် opaque status 0) ကိုပါ Cache ထဲ ထည့်သွင်းသိမ်းဆည်းခြင်း
           if (networkResponse && (networkResponse.status === 200 || networkResponse.status === 0)) {
             const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(req, responseToCache);
-            });
+            caches.open(CACHE_NAME)
+              .then(cache => cache.put(req, responseToCache))
+              .catch(() => {});
           }
           return networkResponse;
         })
         .catch(() => cachedResponse);
 
-      // Cache ရှိပါက ချက်ချင်းပြသပြီး Background မှ Update ပြုလုပ်မည်
       return cachedResponse || fetchPromise;
     })
   );
