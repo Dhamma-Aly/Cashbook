@@ -19,7 +19,13 @@
       "src": "favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
     },
     {
       "src": "favicon.svg",
@@ -46,21 +52,21 @@
       "name": "ကျောင်းရန်ပုံငွေ (1General Book)",
       "short_name": "ကျောင်းရန်ပုံငွေ",
       "description": "ကျောင်းရန်ပုံငွေ ပင်မစာအုပ်",
-      "url": "./index.html?tab=1General%20Book",
+      "url": "./index.html?tab=4GB",
       "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "ယောဂီစာရင်း (Yogi)",
       "short_name": "ယောဂီများ",
       "description": "အမြဲနေ နှင့် စခန်းဝင် ယောဂီစာရင်း",
-      "url": "./index.html?tab=Permanent%20Yogi",
+      "url": "./index.html?tab=12Yogi",
       "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "ပစ္စည်းစာရင်း (Inventory)",
       "short_name": "ပစ္စည်းစာရင်း",
       "description": "ရိပ်သာ ပစ္စည်းစာရင်း",
-      "url": "./index.html?tab=Inventory",
+      "url": "./index.html?tab=11Inv",
       "icons": [{ "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ]
