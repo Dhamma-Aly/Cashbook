@@ -1,7 +1,7 @@
 // ===================================================================
-// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.0)
-// Features: Preserves end_date on Edit, Anti-Jitter, Race-Condition Guard,
-// Myanmar Digit Support, Role Guards, Double-Submit Lock & XSS Safe
+// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.1)
+// Features: Calm Eye-Comfort Palette, Preserves end_date on Edit,
+// Anti-Jitter, Race-Condition Guard, Myanmar Digits, Role Guards & XSS Safe
 // ===================================================================
 
 const YOGI_CACHE_PREFIX = 'sasana_yogi_cache_';
@@ -66,6 +66,14 @@ function resolveYogiTable(nameOrKey) {
   const k = String(nameOrKey || '').trim();
   if (k === '13Yogi' || k === 'Camp Yogi' || k.includes('စခန်းဝင်')) return 'Camp Yogi';
   return 'Permanent Yogi';
+}
+
+function getYogiCategoryDotColor(category) {
+  const c = String(category || '');
+  if (c.includes('ရဟန်း') || c.includes('ကိုရင်')) return '#fbbf24';
+  if (c.includes('သီလရှင်')) return '#a78bfa';
+  if (c.includes('ဝေယျာဝိစ္စ')) return '#34d399';
+  return '#38bdf8';
 }
 
 function parseNrcString(nrcStr) {
@@ -178,10 +186,10 @@ window.switchYogiStatusTab = function (status) {
 
   if (status === 'Active') {
     if (activeBtn) activeBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-amber-300 bg-[#1e293b] border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm';
-    if (inactiveBtn) inactiveBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (inactiveBtn) inactiveBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer';
   } else {
     if (inactiveBtn) inactiveBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-rose-300 bg-[#1e293b] border border-rose-500/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm';
-    if (activeBtn) activeBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-1.5 cursor-pointer';
+    if (activeBtn) activeBtn.className = 'px-3 sm:px-3.5 py-1.5 rounded-lg font-bold text-slate-400 hover:text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer';
   }
 
   applyYogiFilters();
@@ -239,7 +247,7 @@ function renderYogiTable() {
   if (totalEntries === 0) {
     html = `
       <tr>
-        <td colspan="14" class="text-center py-8 text-amber-400/60 font-semibold">
+        <td colspan="14" class="text-center py-8 font-semibold" style="color:#64748b;">
           <i class="fa-solid fa-users-slash mr-2"></i>
           ${currentYogiStatus === 'Active' ? 'Active ယောဂီစာရင်း မရှိပါ' : 'Inactive (စခန်းထွက်ပြီး) ယောဂီစာရင်း မရှိပါ'}
         </td>
@@ -254,47 +262,55 @@ function renderYogiTable() {
       const nrcVal = entry.nrc || entry.full_nrc || '-';
       const phoneVal = entry.yogi_phone || entry.phone || '-';
       const categoryVal = entry.yogi_type || entry.category || '-';
+      const catDot = getYogiCategoryDotColor(categoryVal);
+
+      const categoryHtml = `
+        <span class="inline-flex items-center gap-2 text-[13px] font-medium whitespace-nowrap" style="color:#e2e8f0;">
+          <span style="width:7px;height:7px;border-radius:9999px;background-color:${catDot};flex-shrink:0;display:inline-block;"></span>
+          <span>${escapeYogiHtml(categoryVal)}</span>
+        </span>
+      `;
 
       const pendingBadge = entry.pending
-        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold">Pending</span>`
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);">Pending</span>`
         : '';
 
       const rawAddr = entry.address || '';
       const escapedAddr = escapeYogiHtml(rawAddr);
       const addrHtml = rawAddr
-        ? `<div class="min-w-[180px] max-w-[320px] text-slate-300 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedAddr}">${escapedAddr}</div>`
-        : '<span class="text-slate-600 font-mono">-</span>';
+        ? `<div class="min-w-[180px] max-w-[320px] text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" style="color:#94a3b8;" title="${escapedAddr}">${escapedAddr}</div>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
 
       html += `
-        <tr class="hover:bg-amber-500/5 transition border-b border-amber-500/20 text-xs">
-          <td class="text-center font-bold text-amber-400/80 py-3 font-mono">${srNo}</td>
-          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.start_date || '-')}</td>
-          <td class="font-mono whitespace-nowrap px-2 ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${escapeYogiHtml(entry.end_date || '-')}</td>
-          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${escapeYogiHtml(categoryVal)}</td>
-          <td class="font-extrabold text-amber-100 whitespace-nowrap px-2">${escapeYogiHtml(entry.name || '-')}${pendingBadge}</td>
-          <td class="text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.father_name || '-')}</td>
-          <td class="font-mono text-amber-200 whitespace-nowrap px-2">${escapeYogiHtml(nrcVal)}</td>
-          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.dob || '-')}</td>
-          <td class="text-center font-bold text-amber-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.age || '-')}</td>
-          <td class="text-center font-bold whitespace-nowrap px-2 ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${escapeYogiHtml(entry.gender || '-')}</td>
-          <td class="font-mono text-amber-200 whitespace-nowrap px-2">${escapeYogiHtml(phoneVal)}</td>
-          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.home_phone || '-')}</td>
+        <tr class="transition text-xs">
+          <td class="text-center py-3 font-mono text-xs" style="color:#64748b;">${srNo}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:#94a3b8;">${escapeYogiHtml(entry.start_date || '-')}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:${entry.end_date ? '#fda4af' : '#475569'};font-weight:${entry.end_date ? '600' : '400'};">${escapeYogiHtml(entry.end_date || '-')}</td>
+          <td class="whitespace-nowrap px-3">${categoryHtml}</td>
+          <td class="font-semibold whitespace-nowrap px-2" style="color:#f8fafc;">${escapeYogiHtml(entry.name || '-')}${pendingBadge}</td>
+          <td class="whitespace-nowrap px-2" style="color:#94a3b8;">${escapeYogiHtml(entry.father_name || '-')}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:#cbd5e1;">${escapeYogiHtml(nrcVal)}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:#94a3b8;">${escapeYogiHtml(entry.dob || '-')}</td>
+          <td class="text-center font-mono whitespace-nowrap px-2" style="color:#cbd5e1;">${escapeYogiHtml(entry.age || '-')}</td>
+          <td class="text-center font-medium whitespace-nowrap px-2" style="color:${entry.gender === 'ကျား' ? '#7dd3fc' : '#fda4af'};">${escapeYogiHtml(entry.gender || '-')}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:#cbd5e1;">${escapeYogiHtml(phoneVal)}</td>
+          <td class="font-mono whitespace-nowrap px-2" style="color:#94a3b8;">${escapeYogiHtml(entry.home_phone || '-')}</td>
           <td class="py-2.5 px-3 align-middle text-left">${addrHtml}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-3 py-2 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
+          <td class="text-center right-0 sticky z-10 px-3 py-2">
             <div class="flex items-center justify-center gap-1.5">
-              <button type="button" onclick="openEditYogiModal('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer"'} title="ပြင်ဆင်မည်">
+              <button type="button" onclick="openEditYogiModal('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည်">
                 <i class="fa-solid fa-pen-to-square"></i>
               </button>
               ${active ? `
-                <button type="button" onclick="checkoutYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer"'} title="စခန်းထွက်ပေးမည်">
+                <button type="button" onclick="checkoutYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းထွက်ပေးမည်">
                   <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
               ` : `
-                <button type="button" onclick="reactivateYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
+                <button type="button" onclick="reactivateYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#6ee7b7\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
                   <i class="fa-solid fa-arrow-right-to-bracket"></i>
                 </button>
               `}
-              <button type="button" onclick="deleteYogiPrompt('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer"'} title="ဖျက်မည်">
+              <button type="button" onclick="deleteYogiPrompt('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည်">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -482,7 +498,6 @@ window.saveYogiEntryForm = async function (event) {
   const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
   const isEdit = !!unique_id;
 
-  // 🌟 Inactive ယောဂီကို Edit လုပ်ပါက မူလ end_date မပျောက်စေရန် ထိန်းသိမ်းခြင်း
   const existingEntry = isEdit
     ? allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(unique_id))
     : null;
@@ -752,3 +767,4 @@ window.exportYogiCSV = function () {
   link.download = `${currentYogiTable}_List_${currentYogiStatus}_${getTodayYogiISO()}.csv`;
   link.click();
 };
+// === END OF yogi.js ===
