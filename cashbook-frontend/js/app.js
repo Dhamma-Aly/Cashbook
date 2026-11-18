@@ -1,17 +1,75 @@
 // ===================================================================
-// js/app.js - Enterprise Main Application Controller & View Router
-// Fixed: 100% Silent Background Sync, Anti-Flicker & Bank Receiver Fix
+// js/app.js - Enterprise Main Application Controller & View Router (v4.0)
+// Features: Deep-Link ?tab= Routing, Anti-Flicker Silent Sync,
+// Role UI Guard, Race-Condition Protection & Pro Toast Utility
 // ===================================================================
 
-// Global State Assignments (Directly uses D1 Table Names)
 window.currentTable = window.currentTable || 'Home';
-window.currentSheet = window.currentTable; // Backward Compatibility Alias
+window.currentSheet = window.currentTable;
 window.currentYogiTable = window.currentYogiTable || 'Permanent Yogi';
 window.autoRefreshTimer = window.autoRefreshTimer || null;
 
-// 🌟 ၁၅ စက္ကန့်သည် တိုလွန်း၍ မျက်နှာပြင် လှုပ်ခါစေသဖြင့် ၄၅ စက္ကန့်သို့ ငြိမ်သက်အောင် တိုးမြှင့်ထားပါသည်
-const LIVE_SYNC_INTERVAL = 45000; 
-const templateCache = {};         // 0-Second Template Cache Engine
+// 🌟 ၆၀ စက္ကန့်တစ်ကြိမ် Version-Check ဖြင့် ငြိမ်သက်စွာ Background Sync ပြုလုပ်ခြင်း
+const LIVE_SYNC_INTERVAL = 60000;
+const templateCache = {};
+let activeTabSwitchToken = 0;
+
+function getTodayLocalISO() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function resolveTabShortCode(tabIdentifier) {
+  const raw = String(tabIdentifier || 'Home').trim();
+  if (raw === 'Home' || raw === '14Rep' || raw === 'Report') return raw === 'Report' ? '14Rep' : raw;
+
+  const map = window.CONFIG?.TABLE_MAP || {};
+  if (map[raw]) return raw; // already a short code like 4GB, 1CB, 11Inv, 12Yogi
+
+  const reverseHit = Object.entries(map).find(([, tbl]) => tbl === raw);
+  return reverseHit ? reverseHit[0] : raw;
+}
+
+// -------------------------------------------------------------------
+// 🌟 PRO TOAST NOTIFICATION UTILITY
+// -------------------------------------------------------------------
+window.showToast = function (message, type = 'info', duration = 3200) {
+  if (!message) return;
+  let container = document.getElementById('sasana-toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'sasana-toast-container';
+    container.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:250000;display:flex;flex-direction:column;gap:8px;max-width:340px;pointer-events:none;';
+    document.body.appendChild(container);
+  }
+
+  const colors = {
+    success: 'background:#064e3b;border:1px solid #10b981;color:#d1fae5;',
+    error: 'background:#4c0519;border:1px solid #f43f5e;color:#ffe4e6;',
+    warning: 'background:#451a03;border:1px solid #f59e0b;color:#fef3c7;',
+    info: 'background:#0f172a;border:1px solid rgba(245,158,11,0.45);color:#fef08a;',
+  };
+  const icons = {
+    success: 'fa-circle-check',
+    error: 'fa-circle-exclamation',
+    warning: 'fa-triangle-exclamation',
+    info: 'fa-circle-info',
+  };
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `${colors[type] || colors.info}padding:10px 14px;border-radius:12px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;box-shadow:0 12px 30px rgba(0,0,0,0.65);pointer-events:auto;transition:opacity 0.25s ease;`;
+  toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i><span></span>`;
+  toast.querySelector('span').textContent = String(message);
+  container.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 260);
+  }, duration);
+};
 
 // -------------------------------------------------------------------
 // 🚀 APP INITIALIZATION
@@ -21,7 +79,6 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initApp();
   }
 
-  // Mobile Menu & Overlay Listeners
   const mobileBtn = document.getElementById('mobile-menu-btn');
   if (mobileBtn) {
     mobileBtn.addEventListener('click', (e) => {
@@ -39,37 +96,42 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// 🌟 Sync Event Listener (Sync Failed ဖြစ်ပါက Error Badge ကို UI တွင်ပြသရန်)
+// 🌟 Sync Event Listener (Desktop & Mobile Error Badges ၂ ခုလုံး Update လုပ်ရန်)
 window.addEventListener('sasana-sync-complete', (e) => {
-  const { synced, failed } = e.detail || { synced: 0, failed: 0 };
+  const { failed } = e.detail || { synced: 0, failed: 0 };
   const errBadge = document.getElementById('sync-error-badge');
-  if (errBadge) {
-    if (failed > 0) {
-      errBadge.classList.remove('hidden');
-      errBadge.classList.add('flex');
-      const countEl = document.getElementById('sync-failed-count');
-      if (countEl) countEl.textContent = failed;
-    } else {
-      errBadge.classList.add('hidden');
-      errBadge.classList.remove('flex');
-    }
+  if (!errBadge) return;
+
+  if (failed > 0) {
+    errBadge.classList.remove('hidden');
+    errBadge.classList.add('flex');
+    const countEl = document.getElementById('sync-failed-count');
+    const mobileCountEl = document.getElementById('sync-failed-count-mobile');
+    if (countEl) countEl.textContent = failed;
+    if (mobileCountEl) mobileCountEl.textContent = failed;
+  } else {
+    errBadge.classList.add('hidden');
+    errBadge.classList.remove('flex');
   }
 });
 
-window.initApp = function() {
+window.initApp = function () {
   const user = typeof window.getCurrentUser === 'function' ? window.getCurrentUser() : null;
   if (user) {
     if (typeof window.showWorkspace === 'function') window.showWorkspace();
 
-    // 🚀 Bootstrap Preload
     if (typeof window.bootstrapAppData === 'function') {
       window.bootstrapAppData();
     }
 
-    // မူလ စာမျက်နှာသို့ သွားခြင်း
-    window.switchTab(window.currentTable || 'Home');
+    // URL Parameter (?tab=...) ပါလာပါက ဦးစားပေး ဖွင့်လှစ်ခြင်း
+    let initialTab = window.currentTable || 'Home';
+    try {
+      const urlTab = new URLSearchParams(window.location.search).get('tab');
+      if (urlTab) initialTab = urlTab;
+    } catch (_) {}
 
-    // နောက်ကွယ်မှ Auto-Sync နှင့် Background Refresh စတင်ခြင်း
+    window.switchTab(initialTab);
     window.startLiveSync();
   } else {
     if (typeof window.showLoginOverlay === 'function') window.showLoginOverlay();
@@ -79,7 +141,7 @@ window.initApp = function() {
 // ===================================================================
 // 1. 📱 Mobile Sidebar Responsive Controls
 // ===================================================================
-window.toggleMobileSidebar = function() {
+window.toggleMobileSidebar = function () {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
   if (!sidebar) return;
@@ -98,7 +160,7 @@ window.toggleMobileSidebar = function() {
   }
 };
 
-window.closeMobileSidebar = function() {
+window.closeMobileSidebar = function () {
   const sidebar = document.getElementById('main-sidebar');
   const overlay = document.getElementById('sidebar-overlay');
 
@@ -115,35 +177,30 @@ window.closeMobileSidebar = function() {
 // ===================================================================
 // 2. 🔄 Background Live Sync Engine
 // ===================================================================
-window.startLiveSync = function() {
+window.startLiveSync = function () {
   if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
   window.autoRefreshTimer = setInterval(() => {
-    const openModal = document.querySelector('.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden)');
+    const openModal = document.querySelector(
+      '.modal-overlay-bg:not(.hidden), #yogi-entry-modal:not(.hidden), #entry-modal:not(.hidden), #book-entry-modal:not(.hidden), #inv-entry-modal:not(.hidden), #reauth-modal:not(.hidden)'
+    );
     if (document.hidden || openModal) return;
 
     if (typeof window.triggerBackgroundSync === 'function') {
       window.triggerBackgroundSync();
     }
-
     window.refreshCurrentTabSilent();
   }, LIVE_SYNC_INTERVAL);
 };
 
-// ===================================================================
-// 🌟 အဓိက ပြင်ဆင်ချက်:
-// နောက်ကွယ်မှ ဒေတာဆွဲသည့်အခါ မည်သည့် Tab မဆို Loading Screen ကို
-// လုံးဝ မပြစေဘဲ (isSilent = true) ဖြင့် အသံတိတ်သာ ဆွဲစေခြင်း
-// ===================================================================
-window.refreshCurrentTabSilent = function() {
+window.refreshCurrentTabSilent = function () {
   try {
-    const table = window.currentTable;
+    const table = window.currentTable || 'Home';
 
     if (table.includes('Yogi')) {
       if (typeof window.renderYogiView === 'function') window.renderYogiView(true);
     } else if (table === 'Inventory' || table === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(true);
     } else if (table === 'Home') {
-      // 🌟 မူလက (true) မပါခဲ့ဘဲ renderDashboardView() ဟု ခေါ်မိ၍ မှိန်လိုက်လင်းလိုက် ဖြစ်နေရခြင်းကို ပြင်ဆင်ထားပါသည်
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView(true);
     } else if (table.includes('Report') || table === '14Rep') {
       if (typeof window.renderReportView === 'function') window.renderReportView(true);
@@ -157,23 +214,39 @@ window.refreshCurrentTabSilent = function() {
 };
 
 // ===================================================================
-// 3. 🚀 View Router & Navigation (0-Second Template Cached)
+// 3. 🚀 View Router & Navigation (0-Second Template Cached + Role Guard)
 // ===================================================================
-window.switchTab = async function(tabIdentifier) {
+function applyRolePermissionsToView() {
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
+  ['btn-add-entry', 'btn-add-inv', 'btn-add-yogi'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    if (!canEdit) {
+      btn.classList.add('hidden');
+    } else {
+      btn.classList.remove('hidden');
+    }
+  });
+}
+
+window.switchTab = async function (tabIdentifier) {
+  const switchToken = ++activeTabSwitchToken;
   const targetKey = String(tabIdentifier || 'Home').trim();
-  const d1Table = (window.CONFIG?.TABLE_MAP && window.CONFIG.TABLE_MAP[targetKey]) || targetKey;
+  const shortCode = resolveTabShortCode(targetKey);
+  const d1Table = (window.CONFIG?.TABLE_MAP && window.CONFIG.TABLE_MAP[shortCode]) || targetKey;
 
   window.currentTable = d1Table;
   window.currentSheet = d1Table;
-  
+
   if (window.innerWidth < 768) {
     window.closeMobileSidebar();
   }
 
   const titleEl = document.getElementById('page-title');
   if (titleEl) {
-    const title = window.CONFIG?.TABLE_TITLES?.[d1Table] || 
-                  window.CONFIG?.TABLE_TITLES?.[targetKey] || 
+    const title = window.CONFIG?.TABLE_TITLES?.[d1Table] ||
+                  window.CONFIG?.TABLE_TITLES?.[shortCode] ||
+                  window.CONFIG?.TABLE_TITLES?.[targetKey] ||
                   d1Table;
     titleEl.textContent = title;
   }
@@ -181,8 +254,11 @@ window.switchTab = async function(tabIdentifier) {
   document.querySelectorAll('.nav-btn').forEach(btn => {
     btn.classList.remove('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
   });
-  
-  const activeBtn = document.getElementById(`btn-${targetKey}`) || document.getElementById(`btn-${d1Table}`);
+
+  const activeBtn =
+    document.getElementById(`btn-${shortCode}`) ||
+    document.getElementById(`btn-${targetKey}`) ||
+    document.getElementById(`btn-${d1Table}`);
   if (activeBtn) {
     activeBtn.classList.add('active', 'nav-btn-active', 'bg-amber-500/20', 'text-amber-300');
   }
@@ -191,21 +267,33 @@ window.switchTab = async function(tabIdentifier) {
   if (!container) return;
 
   try {
+    let html = '';
     if (d1Table === 'Home') {
-      container.innerHTML = await window.fetchTemplate('view/Dashboard.html');
+      html = await window.fetchTemplate('view/Dashboard.html');
+    } else if (d1Table === 'Inventory' || shortCode === '11Inv') {
+      html = await window.fetchTemplate('view/Inventory.html');
+    } else if (d1Table.includes('Yogi') || shortCode.includes('Yogi')) {
+      html = await window.fetchTemplate('view/yogi.html');
+    } else if (d1Table.includes('Report') || shortCode === '14Rep') {
+      html = await window.fetchTemplate('view/report-system.html');
+    } else {
+      html = await window.fetchTemplate('view/Banks.html');
+    }
+
+    if (switchToken !== activeTabSwitchToken) return;
+    container.innerHTML = html;
+    applyRolePermissionsToView();
+
+    if (d1Table === 'Home') {
       if (typeof window.renderDashboardView === 'function') window.renderDashboardView(false);
-    } else if (d1Table === 'Inventory' || targetKey === '11Inv') {
-      container.innerHTML = await window.fetchTemplate('view/Inventory.html');
+    } else if (d1Table === 'Inventory' || shortCode === '11Inv') {
       if (typeof window.renderInventoryView === 'function') window.renderInventoryView(false);
-    } else if (d1Table.includes('Yogi') || targetKey.includes('Yogi')) {
+    } else if (d1Table.includes('Yogi') || shortCode.includes('Yogi')) {
       window.currentYogiTable = d1Table;
-      container.innerHTML = await window.fetchTemplate('view/yogi.html');
       if (typeof window.renderYogiView === 'function') window.renderYogiView(false);
-    } else if (d1Table.includes('Report') || targetKey.includes('Rep')) {
-      container.innerHTML = await window.fetchTemplate('view/report-system.html');
+    } else if (d1Table.includes('Report') || shortCode === '14Rep') {
       if (typeof window.renderReportView === 'function') window.renderReportView(false);
     } else {
-      container.innerHTML = await window.fetchTemplate('view/Banks.html');
       if (typeof window.renderBankView === 'function') {
         window.renderBankView(d1Table, false);
       } else if (typeof window.loadSheetView === 'function') {
@@ -217,28 +305,25 @@ window.switchTab = async function(tabIdentifier) {
   }
 };
 
-window.fetchTemplate = async function(path) {
+window.fetchTemplate = async function (path) {
   if (templateCache[path]) {
-    return templateCache[path]; 
+    return templateCache[path];
   }
 
   try {
-    let targetPath = path.startsWith('./') ? path : `./${path}`;
+    const targetPath = path.startsWith('./') ? path : `./${path}`;
     let res = await fetch(targetPath);
 
     if (!res.ok) {
-      const lowerPath = targetPath.toLowerCase();
-      res = await fetch(lowerPath);
+      res = await fetch(targetPath.toLowerCase());
     }
-    
     if (!res.ok && targetPath.includes('view/')) {
-      const fallbackPath = targetPath.replace('view/', 'views/');
-      res = await fetch(fallbackPath);
+      res = await fetch(targetPath.replace('view/', 'views/'));
     }
-    
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
     const html = await res.text();
-    templateCache[path] = html; 
+    templateCache[path] = html;
     return html;
   } catch (err) {
     console.error('Template Fetch Error:', err);
@@ -249,7 +334,11 @@ window.fetchTemplate = async function(path) {
 // ===================================================================
 // 4. Modal Dialog Controllers
 // ===================================================================
-window.openAddModal = function() {
+window.openAddModal = function () {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    window.showToast('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ စာရင်းအသစ်ထည့်ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
   const table = window.currentTable || '';
 
   if (table.includes('Yogi')) {
@@ -261,7 +350,7 @@ window.openAddModal = function() {
   }
 };
 
-window.openAddEntryModal = function() {
+window.openAddEntryModal = function () {
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (!modal) return;
 
@@ -271,22 +360,20 @@ window.openAddEntryModal = function() {
   const idInput = document.getElementById("entry-id");
   if (idInput) idInput.value = "";
 
+  const saveBtn = document.getElementById("btn-entry-save");
+  const saveBtnText = document.getElementById("btn-entry-save-text");
+  if (saveBtn) saveBtn.disabled = false;
+  if (saveBtnText) saveBtnText.textContent = "Save";
+
   const titleEl = document.getElementById("entry-modal-title");
   if (titleEl) titleEl.textContent = "စာရင်းအသစ် သွင်းယူရန်";
 
   const dateInput = document.getElementById("entry-date");
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
+  if (dateInput) dateInput.value = getTodayLocalISO();
 
   const typeSelect = document.getElementById("entry-type");
   if (typeSelect) {
     typeSelect.value = "ဝင်ငွေ";
-    // 🌟 Type ပြောင်းလဲမှုအရ Receiver ၏ Lock အခြေအနေကို onEntryTypeChange က စီမံခန့်ခွဲစေပါမည်
     if (typeof window.onEntryTypeChange === 'function') window.onEntryTypeChange("ဝင်ငွေ");
   }
 
@@ -294,18 +381,17 @@ window.openAddEntryModal = function() {
 };
 window.openBookEntryModal = window.openAddEntryModal;
 
-window.closeEntryModal = function() {
+window.closeEntryModal = function () {
   const modal = document.getElementById('entry-modal') || document.getElementById('book-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
-// Yogi Modal Controls
-window.openAddYogiModal = function() {
+window.openAddYogiModal = function () {
   const form = document.getElementById('yogi-entry-form');
   if (form) form.reset();
-  
+
   const idInput = document.getElementById('yogi-uniqueId');
   if (idInput) idInput.value = '';
 
@@ -313,25 +399,18 @@ window.openAddYogiModal = function() {
   if (modalTitle) modalTitle.textContent = "ယောဂီ အသစ် သွင်းယူရန်";
 
   const dateInput = document.getElementById('yogi-start-date');
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
+  if (dateInput) dateInput.value = getTodayLocalISO();
 
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.remove('hidden');
 };
 
-window.closeYogiModal = function() {
+window.closeYogiModal = function () {
   const modal = document.getElementById('yogi-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 
-// Inventory Modal Controls
-window.openAddInvModal = function() {
+window.openAddInvModal = function () {
   const form = document.getElementById('inv-entry-form');
   if (form) form.reset();
 
@@ -342,24 +421,18 @@ window.openAddInvModal = function() {
   if (modalTitle) modalTitle.textContent = "ပစ္စည်းအသစ် သွင်းယူရန်";
 
   const dateInput = document.getElementById('inv-date');
-  if (dateInput) {
-    const today = new Date();
-    const yyyy = today.getFullYear();
-    const mm = String(today.getMonth() + 1).padStart(2, '0');
-    const dd = String(today.getDate()).padStart(2, '0');
-    dateInput.value = `${yyyy}-${mm}-${dd}`;
-  }
+  if (dateInput) dateInput.value = getTodayLocalISO();
 
   const modal = document.getElementById('inv-entry-modal');
   if (modal) modal.classList.remove('hidden');
 };
 
-window.closeInvModal = function() {
+window.closeInvModal = function () {
   const modal = document.getElementById('inv-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 
-window.showLoading = function(show) {
+window.showLoading = function (show) {
   const overlay = document.getElementById('loading-overlay');
   if (!overlay) return;
   if (show) overlay.classList.remove('hidden');
