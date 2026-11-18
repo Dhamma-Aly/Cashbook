@@ -1,23 +1,15 @@
 // ===================================================================
-// js/api.js - Offline-First API Client & Sync Engine  — v4.1 (Optimized)
-//
-// ပြင်ဆင်ချက်များ:
-//  1. Entry သိမ်း/ပြင်/ဖျက် တိုင်းတွင် ?sheet=<စာအုပ်> ပါစေခြင်း
-//  2. Server က ပယ်ချသော error (400/403/404) ကို queue ထဲမထည့်ဘဲ အမှန်တကယ် error ပြခြင်း
-//  3. Sync လုပ်ပြီး "synced / deleted" ဖြစ်သော item များကိုသာ queue မှ ဖျက်ခြင်း
-//  4. Offline မှာ သိမ်းထားသော စာရင်းများကို Cache ထဲ ချက်ချင်းထည့်ပြီး (pending) ပြသခြင်း
-//  5. unique_id ကို request မပို့ခင် payload ထဲ ထည့်ခြင်း
-//  6. Yogi offline table အမှား ပြင်ခြင်း၊ Transfer API (atomic) ထည့်ခြင်း
-//  7. Request timeout (10s) သို့လျှော့ချခြင်း (UX ပိုကောင်းစေရန်)
-//  8. 401 Error ဖြစ်ပါက Data မပျက်စေရန် Soft Re-Auth Modal ပြသပေးခြင်း
-//  9. ရက် ၃၀ ကျော်နေသော Offline Sync Failed Data များအား ရှင်းလင်းပေးခြင်း (Pruning)
+// js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.0)
+// Features: 1-Row D1 Version Check, Smart Delta Bootstrap,
+// Chunked Background Sync, Derived Cache Invalidation & Soft Re-Auth
 // ===================================================================
 (function () {
   'use strict';
 
   const API_FALLBACK = 'https://cashbook-api.dhammaaly.workers.dev';
-  const REQUEST_TIMEOUT_MS = 10000; // 🌟 Timeout ကို 10s သို့ လျှော့ချထားသည်
+  const REQUEST_TIMEOUT_MS = 12000;
   const MAX_SYNC_ATTEMPTS = 5;
+  const SYNC_BATCH_SIZE = 50;
 
   const getApiBaseUrl = () =>
     (window.CONFIG && window.CONFIG.API_BASE_URL) ||
@@ -26,13 +18,15 @@
   const getToken = () => localStorage.getItem('sasana_auth_token') || localStorage.getItem('yogi_auth_token');
 
   // -----------------------------------------------------------------
-  // Table name helpers
+  // Table Name Helpers
   // -----------------------------------------------------------------
   const LEDGER_CODES = {
     '1CB': '1CB Bank (General)', '2CB': '2CB Bank (Meal)', '3CB': '3CB Bank (UZ)',
     '4GB': '1General Book', '5FB': '2Meal Book', '6HB': '3Hall Book', '7PB': '4Pagoda Book',
     '8EB': '5Electronic Book', '9MB': '6Medical Book', '10GB': '7Other Book',
   };
+  const ALL_LEDGER_CODES = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
+
   const ledgerTableName = (x) => {
     const k = String(x || '').trim();
     return LEDGER_CODES[k] || k;
@@ -97,14 +91,39 @@
     ? idbRun('sync_queue', 'readwrite', s => { ids.forEach(id => s.delete(id)); return null; })
     : Promise.resolve(null);
 
+  function invalidateDerivedCaches() {
+    try {
+      localStorage.removeItem('sasana_dashboard_cache');
+      Object.keys(localStorage)
+        .filter(k => k.startsWith('sasana_report_cache_'))
+        .forEach(k => localStorage.removeItem(k));
+    } catch (_) { /* ignore */ }
+  }
+
+  async function invalidateEndpointVersion(endpoint) {
+    try {
+      const key = cacheKeyOf(endpoint);
+      const cached = await idbGet('cache', key);
+      if (cached) {
+        await idbSet('cache', key, { ...cached, version: 0 });
+      }
+    } catch (_) { /* ignore */ }
+  }
+
   window.clearOfflineCache = async function () {
     await idbClear('cache');
     try {
-      Object.keys(localStorage).filter(k => k.startsWith('sasana_yogi_cache_')).forEach(k => localStorage.removeItem(k));
+      Object.keys(localStorage)
+        .filter(k =>
+          k.startsWith('sasana_yogi_cache_') ||
+          k.startsWith('sasana_report_cache_') ||
+          k === 'sasana_dashboard_cache' ||
+          k === 'sasana_inventory_cache'
+        )
+        .forEach(k => localStorage.removeItem(k));
     } catch (_) { /* ignore */ }
   };
 
-  // 🌟 Auto-Cleanup for IndexedDB Sync Queue (၃၀ ရက်အထက်ဟောင်းသော Failed Data များ ဖျက်ရန်)
   window.pruneOldSyncQueue = async function () {
     try {
       const queue = await idbQueueGetAll();
@@ -113,7 +132,6 @@
       const toDelete = queue.filter(q => (now - (q.timestamp || now)) > THIRTY_DAYS_MS).map(q => q.id);
       if (toDelete.length > 0) {
         await idbQueueDelete(toDelete);
-        console.log(`[Pruning] Deleted ${toDelete.length} old failed sync items.`);
       }
     } catch (e) {
       console.warn('Pruning error:', e);
@@ -121,10 +139,22 @@
   };
 
   // ===================================================================
-  // 2. SAFE API REQUEST
+  // 2. SAFE API REQUEST (Supports Smart 1-Row Version Checking)
   // ===================================================================
+  let reauthTriggered = false;
+  function triggerSoftReAuth() {
+    if (reauthTriggered) return;
+    reauthTriggered = true;
+    setTimeout(() => { reauthTriggered = false; }, 3000);
+    if (typeof window.showReAuthModal === 'function') {
+      window.showReAuthModal();
+    } else if (typeof window.handleLogoutSilent === 'function') {
+      window.handleLogoutSilent();
+    }
+  }
+
   async function safeApiRequest(endpoint, options = {}) {
-    const { noCache, ...fetchOpts } = options;
+    const { noCache, useVersionCheck, ...fetchOpts } = options;
     const isGet = !fetchOpts.method || fetchOpts.method === 'GET';
     const cacheKey = cacheKeyOf(endpoint);
     const token = getToken();
@@ -134,54 +164,71 @@
       ...(fetchOpts.headers || {}),
     };
 
-    const fromCache = async (extra = {}) => {
-      if (!isGet || noCache) return null;
-      const cached = await idbGet('cache', cacheKey);
-      return cached ? { ...cached, success: true, fromCache: true, ...extra } : null;
+    const cachedEntry = (isGet && !noCache) ? await idbGet('cache', cacheKey) : null;
+
+    const fromCache = (extra = {}) => {
+      if (!cachedEntry) return null;
+      return { ...cachedEntry, success: true, fromCache: true, ...extra };
     };
 
     if (!navigator.onLine && isGet) {
-      const c = await fromCache({ offline: true });
+      const c = fromCache({ offline: true });
       if (c) return c;
+    }
+
+    // 🌟 Version Check ပါဝင်ပါက Cache ထဲရှိ version ကို Server သို့ ပို့စစ်ဆေးမည်
+    let requestEndpoint = endpoint;
+    if (isGet && useVersionCheck && cachedEntry && cachedEntry.version && !cachedEntry.hasPending) {
+      const sep = endpoint.includes('?') ? '&' : '?';
+      requestEndpoint = `${endpoint}${sep}known_version=${encodeURIComponent(cachedEntry.version)}`;
     }
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     try {
-      const res = await fetch(`${getApiBaseUrl()}${endpoint}`, { ...fetchOpts, headers, signal: ctrl.signal });
+      const res = await fetch(`${getApiBaseUrl()}${requestEndpoint}`, { ...fetchOpts, headers, signal: ctrl.signal });
       clearTimeout(timer);
 
       let body = null;
       try { body = await res.json(); } catch (_) { /* non-JSON */ }
 
       if (res.ok && body) {
-        if (isGet && !noCache && body.success) await idbSet('cache', cacheKey, body);
+        // 🌟 Server တွင် မပြောင်းလဲသေးပါက Cache မှ ချက်ချင်းပြန်ပေးမည်
+        if (isGet && body.success && body.unchanged && cachedEntry) {
+          return { ...cachedEntry, success: true, fromCache: true, verified: true };
+        }
+        if (isGet && !noCache && body.success) {
+          await idbSet('cache', cacheKey, body);
+        }
         return body;
       }
 
       if (res.status === 401) {
-        // 🌟 Token Expired ဖြစ်ပါက Data မပျက်စေရန် Soft Re-Auth Modal ပြမည်
-        if (typeof window.showReAuthModal === 'function') {
-          window.showReAuthModal();
-        } else {
-          await window.clearOfflineCache();
-          if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
-        }
+        triggerSoftReAuth();
       }
-      if (res.status >= 500) {                       
-        const c = await fromCache();
+      if (res.status >= 500) {
+        const c = fromCache();
         if (c) return c;
       }
       return {
-        success: false, status: res.status, data: [], kpis: {},
+        success: false,
+        status: res.status,
+        data: [],
+        kpis: {},
         error: (body && body.error) || `HTTP ${res.status}`,
       };
     } catch (err) {
       clearTimeout(timer);
       console.warn(`[Network] ${endpoint}:`, err.message);
-      const c = await fromCache({ offline: true });
+      const c = fromCache({ offline: true });
       if (c) return c;
-      return { success: false, offline: true, data: [], kpis: {}, error: err.name === 'AbortError' ? 'Server မှ အဖြေ နှောင့်နှေးနေပါသည်' : err.message };
+      return {
+        success: false,
+        offline: true,
+        data: [],
+        kpis: {},
+        error: err.name === 'AbortError' ? 'Server မှ အဖြေ နှောင့်နှေးနေပါသည်' : err.message,
+      };
     }
   }
   window.safeApiRequest = safeApiRequest;
@@ -189,7 +236,7 @@
   const isRetryable = (res) => !!res && (res.offline === true || (res.status >= 500));
 
   // ===================================================================
-  // 3. OPTIMISTIC CACHE PATCH 
+  // 3. OPTIMISTIC CACHE PATCH (Offline Queue Items)
   // ===================================================================
   const toNum = (v) => { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
 
@@ -260,7 +307,7 @@
       let kpis = cached.kpis;
       if (kind === 'ledger') { const r = recomputeLedger(rows); rows = r.rows; kpis = r.kpis; }
       else if (kind === 'inventory') kpis = recomputeInventory(rows);
-      await idbSet('cache', key, { ...cached, data: rows, kpis });
+      await idbSet('cache', key, { ...cached, data: rows, kpis, hasPending: true, version: 0 });
     } catch (e) { console.warn('[Cache patch]', e); }
   }
 
@@ -271,19 +318,24 @@
     const ok = await idbQueuePush(queueItem);
     if (!ok) return { success: false, error: 'Offline queue ထဲ သိမ်းမရပါ (browser storage စစ်ပါ)' };
     if (patch) await patch();
+    invalidateDerivedCaches();
     return { success: true, offline: true, queued: true, message };
   }
 
-  async function writeWithQueue({ method, endpoint, payload, queueItem, patch, message }) {
+  async function writeWithQueue({ method, endpoint, payload, queueItem, patch, message, cacheEndpoint }) {
     if (!navigator.onLine) return enqueue(queueItem, patch, message);
-    const res = await safeApiRequest(endpoint, { method, body: JSON.stringify(payload) });
-    if (res && res.success) return res;
+    const res = await safeApiRequest(endpoint, { method, body: payload !== undefined ? JSON.stringify(payload) : undefined });
+    if (res && res.success) {
+      invalidateDerivedCaches();
+      if (cacheEndpoint) await invalidateEndpointVersion(cacheEndpoint);
+      return res;
+    }
     if (isRetryable(res)) return enqueue(queueItem, patch, message);
-    return res || { success: false, error: 'Unknown error' };       
+    return res || { success: false, error: 'Unknown error' };
   }
 
   // ===================================================================
-  // 5. BACKGROUND SYNC ENGINE
+  // 5. BACKGROUND SYNC ENGINE (Chunked 50-item Batches)
   // ===================================================================
   let isSyncing = false;
 
@@ -297,8 +349,6 @@
   window.discardFailedSync = async function () {
     const failed = await window.getFailedSyncItems();
     await idbQueueDelete(failed.map(q => q.id));
-    
-    // UI Update လေး လုပ်ပေးရန်
     window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced: 0, failed: 0 } }));
     return failed.length;
   };
@@ -313,82 +363,124 @@
 
     isSyncing = true;
     let synced = 0, failed = 0;
+    const syncedTables = new Set();
+
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/sync`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({
-          queue: queue.map(q => ({ qid: q.id, action: q.action, table: q.table, data: q.data, unique_id: q.unique_id })),
-        }),
-      });
+      for (let i = 0; i < queue.length; i += SYNC_BATCH_SIZE) {
+        const chunk = queue.slice(i, i + SYNC_BATCH_SIZE);
+        const res = await fetch(`${getApiBaseUrl()}/api/sync`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+          body: JSON.stringify({
+            queue: chunk.map(q => ({ qid: q.id, action: q.action, table: q.table, data: q.data, unique_id: q.unique_id })),
+          }),
+        });
 
-      if (res.status === 401) {                       
-        if (typeof window.showReAuthModal === 'function') {
-          window.showReAuthModal();
-        } else {
-          await window.clearOfflineCache();
-          if (typeof window.handleLogoutSilent === 'function') window.handleLogoutSilent();
+        if (res.status === 401) {
+          triggerSoftReAuth();
+          return;
         }
-        return;
-      }
-      if (!res.ok) return;                            
+        if (!res.ok) break;
 
-      const result = await res.json();
-      const byQid = new Map((result.results || []).map(r => [r.qid, r]));
-      const done = [];
-      for (const q of queue) {
-        const r = byQid.get(q.id);
-        if (r && (r.status === 'synced' || r.status === 'deleted')) { done.push(q.id); synced++; continue; }
-        const attempts = (q.attempts || 0) + 1;
-        const isFailed = attempts >= MAX_SYNC_ATTEMPTS;
-        if (isFailed) failed++;
-        await idbQueuePut({ ...q, attempts, failed: isFailed, lastError: (r && r.error) || 'No result from server' });
+        const result = await res.json();
+        const byQid = new Map((result.results || []).map(r => [r.qid, r]));
+        const done = [];
+        for (const q of chunk) {
+          const r = byQid.get(q.id);
+          if (r && (r.status === 'synced' || r.status === 'deleted')) {
+            done.push(q.id);
+            synced++;
+            syncedTables.add(q.table);
+            continue;
+          }
+          const attempts = (q.attempts || 0) + 1;
+          const isFailed = attempts >= MAX_SYNC_ATTEMPTS;
+          if (isFailed) failed++;
+          await idbQueuePut({ ...q, attempts, failed: isFailed, lastError: (r && r.error) || 'No result from server' });
+        }
+        await idbQueueDelete(done);
       }
-      await idbQueueDelete(done);
-      console.log(`[Auto-Sync] synced ${synced}, failed ${failed}, remaining ${queue.length - synced}`);
+
+      if (synced > 0) {
+        invalidateDerivedCaches();
+        for (const tbl of syncedTables) {
+          if (tbl === 'Inventory') await invalidateEndpointVersion('/api/inventory');
+          else if (tbl.includes('Yogi')) await invalidateEndpointVersion(yogiEndpoint(yogiTableName(tbl)));
+          else await invalidateEndpointVersion(ledgerEndpoint(ledgerTableName(tbl)));
+        }
+      }
+      console.log(`[Auto-Sync] synced ${synced}, failed ${failed}`);
     } catch (err) {
       console.warn('[Auto-Sync] will retry later:', err.message);
     } finally {
       isSyncing = false;
     }
 
-    // 🌟 Update UI for Failed Syncs
     const totalFailed = (await window.getFailedSyncItems()).length;
     window.dispatchEvent(new CustomEvent('sasana-sync-complete', { detail: { synced, failed: totalFailed } }));
-    
+
     if (synced && typeof window.refreshCurrentTabSilent === 'function') window.refreshCurrentTabSilent();
   };
 
   window.addEventListener('online', () => window.triggerBackgroundSync());
-  setInterval(() => { if (navigator.onLine) window.triggerBackgroundSync(); }, 30000);
+  setInterval(() => { if (navigator.onLine) window.triggerBackgroundSync(); }, 45000);
 
   // ===================================================================
-  // 6. BOOTSTRAP PRELOAD
+  // 6. SMART DELTA BOOTSTRAP PRELOAD (Only downloads changed books!)
   // ===================================================================
+  window.fetchVersionsAPI = async function () {
+    return safeApiRequest('/api/versions', { noCache: true });
+  };
+
   window.bootstrapAppData = async function () {
     if (!navigator.onLine || !getToken()) return;
     try {
-      // 🌟 DB Cleanup
       await window.pruneOldSyncQueue();
-
       await window.triggerBackgroundSync();
       if ((await idbQueueGetAll()).some(q => !q.failed)) return;
 
-      const res = await safeApiRequest('/api/bootstrap', { noCache: true });
+      // Gather existing cached versions from IndexedDB so unchanged books aren't re-read
+      const clientVersions = {};
+      for (const code of ALL_LEDGER_CODES) {
+        const tbl = ledgerTableName(code);
+        const c = await idbGet('cache', cacheKeyOf(ledgerEndpoint(tbl)));
+        if (c && c.version && !c.hasPending) clientVersions[tbl] = c.version;
+      }
+      const invC = await idbGet('cache', cacheKeyOf('/api/inventory'));
+      if (invC && invC.version && !invC.hasPending) clientVersions['Inventory'] = invC.version;
+
+      const permC = await idbGet('cache', cacheKeyOf('/api/yogi?sheet=12Yogi'));
+      if (permC && permC.version && !permC.hasPending) clientVersions['Permanent Yogi'] = permC.version;
+
+      const campC = await idbGet('cache', cacheKeyOf('/api/yogi?sheet=13Yogi'));
+      if (campC && campC.version && !campC.hasPending) clientVersions['Camp Yogi'] = campC.version;
+
+      const res = await safeApiRequest(`/api/bootstrap?versions=${encodeURIComponent(JSON.stringify(clientVersions))}`, { noCache: true });
       if (!res || !res.success) return;
 
       for (const [code, payload] of Object.entries(res.books || {})) {
         const full = { ...payload, success: true };
-        await idbSet('cache', cacheKeyOf(ledgerEndpoint(code)), full);
         if (payload.book) await idbSet('cache', cacheKeyOf(ledgerEndpoint(payload.book)), full);
+        await idbSet('cache', cacheKeyOf(ledgerEndpoint(code)), full);
       }
       if (res.inventory) {
-        await idbSet('cache', cacheKeyOf('/api/inventory'), { success: true, data: res.inventory, kpis: res.inventoryKpis || {} });
+        const invV = res.versions?.['Inventory']?.version || 1;
+        await idbSet('cache', cacheKeyOf('/api/inventory'), {
+          success: true, version: invV, data: res.inventory, kpis: res.inventoryKpis || {},
+        });
       }
       if (res.yogi) {
-        for (const code of ['12Yogi', '13Yogi']) {
-          await idbSet('cache', cacheKeyOf(`/api/yogi?sheet=${code}`),
-            { success: true, data: res.yogi[code] || [], kpis: (res.yogiKpis && res.yogiKpis[code]) || {} });
+        if (res.yogi['12Yogi']) {
+          const permV = res.versions?.['Permanent Yogi']?.version || 1;
+          await idbSet('cache', cacheKeyOf('/api/yogi?sheet=12Yogi'), {
+            success: true, version: permV, data: res.yogi['12Yogi'], kpis: (res.yogiKpis && res.yogiKpis['12Yogi']) || {},
+          });
+        }
+        if (res.yogi['13Yogi']) {
+          const campV = res.versions?.['Camp Yogi']?.version || 1;
+          await idbSet('cache', cacheKeyOf('/api/yogi?sheet=13Yogi'), {
+            success: true, version: campV, data: res.yogi['13Yogi'], kpis: (res.yogiKpis && res.yogiKpis['13Yogi']) || {},
+          });
         }
       }
     } catch (err) {
@@ -400,7 +492,8 @@
   // 7. CASHBOOK & BANK LEDGERS
   // ===================================================================
   window.fetchSheetData = async function (tableOrSheetName = '1CB Bank (General)') {
-    return safeApiRequest(ledgerEndpoint(tableOrSheetName));
+    const table = ledgerTableName(tableOrSheetName);
+    return safeApiRequest(ledgerEndpoint(table), { useVersionCheck: true });
   };
   window.fetchSheetDataAPI = window.fetchSheetData;
 
@@ -409,13 +502,15 @@
     if (!table) return { success: false, error: 'စာအုပ်အမည် (book_name) မသိရပါ' };
     const unique_id = entryData.unique_id || entryData.uniqueId || crypto.randomUUID();
     const payload = { ...entryData, book_name: table, unique_id };
+    const ep = ledgerEndpoint(table);
 
     return writeWithQueue({
       method: isEdit ? 'PUT' : 'POST',
-      endpoint: ledgerEndpoint(table),
+      endpoint: ep,
+      cacheEndpoint: ep,
       payload,
       queueItem: { action: isEdit ? 'UPDATE' : 'CREATE', table, data: payload, unique_id },
-      patch: () => patchCachedList(ledgerEndpoint(table), isEdit ? 'UPDATE' : 'CREATE', toLedgerRow(payload, table), 'ledger'),
+      patch: () => patchCachedList(ep, isEdit ? 'UPDATE' : 'CREATE', toLedgerRow(payload, table), 'ledger'),
       message: 'လိုင်းမရှိ/ဆာဗာမရနိုင်သဖြင့် မှတ်တမ်းတင်ထားပါသည် (လိုင်းရပါက အလိုအလျောက် သိမ်းပေးပါမည်)',
     });
   };
@@ -424,16 +519,18 @@
   window.deleteCashbookEntryAPI = async function (uniqueId, tableName = null) {
     const table = ledgerTableName(tableName || window.currentTable || window.currentSheet);
     if (!table || !uniqueId) return { success: false, error: 'စာအုပ်အမည် သို့မဟုတ် unique_id မသိရပါ' };
+    const ep = ledgerEndpoint(table);
 
     return writeWithQueue({
       method: 'DELETE',
-      endpoint: `${ledgerEndpoint(table)}&unique_id=${encodeURIComponent(uniqueId)}`,
+      endpoint: `${ep}&unique_id=${encodeURIComponent(uniqueId)}`,
+      cacheEndpoint: ep,
       payload: undefined,
       queueItem: { action: 'DELETE', table, data: {}, unique_id: uniqueId },
       patch: async () => {
-        await patchCachedList(ledgerEndpoint(table), 'DELETE', { unique_id: uniqueId }, 'ledger');
+        await patchCachedList(ep, 'DELETE', { unique_id: uniqueId }, 'ledger');
         const m = /^(TRF_.+)_(OUT|IN)$/.exec(uniqueId);
-        if (m) await patchCachedList(ledgerEndpoint(table), 'DELETE', { unique_id: `${m[1]}_${m[2] === 'OUT' ? 'IN' : 'OUT'}` }, 'ledger');
+        if (m) await patchCachedList(ep, 'DELETE', { unique_id: `${m[1]}_${m[2] === 'OUT' ? 'IN' : 'OUT'}` }, 'ledger');
       },
       message: 'ဖျက်သိမ်းစာရင်းအား မှတ်သားထားပါသည် (လိုင်းရပါက ဖျက်ပေးပါမည်)',
     });
@@ -441,7 +538,7 @@
   window.deleteEntryAPI = window.deleteCashbookEntryAPI;
 
   // -----------------------------------------------------------------
-  // Transfer API
+  // Transfer API (Online Atomic + Invalidates Both Source & Destination Caches)
   // -----------------------------------------------------------------
   const TRANSFER_OFFLINE = { success: false, offline: true, error: 'စာရင်းပြောင်း (Transfer) လုပ်ရန် အင်တာနက် လိုအပ်ပါသည်။ လိုင်းရပြီးမှ ပြန်လုပ်ပါ။' };
 
@@ -449,9 +546,20 @@
     const table = ledgerTableName(payload.book_name || payload.sheet_name);
     if (!table) return { success: false, error: 'စာအုပ်အမည် (book_name) မသိရပါ' };
     if (!navigator.onLine) return TRANSFER_OFFLINE;
+
     const res = await safeApiRequest(`/api/transfer?sheet=${encodeURIComponent(table)}`, {
-      method: isEdit ? 'PUT' : 'POST', body: JSON.stringify({ ...payload, book_name: table }),
+      method: isEdit ? 'PUT' : 'POST',
+      body: JSON.stringify({ ...payload, book_name: table }),
     });
+    if (res && res.success) {
+      invalidateDerivedCaches();
+      await invalidateEndpointVersion(ledgerEndpoint(table));
+      if (payload.target) {
+        const destTable = ledgerTableName(payload.target);
+        if (destTable && destTable !== table) await invalidateEndpointVersion(ledgerEndpoint(destTable));
+      }
+      await invalidateEndpointVersion(ledgerEndpoint('1General Book'));
+    }
     return res.offline ? TRANSFER_OFFLINE : res;
   };
 
@@ -460,6 +568,12 @@
     const v = String(groupIdOrUniqueId || '');
     const q = /_(OUT|IN)$/.test(v) ? `unique_id=${encodeURIComponent(v)}` : `group_id=${encodeURIComponent(v)}`;
     const res = await safeApiRequest(`/api/transfer?${q}`, { method: 'DELETE' });
+    if (res && res.success) {
+      invalidateDerivedCaches();
+      for (const code of ALL_LEDGER_CODES) {
+        await invalidateEndpointVersion(ledgerEndpoint(ledgerTableName(code)));
+      }
+    }
     return res.offline ? TRANSFER_OFFLINE : res;
   };
 
@@ -470,9 +584,12 @@
     const res = await safeApiRequest('/api/home-summary');
     if (!res || !res.success) {
       return {
-        success: false, error: res && res.error,
+        success: false,
+        error: res && res.error,
         kpis: { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 },
-        fundSummary: {}, padethaSummary: [], yogiSummary: {},
+        fundSummary: {},
+        padethaSummary: [],
+        yogiSummary: {},
       };
     }
     return res;
@@ -483,20 +600,22 @@
   // 9. YOGI
   // ===================================================================
   window.fetchYogiDataAPI = async function (sheetType = '12Yogi') {
-    return safeApiRequest(yogiEndpoint(yogiTableName(sheetType)));
+    return safeApiRequest(yogiEndpoint(yogiTableName(sheetType)), { useVersionCheck: true });
   };
 
   window.saveYogiAPI = async function (data, isEdit = false) {
     const table = yogiTableName(data.sheet_type || data.book_name || data.sheet);
     const unique_id = data.unique_id || data.uniqueId || `YOGI-${crypto.randomUUID()}`;
     const payload = { ...data, sheet_type: table, unique_id };
+    const ep = yogiEndpoint(table);
 
     return writeWithQueue({
       method: isEdit ? 'PUT' : 'POST',
-      endpoint: yogiEndpoint(table),
+      endpoint: ep,
+      cacheEndpoint: ep,
       payload,
       queueItem: { action: isEdit ? 'UPDATE' : 'CREATE', table, data: payload, unique_id },
-      patch: () => patchCachedList(yogiEndpoint(table), isEdit ? 'UPDATE' : 'CREATE', toYogiRow(payload, table), 'yogi'),
+      patch: () => patchCachedList(ep, isEdit ? 'UPDATE' : 'CREATE', toYogiRow(payload, table), 'yogi'),
       message: 'ယောဂီစာရင်းအား Offline အဖြစ် သိမ်းဆည်းထားပါသည် (လိုင်းရပါက အလိုအလျောက် ပို့ပေးပါမည်)',
     });
   };
@@ -505,6 +624,11 @@
   const yogiOnly = async (endpoint, method, payload) => {
     if (!navigator.onLine) return YOGI_OFFLINE;
     const res = await safeApiRequest(endpoint, { method, body: payload ? JSON.stringify(payload) : undefined });
+    if (res && res.success) {
+      invalidateDerivedCaches();
+      const tbl = yogiTableName(payload?.sheet_type || payload?.sheet || '12Yogi');
+      await invalidateEndpointVersion(yogiEndpoint(tbl));
+    }
     return res.offline ? YOGI_OFFLINE : res;
   };
 
@@ -514,12 +638,14 @@
   window.deleteYogiAPI = async function (uniqueId, sheetType = '12Yogi') {
     const table = yogiTableName(sheetType);
     if (!uniqueId) return { success: false, error: 'unique_id မသိရပါ' };
+    const ep = yogiEndpoint(table);
     return writeWithQueue({
       method: 'DELETE',
-      endpoint: `${yogiEndpoint(table)}&unique_id=${encodeURIComponent(uniqueId)}`,
+      endpoint: `${ep}&unique_id=${encodeURIComponent(uniqueId)}`,
+      cacheEndpoint: ep,
       payload: undefined,
       queueItem: { action: 'DELETE', table, data: {}, unique_id: uniqueId },
-      patch: () => patchCachedList(yogiEndpoint(table), 'DELETE', { unique_id: uniqueId }, 'yogi'),
+      patch: () => patchCachedList(ep, 'DELETE', { unique_id: uniqueId }, 'yogi'),
       message: 'ဖျက်သိမ်းစာရင်းအား မှတ်သားထားပါသည်',
     });
   };
@@ -528,7 +654,7 @@
   // 10. INVENTORY
   // ===================================================================
   window.fetchInventoryDataAPI = async function () {
-    return safeApiRequest('/api/inventory');
+    return safeApiRequest('/api/inventory', { useVersionCheck: true });
   };
 
   window.saveInventoryEntryAPI = async function (entryData, isEdit = false) {
@@ -537,6 +663,7 @@
     return writeWithQueue({
       method: isEdit ? 'PUT' : 'POST',
       endpoint: '/api/inventory',
+      cacheEndpoint: '/api/inventory',
       payload,
       queueItem: { action: isEdit ? 'UPDATE' : 'CREATE', table: 'Inventory', data: payload, unique_id },
       patch: () => patchCachedList('/api/inventory', isEdit ? 'UPDATE' : 'CREATE', toInvRow(payload), 'inventory'),
@@ -549,6 +676,7 @@
     return writeWithQueue({
       method: 'DELETE',
       endpoint: `/api/inventory?unique_id=${encodeURIComponent(uniqueId)}`,
+      cacheEndpoint: '/api/inventory',
       payload: undefined,
       queueItem: { action: 'DELETE', table: 'Inventory', data: {}, unique_id: uniqueId },
       patch: () => patchCachedList('/api/inventory', 'DELETE', { unique_id: uniqueId }, 'inventory'),
@@ -557,15 +685,31 @@
   };
 
   // ===================================================================
-  // 11. ANNUAL REPORT & ACCOUNT
+  // 11. ANNUAL REPORT, ACCOUNT & ADMIN TOOLS
   // ===================================================================
   window.fetchReportDataAPI = async function (year = String(new Date().getFullYear()), sheet = '1General Book') {
-    return safeApiRequest(`/api/report?year=${encodeURIComponent(year)}&sheet=${encodeURIComponent(sheet)}`);
+    return safeApiRequest(
+      `/api/report?year=${encodeURIComponent(year)}&sheet=${encodeURIComponent(sheet)}`,
+      { useVersionCheck: true }
+    );
   };
 
   window.changePasswordAPI = async function (oldPassword, newPassword) {
     return safeApiRequest('/api/change-password', {
-      method: 'POST', body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
+      method: 'POST',
+      body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     });
+  };
+
+  window.fetchAdminBackupAPI = async function () {
+    return safeApiRequest('/api/admin/backup', { noCache: true });
+  };
+
+  window.fetchAuditLogsAPI = async function (limit = 50) {
+    return safeApiRequest(`/api/admin/audit-logs?limit=${encodeURIComponent(limit)}`, { noCache: true });
+  };
+
+  window.rebuildSummariesAPI = async function () {
+    return safeApiRequest('/api/admin/rebuild-summaries', { method: 'POST', noCache: true });
   };
 })();
