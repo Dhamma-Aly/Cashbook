@@ -1,94 +1,47 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer
-// Features: Instant 0-Second Cache, D1 "1General Book" Integration
+// js/report-system.js - Annual & Summary Expense Report Renderer (v4.0)
+// Features: Dynamic Future-Proof Years, Anti-Jitter Hash, XSS Safe,
+// Race-Condition Guard, Versioned Sync & Negative Balance Highlight
 // ===================================================================
 
 const REPORT_CACHE_PREFIX = 'sasana_report_cache_';
 let currentReportMode = 'Annual'; // 'Annual' or 'Summary'
-let currentReportYear = new Date().getFullYear().toString();
-let currentReportBook = '1General Book'; // D1 Standard
+let currentReportYear = String(new Date().getFullYear());
+let currentReportBook = '1General Book';
 let rawReportData = null;
+let lastRenderedReportHash = '';
+let activeReportFetchToken = 0;
 
-// -------------------------------------------------------------------
-// 1. Core View Renderer (Instant Cache-First Engine)
-// -------------------------------------------------------------------
-window.renderReportView = async function(isSilent = false) {
-  const container = document.getElementById("view-container");
-
-  // Template Fetch & Inject
-  if (container && !document.getElementById("report-matrix-table")) {
-    try {
-      const fetchFn = window.fetchTemplate || (async (p) => { const r = await fetch(p); return await r.text(); });
-      container.innerHTML = await fetchFn("view/report-system.html");
-    } catch (e) {
-      console.warn("Could not fetch view/report-system.html:", e);
-    }
-  }
-
-  populateReportYears();
-
-  const yearSelect = document.getElementById("report-year-select");
-  if (yearSelect) currentReportYear = yearSelect.value || new Date().getFullYear().toString();
-
-  const cacheKey = `${REPORT_CACHE_PREFIX}${currentReportBook}_${currentReportYear}`;
-
-  // ၁။ Cache ရှိပါက ဝ စက္ကန့်ဖြင့် ချက်ချင်း အရင်ထုတ်ပြမည် (Loading မစောင့်ရပါ)
-  try {
-    const cachedStr = localStorage.getItem(cacheKey);
-    if (cachedStr) {
-      const cached = JSON.parse(cachedStr);
-      if (cached && cached.incomeRows) {
-        rawReportData = cached;
-        applyReportFilters();
-      }
-    }
-  } catch (_) {}
-
-  // ၂။ ကက်ရှ်မရှိသေးလျှင် Loading ပြမည်
-  if (!isSilent && !rawReportData && typeof window.showLoading === 'function') {
-    window.showLoading(true);
-  }
-
-  // ၃။ နောက်ကွယ်မှ D1 Database အချက်အလက်အသစ်ကို အသံတိတ် ဆွဲယူပြီး Update လုပ်ခြင်း
-  try {
-    const res = await window.fetchReportDataAPI(currentReportYear, currentReportBook);
-    if (res && res.success && res.data) {
-      rawReportData = res.data;
-      localStorage.setItem(cacheKey, JSON.stringify(res.data));
-      applyReportFilters();
-    }
-  } catch (err) {
-    if (!isSilent) console.error("Report Fetch Error from D1:", err);
-  } finally {
-    if (!isSilent && typeof window.showLoading === 'function') {
-      window.showLoading(false);
-    }
-  }
-};
-
-window.loadReportView = window.renderReportView;
-
-// Populate Dynamic Year Options
-function populateReportYears() {
-  const yearSelect = document.getElementById("report-year-select");
-  if (!yearSelect || yearSelect.options.length > 1) return;
-
-  const thisYear = new Date().getFullYear();
-  const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2, thisYear - 3];
-
-  yearSelect.innerHTML = years.map(y => `<option value="${y}" ${String(y) === String(currentReportYear) ? 'selected' : ''}>${y}</option>`).join('');
+function escapeReportHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-// -------------------------------------------------------------------
-// 2. Mode & Year Switchers
-// -------------------------------------------------------------------
-window.switchReportMode = function(mode) {
-  currentReportMode = mode;
+function toEngDigitsReport(str) {
+  if (typeof window.toEnglishDigits === 'function') return window.toEnglishDigits(str);
+  if (str === null || str === undefined) return '';
+  const mm = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
+  return String(str).replace(/[၀-၉]/g, ch => mm.indexOf(ch));
+}
 
+function notifyReport(msg, type = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type);
+  } else if (type === 'error' || type === 'warning') {
+    alert(msg);
+  }
+}
+
+function syncReportModeButtons() {
   const btnAnnual = document.getElementById("btn-report-annual");
   const btnSummary = document.getElementById("btn-report-summary");
 
-  if (mode === 'Annual') {
+  if (currentReportMode === 'Annual') {
     if (btnAnnual) {
       btnAnnual.style.backgroundColor = "#1e293b";
       btnAnnual.style.color = "#fbbf24";
@@ -111,16 +64,114 @@ window.switchReportMode = function(mode) {
       btnAnnual.style.border = "none";
     }
   }
+}
 
+function populateReportYears() {
+  const yearSelect = document.getElementById("report-year-select");
+  if (!yearSelect || yearSelect.dataset.populated === '1') return;
+
+  const thisYear = new Date().getFullYear();
+  const minYear = 2023;
+  const maxYear = Math.max(thisYear + 1, 2026);
+  const years = [];
+  for (let y = maxYear; y >= minYear; y--) {
+    years.push(y);
+  }
+
+  yearSelect.innerHTML = years
+    .map(y => `<option value="${y}" ${String(y) === String(currentReportYear) ? 'selected' : ''}>${y}</option>`)
+    .join('');
+  yearSelect.value = String(currentReportYear);
+  yearSelect.dataset.populated = '1';
+}
+
+// -------------------------------------------------------------------
+// 1. Core View Renderer
+// -------------------------------------------------------------------
+window.renderReportView = async function (isSilent = false) {
+  const fetchToken = ++activeReportFetchToken;
+  const container = document.getElementById("view-container");
+
+  if (container && !document.getElementById("report-matrix-table")) {
+    try {
+      const fetchFn = window.fetchTemplate || (async (p) => { const r = await fetch(p); return await r.text(); });
+      container.innerHTML = await fetchFn("view/report-system.html");
+    } catch (e) {
+      console.warn("Could not fetch view/report-system.html:", e);
+    }
+  }
+
+  populateReportYears();
+  syncReportModeButtons();
+
+  const yearSelect = document.getElementById("report-year-select");
+  if (yearSelect && yearSelect.value) {
+    currentReportYear = yearSelect.value;
+  }
+
+  const cacheKey = `${REPORT_CACHE_PREFIX}${currentReportBook}_${currentReportYear}`;
+
+  if (!isSilent) {
+    rawReportData = null;
+    lastRenderedReportHash = '';
+    try {
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr);
+        if (cached && cached.incomeRows) {
+          rawReportData = cached;
+          applyReportFilters();
+        }
+      }
+    } catch (_) {}
+  }
+
+  const shouldShowOverlay = !isSilent && !rawReportData;
+  if (shouldShowOverlay && typeof window.showLoading === 'function') {
+    window.showLoading(true);
+  }
+
+  try {
+    const res = await window.fetchReportDataAPI(currentReportYear, currentReportBook);
+    if (fetchToken !== activeReportFetchToken) return;
+
+    if (res && res.success && res.data) {
+      rawReportData = res.data;
+      try { localStorage.setItem(cacheKey, JSON.stringify(res.data)); } catch (_) {}
+      applyReportFilters();
+    } else if (!isSilent && !rawReportData) {
+      applyReportFilters();
+    }
+  } catch (err) {
+    if (fetchToken !== activeReportFetchToken) return;
+    if (!isSilent) console.error("Report Fetch Error from D1:", err);
+  } finally {
+    if (shouldShowOverlay && typeof window.showLoading === 'function') {
+      window.showLoading(false);
+    }
+  }
+};
+
+window.loadReportView = window.renderReportView;
+
+// -------------------------------------------------------------------
+// 2. Mode & Year Switchers
+// -------------------------------------------------------------------
+window.switchReportMode = function (mode) {
+  currentReportMode = mode;
+  syncReportModeButtons();
+  lastRenderedReportHash = '';
   applyReportFilters();
 };
 
-window.onReportYearChange = function(year) {
-  currentReportYear = year;
+window.onReportYearChange = function (year) {
+  currentReportYear = String(year || new Date().getFullYear());
+  lastRenderedReportHash = '';
   window.renderReportView(false);
 };
 
-window.onReportSearchInput = function() {
+window.onReportSearchInput = function () {
+  lastRenderedReportHash = '';
   applyReportFilters();
 };
 
@@ -129,10 +180,15 @@ window.onReportSearchInput = function() {
 // -------------------------------------------------------------------
 function applyReportFilters() {
   const searchInput = document.getElementById("report-search-input");
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const rawQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const query = toEngDigitsReport(rawQuery);
+
+  const renderSig = `${currentReportMode}|${currentReportYear}|${rawQuery}|${JSON.stringify(rawReportData || {})}`;
+  if (renderSig === lastRenderedReportHash) return;
+  lastRenderedReportHash = renderSig;
 
   renderReportTableHeader();
-  renderReportTableBody(query);
+  renderReportTableBody(rawQuery, query);
 }
 
 function renderReportTableHeader() {
@@ -142,7 +198,6 @@ function renderReportTableHeader() {
   const shortYear = String(currentReportYear).slice(-2);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  // 🌟 D1 စံနှုန်းနှင့် ကိုက်ညီသော မြန်မာ/အင်္ဂလိပ် ခေါင်းစဉ်များ
   let headerHtml = `
     <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 uppercase font-extrabold text-xs">
       <th class="w-20 py-3.5 px-3">အမျိုးအစား</th>
@@ -158,7 +213,7 @@ function renderReportTableHeader() {
   thead.innerHTML = headerHtml;
 }
 
-function renderReportTableBody(query) {
+function renderReportTableBody(rawQuery, engQuery) {
   const tbody = document.getElementById("report-table-body");
   if (!tbody) return;
 
@@ -167,126 +222,126 @@ function renderReportTableBody(query) {
     return;
   }
 
-  const { incomeRows, incomeTotals, grandIncomeTotal, expenseRows, expenseTotals, grandExpenseTotal, balanceTotals, grandNetBalance } = rawReportData;
-  const fmt = (v) => v ? Number(v).toLocaleString() : '';
+  const {
+    incomeRows, incomeTotals, grandIncomeTotal,
+    expenseRows, expenseTotals, grandExpenseTotal,
+    balanceTotals, grandNetBalance
+  } = rawReportData;
+
+  const fmt = (v) => (v !== 0 && v !== null && v !== undefined) ? Number(v).toLocaleString() : '';
+  const fmtBal = (v) => {
+    const n = Number(v || 0);
+    if (n === 0) return `<span class="text-slate-500">-</span>`;
+    return n < 0
+      ? `<span class="text-rose-400">${n.toLocaleString()}</span>`
+      : `<span class="text-amber-300">${n.toLocaleString()}</span>`;
+  };
+
+  const rowMatches = (r) => {
+    if (!rawQuery) return true;
+    return [r.type, r.category, r.subcategory].some(v => {
+      const s = (v || '').toLowerCase();
+      return s.includes(rawQuery) || s.includes(engQuery);
+    });
+  };
 
   let html = '';
 
-  // A. ဝင်ငွေ ကဏ္ဍ (INCOME SECTION)
-  let filteredIncome = (incomeRows || []).filter(r => {
-    if (!query) return true;
-    return [r.type, r.category, r.subcategory].some(v => (v || '').toLowerCase().includes(query));
-  });
+  // A. ဝင်ငွေ ကဏ္ဍ
+  const filteredIncome = (incomeRows || []).filter(rowMatches);
+  filteredIncome.forEach(r => {
+    html += `
+      <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
+        <td class="py-2.5 px-3 font-bold text-emerald-400 bg-emerald-500/5 border-r border-emerald-500/10">${escapeReportHtml(r.type || 'ဝင်ငွေ')}</td>
+        <td class="py-2.5 px-3 font-bold text-amber-200">${escapeReportHtml(r.category || '-')}</td>
+        <td class="py-2.5 px-3 font-semibold text-slate-200">${escapeReportHtml(r.subcategory || '-')}</td>`;
 
-  if (filteredIncome.length > 0) {
-    filteredIncome.forEach(r => {
-      html += `
-        <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
-          <td class="py-2.5 px-3 font-bold text-emerald-400 bg-emerald-500/5 border-r border-emerald-500/10">${r.type || 'ဝင်ငွေ'}</td>
-          <td class="py-2.5 px-3 font-bold text-amber-200">${r.category || '-'}</td>
-          <td class="py-2.5 px-3 font-semibold text-slate-200">${r.subcategory || '-'}</td>`;
-
-      (r.months || []).forEach(mVal => {
-        html += `<td class="text-right py-2.5 px-2 font-mono text-emerald-300">${fmt(mVal)}</td>`;
-      });
-
-      html += `<td class="text-right py-2.5 px-3 font-mono font-black text-emerald-400 bg-emerald-500/10">${fmt(r.total)}</td></tr>`;
+    (r.months || []).forEach(mVal => {
+      html += `<td class="text-right py-2.5 px-2 font-mono text-emerald-300">${fmt(mVal)}</td>`;
     });
-  }
+
+    html += `<td class="text-right py-2.5 px-3 font-mono font-black text-emerald-400 bg-emerald-500/10">${fmt(r.total)}</td></tr>`;
+  });
 
   // ဝင်ငွေပေါင်း စာကြောင်း
   html += `
     <tr class="bg-emerald-950/40 border-t-2 border-b-2 border-emerald-500/40 font-extrabold text-emerald-300">
       <td colspan="3" class="py-3 px-4 text-emerald-300 font-black text-xs uppercase tracking-wider">ဝင်ငွေပေါင်း</td>`;
-
   (incomeTotals || []).forEach(amt => {
     html += `<td class="text-right py-3 px-2 font-mono font-black text-emerald-300">${fmt(amt)}</td>`;
   });
-
   html += `<td class="text-right py-3 px-3 font-mono font-black text-emerald-300 bg-emerald-500/20">${fmt(grandIncomeTotal)}</td></tr>`;
 
-  // B. ထွက်ငွေ ကဏ္ဍ (EXPENSE SECTION)
-  let filteredExpense = (expenseRows || []).filter(r => {
-    if (!query) return true;
-    return [r.type, r.category, r.subcategory].some(v => (v || '').toLowerCase().includes(query));
-  });
+  // B. ထွက်ငွေ ကဏ္ဍ
+  const filteredExpense = (expenseRows || []).filter(rowMatches);
+  filteredExpense.forEach(r => {
+    html += `
+      <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
+        <td class="py-2.5 px-3 font-bold text-rose-400 bg-rose-500/5 border-r border-rose-500/10">${escapeReportHtml(r.type || 'ထွက်ငွေ')}</td>
+        <td class="py-2.5 px-3 font-bold text-amber-200">${escapeReportHtml(r.category || '-')}</td>
+        <td class="py-2.5 px-3 font-semibold text-slate-200">${escapeReportHtml(r.subcategory || '-')}</td>`;
 
-  if (filteredExpense.length > 0) {
-    filteredExpense.forEach(r => {
-      html += `
-        <tr class="hover:bg-amber-500/5 transition border-b border-amber-900/10 text-xs">
-          <td class="py-2.5 px-3 font-bold text-rose-400 bg-rose-500/5 border-r border-rose-500/10">${r.type || 'ထွက်ငွေ'}</td>
-          <td class="py-2.5 px-3 font-bold text-amber-200">${r.category || '-'}</td>
-          <td class="py-2.5 px-3 font-semibold text-slate-200">${r.subcategory || '-'}</td>`;
-
-      (r.months || []).forEach(mVal => {
-        html += `<td class="text-right py-2.5 px-2 font-mono text-rose-300">${fmt(mVal)}</td>`;
-      });
-
-      html += `<td class="text-right py-2.5 px-3 font-mono font-black text-rose-400 bg-rose-500/10">${fmt(r.total)}</td></tr>`;
+    (r.months || []).forEach(mVal => {
+      html += `<td class="text-right py-2.5 px-2 font-mono text-rose-300">${fmt(mVal)}</td>`;
     });
-  }
+
+    html += `<td class="text-right py-2.5 px-3 font-mono font-black text-rose-400 bg-rose-500/10">${fmt(r.total)}</td></tr>`;
+  });
 
   // ထွက်ငွေပေါင်း စာကြောင်း
   html += `
     <tr class="bg-rose-950/40 border-t-2 border-b-2 border-rose-500/40 font-extrabold text-rose-300">
       <td colspan="3" class="py-3 px-4 text-rose-300 font-black text-xs uppercase tracking-wider">ထွက်ငွေပေါင်း</td>`;
-
   (expenseTotals || []).forEach(amt => {
     html += `<td class="text-right py-3 px-2 font-mono font-black text-rose-300">${fmt(amt)}</td>`;
   });
-
   html += `<td class="text-right py-3 px-3 font-mono font-black text-rose-300 bg-rose-500/20">${fmt(grandExpenseTotal)}</td></tr>`;
 
-  // C. လက်ကျန် စာကြောင်း (NET BALANCE ROW)
+  // C. လက်ကျန် စာကြောင်း
   html += `
     <tr class="bg-[#080d1a] border-t-2 border-b-2 border-amber-500/50 font-black text-amber-300 text-xs">
       <td colspan="3" class="py-3.5 px-4 text-amber-300 font-black uppercase tracking-wider">လက်ကျန်ငွေ</td>`;
-
   (balanceTotals || []).forEach(amt => {
-    html += `<td class="text-right py-3.5 px-2 font-mono font-black text-amber-300">${fmt(amt)}</td>`;
+    html += `<td class="text-right py-3.5 px-2 font-mono font-black">${fmtBal(amt)}</td>`;
   });
-
-  html += `<td class="text-right py-3.5 px-3 font-mono font-black text-amber-300 bg-amber-500/25">${fmt(grandNetBalance)}</td></tr>`;
+  html += `<td class="text-right py-3.5 px-3 font-mono font-black bg-amber-500/25">${fmtBal(grandNetBalance)}</td></tr>`;
 
   tbody.innerHTML = html;
 }
 
 // -------------------------------------------------------------------
-// 4. Export Matrix Data to CSV (D1 Aligned)
+// 4. Export Matrix Data to CSV
 // -------------------------------------------------------------------
-window.exportReportCSV = function() {
+window.exportReportCSV = function () {
   if (!rawReportData) {
-    alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+    notifyReport("Export လုပ်ရန် ဒေတာ မရှိပါ။", "warning");
     return;
   }
 
-  const { incomeRows, incomeTotals, grandIncomeTotal, expenseRows, expenseTotals, grandExpenseTotal, balanceTotals, grandNetBalance } = rawReportData;
+  const {
+    incomeRows, incomeTotals, grandIncomeTotal,
+    expenseRows, expenseTotals, grandExpenseTotal,
+    balanceTotals, grandNetBalance
+  } = rawReportData;
   const shortYear = String(currentReportYear).slice(-2);
   const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
   let csv = "\uFEFF";
-
   const monthHeaders = months.map(m => (currentReportMode === 'Annual') ? `${m}-${shortYear}` : m);
   csv += ["အမျိုးအစား", "ခေါင်းစဉ်", "ခေါင်းစဉ်ခွဲ", ...monthHeaders, "စုစုပေါင်း"].map(v => `"${v}"`).join(",") + "\n";
 
-  const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
+  const esc = (v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`;
 
-  // ဝင်ငွေ
   (incomeRows || []).forEach(r => {
-    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
-    csv += rowVals.join(",") + "\n";
+    csv += [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
   });
   csv += [esc("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
 
-  // ထွက်ငွေ
   (expenseRows || []).forEach(r => {
-    const rowVals = [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0];
-    csv += rowVals.join(",") + "\n";
+    csv += [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
   });
   csv += [esc("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
 
-  // လက်ကျန်
   csv += [esc("လက်ကျန်ငွေ"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
