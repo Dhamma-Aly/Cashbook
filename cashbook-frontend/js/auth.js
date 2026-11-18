@@ -1,12 +1,12 @@
 // ===================================================================
-// js/auth.js - Sāsana ERP Persistent Auth Controller (Long-Lived Session)
-// Features: Persistent Login (Never auto-logout until manual sign out)
+// js/auth.js - Sāsana ERP Persistent Auth & Role Controller (v4.0)
+// Features: Persistent Login (1-Year Session), Role Permission Matrix,
+// Soft Re-Authentication & Pending-Queue Safe Logout
 // ===================================================================
 
 (function () {
   "use strict";
 
-  // 🌟 သက်တမ်းကို ၁ နှစ် (ရက်ပေါင်း ၃၆၅ ရက်) သတ်မှတ်ခြင်း
   const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
   const ROLE_BURMESE_MAP = {
@@ -18,10 +18,9 @@
   };
 
   const getAppVersion = () => {
-    return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.1_D1_ENTERPRISE";
+    return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.2_D1_ENTERPRISE";
   };
 
-  // 🌟 Version ပြောင်းလဲသော်လည်း Login ပျက်မသွားစေရန် Token မဖျက်ဘဲ Version နံပါတ်သာ Update လုပ်ခြင်း
   const storedVersion = localStorage.getItem("sasana_app_version");
   const targetVersion = getAppVersion();
   if (storedVersion !== targetVersion) {
@@ -47,8 +46,18 @@
     return ROLE_BURMESE_MAP[role] || role;
   };
 
+  // 🌟 Role Permission Matrix (Matched 100% with worker.js)
   window.canUserEdit = function () {
-    return window.getCurrentUserRole() !== "Viewer";
+    return window.getCurrentUserRole().toLowerCase() !== "viewer";
+  };
+
+  window.canUserDelete = function () {
+    const role = window.getCurrentUserRole().toLowerCase();
+    return role === "admin" || role === "finance" || role === "account";
+  };
+
+  window.isAdminUser = function () {
+    return window.getCurrentUserRole().toLowerCase() === "admin";
   };
 
   window.showWorkspace = function () {
@@ -65,7 +74,7 @@
       const yyyy = today.getFullYear();
       const mm = String(today.getMonth() + 1).padStart(2, '0');
       const dd = String(today.getDate()).padStart(2, '0');
-      const username = window.getCurrentUser() || "Admin";
+      const username = window.getCurrentUser() || "User";
       const displayName = window.getCurrentUserDisplayName();
       liveUserEl.textContent = `${yyyy}-${mm}-${dd} | ${username} (${displayName})`;
     }
@@ -80,12 +89,9 @@
     if (workspace) workspace.classList.add("hidden");
   };
 
-  // 🌟 Persistent Check: Token ရှိနေသရွေ့ အမြဲတမ်း Workspace ကို တန်းပွင့်စေမည်
   window.checkExistingSession = function () {
     const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
     const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
-
-    // Token ရှိပြီး သက်တမ်း ၁ နှစ်အတွင်း ရှိနေပါက တန်းပွင့်မည်
     const isValid = Boolean(token && (!expiresAt || Date.now() < expiresAt));
 
     if (isValid) {
@@ -134,7 +140,6 @@
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
       if (res.ok && json.success && json.token) {
-        // 🌟 သက်တမ်းကို ၁ နှစ် (ONE_YEAR_MS) အဖြစ် သတ်မှတ်ခြင်း
         const expiresInMs = json.expiresInMs || ONE_YEAR_MS;
         const expiresAt = Date.now() + expiresInMs;
         const userObj = json.user || { username, role: username, name: username };
@@ -150,26 +155,26 @@
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (passwordInput) passwordInput.value = "";
-        window.showWorkspace();
 
-        if (typeof window.bootstrapAppData === "function") window.bootstrapAppData();
-        if (typeof window.switchTab === "function") window.switchTab("Home");
-        else if (typeof window.initApp === "function") window.initApp();
-
-        if (typeof window.startLiveSync === "function") window.startLiveSync();
-
+        if (typeof window.initApp === "function") {
+          window.initApp();
+        } else {
+          window.showWorkspace();
+          if (typeof window.bootstrapAppData === "function") window.bootstrapAppData();
+          if (typeof window.switchTab === "function") window.switchTab("Home");
+          if (typeof window.startLiveSync === "function") window.startLiveSync();
+        }
       } else {
         if (errDiv) {
           errDiv.textContent = json.error || json.message || "အသုံးပြုသူအမည် သို့မဟုတ် လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
           errDiv.classList.remove("hidden");
         }
       }
-
     } catch (err) {
       console.error("[Login Exception]", err);
       if (errDiv) {
-        errDiv.textContent = !navigator.onLine 
-          ? "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။" 
+        errDiv.textContent = !navigator.onLine
+          ? "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။"
           : "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
         errDiv.classList.remove("hidden");
       }
@@ -181,8 +186,7 @@
     }
   };
 
-  // 🌟 Soft Re-Authentication Logic
-  window.showReAuthModal = function() {
+  window.showReAuthModal = function () {
     const modal = document.getElementById("reauth-modal");
     if (modal) {
       modal.classList.remove("hidden");
@@ -200,9 +204,9 @@
     }
   };
 
-  window.handleReAuthSubmit = async function(event) {
+  window.handleReAuthSubmit = async function (event) {
     if (event && event.preventDefault) event.preventDefault();
-    
+
     const passwordInput = document.getElementById("reauth-password");
     const errDiv = document.getElementById("reauth-error");
     const submitBtn = event.target ? event.target.querySelector("button[type='submit']") : null;
@@ -211,6 +215,10 @@
     const username = window.getCurrentUser();
     const password = passwordInput ? passwordInput.value.trim() : "";
 
+    if (!username) {
+      window.handleLogoutSilent();
+      return;
+    }
     if (!password) return;
 
     if (errDiv) errDiv.classList.add("hidden");
@@ -239,12 +247,15 @@
         localStorage.setItem("yogi_token_expires_at", String(expiresAt));
 
         if (passwordInput) passwordInput.value = "";
-        document.getElementById("reauth-modal").classList.add("hidden");
+        const modal = document.getElementById("reauth-modal");
+        if (modal) modal.classList.add("hidden");
 
         if (typeof window.triggerBackgroundSync === "function") {
-          window.triggerBackgroundSync();
+          await window.triggerBackgroundSync();
         }
-
+        if (typeof window.refreshCurrentTabSilent === "function") {
+          window.refreshCurrentTabSilent();
+        }
       } else {
         if (errDiv) {
           errDiv.textContent = json.error || "လျှို့ဝှက်နံပါတ် မှားယွင်းနေပါသည်။";
@@ -264,14 +275,28 @@
     }
   };
 
-  window.cancelReAuth = function() {
+  window.cancelReAuth = function () {
+    const modal = document.getElementById("reauth-modal");
+    if (modal) modal.classList.add("hidden");
     window.handleLogoutSilent();
   };
 
-  // 🌟 Logout ခလုတ်ကို ကိုယ်တိုင် နှိပ်မှသာ စနစ်မှ ထွက်ခွာခြင်း
-  window.handleLogout = function () {
-    if (confirm("စနစ်မှ ထွက်ရန် သေချာပါသလား။")) {
+  window.handleLogout = async function () {
+    let confirmMsg = "စနစ်မှ ထွက်ရန် သေချာပါသလား။";
+    if (typeof window.getPendingSyncCount === "function") {
+      try {
+        const pending = await window.getPendingSyncCount();
+        if (pending > 0) {
+          confirmMsg = `Offline မှ Server သို့ မပို့ရသေးသော စာရင်း ${pending} ခု ကျန်ရှိနေပါသေးသည်။ ထွက်ရန် သေချာပါသလား။`;
+        }
+      } catch (_) {}
+    }
+
+    if (confirm(confirmMsg)) {
       if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
+      if (typeof window.clearOfflineCache === "function") {
+        await window.clearOfflineCache();
+      }
       const ver = localStorage.getItem("sasana_app_version");
       localStorage.clear();
       if (ver) localStorage.setItem("sasana_app_version", ver);
