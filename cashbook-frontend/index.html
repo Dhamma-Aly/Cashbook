@@ -8,7 +8,7 @@
 
   <!-- PWA & Mobile Web App Meta Tags -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#020617">
+  <meta name="theme-color" content="#0c1118">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -33,7 +33,7 @@
     input:-webkit-autofill:hover, 
     input:-webkit-autofill:focus, 
     input:-webkit-autofill:active {
-      -webkit-box-shadow: 0 0 0 1000px #050811 inset !important;
+      -webkit-box-shadow: 0 0 0 1000px #0a0f17 inset !important;
       -webkit-text-fill-color: #f8fafc !important;
       caret-color: #f8fafc !important;
       transition: background-color 5000s ease-in-out 0s;
@@ -64,19 +64,37 @@
       max-height: 28px !important;
       object-fit: contain !important;
       display: block !important;
-      filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.4)) !important;
+      filter: drop-shadow(0 2px 6px rgba(245, 158, 11, 0.35)) !important;
+    }
+
+    /* 🌟 Clean Header Utility Bar Responsive Rules */
+    .header-clock-wrap {
+      display: none;
+      align-items: center;
+      gap: 12px;
+    }
+    @media (min-width: 640px) {
+      .header-clock-wrap {
+        display: inline-flex;
+      }
+    }
+    .header-divider {
+      width: 1px;
+      height: 14px;
+      background-color: rgba(148, 163, 184, 0.22);
+      flex-shrink: 0;
     }
   </style>
 </head>
-<body class="bg-[#020617] font-myanmar flex h-screen overflow-hidden text-slate-100 select-none">
+<body class="bg-[#0c1118] font-myanmar flex h-screen overflow-hidden text-slate-100 select-none">
 
   <!-- 🌟 LOGIN OVERLAY -->
-  <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="background-color: rgba(2, 6, 23, 0.96) !important; backdrop-filter: blur(12px) !important;">
-    <div style="width: 100% !important; max-width: 420px !important; background-color: #090d16 !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 24px !important; padding: 32px 28px !important; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.95) !important; position: relative !important; overflow: hidden !important; margin: auto !important;">
+  <div id="login-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4" style="background-color: rgba(12, 17, 24, 0.96) !important; backdrop-filter: blur(12px) !important;">
+    <div style="width: 100% !important; max-width: 420px !important; background-color: #111722 !important; border: 1px solid rgba(148, 163, 184, 0.2) !important; border-radius: 24px !important; padding: 32px 28px !important; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85) !important; position: relative !important; overflow: hidden !important; margin: auto !important;">
       
       <div style="text-align: center !important; display: flex !important; flex-direction: column !important; align-items: center !important;">
-        <div style="width: 52px !important; height: 52px !important; border-radius: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin-bottom: 12px !important; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.25) !important;">
-          <img src="favicon.svg" alt="Sāsana ERP Logo" style="width: 48px !important; height: 48px !important; object-fit: contain !important; filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));">
+        <div style="width: 52px !important; height: 52px !important; border-radius: 16px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin-bottom: 12px !important; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.2) !important;">
+          <img src="favicon.svg" alt="Sāsana ERP Logo" style="width: 48px !important; height: 48px !important; object-fit: contain !important; filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.35));">
         </div>
         <h2 style="font-size: 19px !important; font-weight: 800 !important; color: #fbbf24 !important; margin: 0 !important; letter-spacing: -0.2px !important; line-height: 1.3 !important;">
           ဓမ္မအလင်းရောင်တောရရိပ်သာ
@@ -86,7 +104,7 @@
         </p>
       </div>
 
-      <div style="width: 100% !important; height: 1px !important; background-color: rgba(51, 65, 85, 0.6) !important; margin: 20px 0 !important;"></div>
+      <div style="width: 100% !important; height: 1px !important; background-color: rgba(148, 163, 184, 0.14) !important; margin: 20px 0 !important;"></div>
 
       <form id="login-form" onsubmit="handleLoginSubmit(event)" style="display: flex !important; flex-direction: column !important; gap: 16px !important;">
         <div style="display: flex !important; flex-direction: column !important; gap: 6px !important; text-align: left !important;">
@@ -94,7 +112,7 @@
             အသုံးပြုသူ အမည် (USERNAME / ROLE)
           </label>
           <div style="position: relative !important; width: 100% !important;">
-            <select id="login-username" required style="width: 100% !important; height: 44px !important; padding: 0 36px 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; font-weight: 600 !important; outline: none !important; appearance: none !important; -webkit-appearance: none !important; cursor: pointer !important; box-sizing: border-box !important;">
+            <select id="login-username" required style="width: 100% !important; height: 44px !important; padding: 0 36px 0 14px !important; background-color: #0a0f17 !important; border: 1px solid #2b374b !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; font-weight: 600 !important; outline: none !important; appearance: none !important; -webkit-appearance: none !important; cursor: pointer !important; box-sizing: border-box !important;">
               <option value="" disabled selected>-- Select Username / Role --</option>
               <option value="Admin">Admin (စီမံအုပ်ချုပ်သူ)</option>
               <option value="Finance">Finance (ဘဏ္ဍာရေး)</option>
@@ -112,25 +130,25 @@
           <label style="font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: #cbd5e1 !important; margin: 0 !important;">
             လျှို့ဝှက်နံပါတ် (PASSWORD)
           </label>
-          <input type="password" id="login-password" required placeholder="Type password..." style="width: 100% !important; height: 44px !important; padding: 0 14px !important; background-color: #050811 !important; border: 1px solid #334155 !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;">
+          <input type="password" id="login-password" required placeholder="Type password..." style="width: 100% !important; height: 44px !important; padding: 0 14px !important; background-color: #0a0f17 !important; border: 1px solid #2b374b !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;">
         </div>
 
-        <div id="login-error" class="hidden" style="color: #fb7185 !important; font-size: 11px !important; font-weight: 600 !important; background-color: rgba(136, 19, 55, 0.4) !important; border: 1px solid rgba(244, 63, 94, 0.4) !important; padding: 10px !important; border-radius: 10px !important; text-align: center !important;"></div>
+        <div id="login-error" class="hidden" style="color: #fda4af !important; font-size: 11px !important; font-weight: 600 !important; background-color: rgba(136, 19, 55, 0.35) !important; border: 1px solid rgba(244, 63, 94, 0.35) !important; padding: 10px !important; border-radius: 10px !important; text-align: center !important;"></div>
 
-        <button type="submit" style="width: 100% !important; height: 44px !important; margin-top: 6px !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #020617 !important; font-size: 13px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 6px 20px rgba(217, 119, 6, 0.35) !important; outline: none !important;">
+        <button type="submit" style="width: 100% !important; height: 44px !important; margin-top: 6px !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #0c1118 !important; font-size: 13px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 6px 20px rgba(217, 119, 6, 0.25) !important; outline: none !important;">
           <span>စနစ်သို့ ဝင်ရောက်မည် (Enter System)</span>
           <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 13px !important;"></i>
         </button>
       </form>
 
-      <div style="width: 100% !important; height: 1px !important; background-color: rgba(51, 65, 85, 0.6) !important; margin: 20px 0 !important;"></div>
+      <div style="width: 100% !important; height: 1px !important; background-color: rgba(148, 163, 184, 0.14) !important; margin: 20px 0 !important;"></div>
 
       <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; font-size: 11px !important; color: #94a3b8 !important;">
         <div style="display: flex !important; align-items: center !important; gap: 8px !important;">
-          <span style="width: 8px !important; height: 8px !important; border-radius: 50% !important; background-color: #10b981 !important; box-shadow: 0 0 8px #10b981 !important;"></span>
-          <span style="font-weight: 700 !important; color: #e2e8f0 !important;">System Ready</span>
+          <span style="width: 8px !important; height: 8px !important; border-radius: 50% !important; background-color: #34d399 !important;"></span>
+          <span style="font-weight: 600 !important; color: #cbd5e1 !important;">System Ready</span>
         </div>
-        <span style="font-family: monospace !important; font-size: 11px !important; color: #94a3b8 !important;">v3.0 Sāsana ERP</span>
+        <span style="font-family: monospace !important; font-size: 11px !important; color: #64748b !important;">v4.2 Sāsana ERP</span>
       </div>
 
     </div>
@@ -143,10 +161,10 @@
     <div id="sidebar-overlay" onclick="closeMobileSidebar()" class="fixed inset-0 bg-slate-950/80 backdrop-blur-xs z-30 hidden md:hidden transition-opacity"></div>
 
     <!-- Responsive Sidebar Navigation -->
-    <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#080d1a] border-r border-amber-500/20 flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+    <aside id="main-sidebar" class="fixed md:static inset-y-0 left-0 z-40 w-64 bg-[#111722] border-r flex flex-col h-full shadow-2xl shrink-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out" style="border-color: rgba(148, 163, 184, 0.14);">
       
       <!-- Sidebar Header -->
-      <div class="h-[64px] px-4 border-b border-amber-500/20 flex items-center justify-between text-amber-100 bg-[#020617] shrink-0">
+      <div class="h-[64px] px-4 flex items-center justify-between text-slate-100 shrink-0" style="background-color:#111722;border-bottom:1px solid rgba(148, 163, 184, 0.14);">
         <div class="flex items-center gap-2.5 font-extrabold text-sm tracking-wide min-w-0" style="display: flex !important; align-items: center !important; gap: 10px !important;">
           <div class="sidebar-logo-box">
             <img src="favicon.svg" alt="Sāsana ERP Logo" class="sidebar-logo-img">
@@ -169,7 +187,7 @@
           <i class="fa-solid fa-gauge-high w-4 text-center text-amber-400 shrink-0"></i> <span class="truncate">Home Dashboard</span>
         </button>
 
-        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
+        <p class="text-[10px] font-bold px-3 uppercase tracking-wider mt-4 mb-1.5">Bank Group (ဘဏ်စာရင်းများ)</p>
         <button onclick="switchTab('1CB')" id="btn-1CB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အထွေထွေ ရန်ပုံငွေ (Bank)">
           <i class="fa-solid fa-building-columns text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေ ရန်ပုံငွေ (Bank)</span> 
         </button>
@@ -180,7 +198,7 @@
           <i class="fa-solid fa-user-lock text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">တစ်ဦးတည်းစာရင်း (Bank)</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
+        <p class="text-[10px] font-bold px-3 uppercase tracking-wider mt-4 mb-1.5">Ledger Group (ပင်မစာအုပ်များ)</p>
         <button onclick="switchTab('4GB')" id="btn-4GB" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ကျောင်းရန်ပုံငွေ စာအုပ်">
           <i class="fa-solid fa-vihara text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ကျောင်းရန်ပုံငွေ စာအုပ်</span> 
         </button>
@@ -203,12 +221,12 @@
           <i class="fa-solid fa-wallet text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အထွေထွေရန်ပုံငွေစာအုပ်</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
+        <p class="text-[10px] font-bold px-3 uppercase tracking-wider mt-4 mb-1.5">Inventory (ပစ္စည်းစီမံခန့်ခွဲမှု)</p>
         <button onclick="switchTab('11Inv')" id="btn-11Inv" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="ပစ္စည်းစာရင်း">
           <i class="fa-solid fa-boxes-stacked text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">ပစ္စည်းစာရင်း</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
+        <p class="text-[10px] font-bold px-3 uppercase tracking-wider mt-4 mb-1.5">ယောဂီများဆိုင်ရာ</p>
         <button onclick="switchTab('12Yogi')" id="btn-12Yogi" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အမြဲနေ ယောဂီစာရင်း">
           <i class="fa-solid fa-person-praying text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">အမြဲနေ ယောဂီ</span> 
         </button>
@@ -216,7 +234,7 @@
           <i class="fa-solid fa-people-roof text-amber-300 w-4 text-center shrink-0"></i> <span class="truncate">စခန်းဝင် ယောဂီ</span> 
         </button>
 
-        <p class="text-[10px] font-bold text-amber-400/60 px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
+        <p class="text-[10px] font-bold px-3 uppercase tracking-wider mt-4 mb-1.5">System</p>
         <button onclick="switchTab('14Rep')" id="btn-14Rep" class="nav-btn w-full text-left px-3.5 py-2.5 rounded-lg flex items-center gap-2.5 text-xs font-semibold cursor-pointer" title="အသုံးစရိတ် အစီရင်ခံစာ">
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အသုံးစရိတ် အစီရင်ခံစာ</span>
         </button>
@@ -225,43 +243,49 @@
 
     <!-- Main Content Work Area -->
     <div class="flex-1 flex flex-col overflow-hidden w-full">
-      <header class="bg-[#080d1a] border-b border-amber-500/20 h-[64px] px-3 sm:px-6 flex justify-between items-center z-10 shrink-0 gap-2 sm:gap-4">
+      <header class="h-[64px] px-3 sm:px-6 flex justify-between items-center z-10 shrink-0 gap-2 sm:gap-4" style="background-color:#111722;border-bottom:1px solid rgba(148,163,184,0.14);">
         
         <!-- Left Title & Menu Button -->
         <div class="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <button id="mobile-menu-btn" class="md:hidden text-amber-300 hover:text-white p-2 rounded-lg bg-[#0f172a] border border-amber-500/30 cursor-pointer shrink-0" title="Open Menu">
+          <button id="mobile-menu-btn" class="md:hidden text-slate-300 hover:text-white p-2 rounded-lg cursor-pointer shrink-0" style="background:#161e2c;border:1px solid rgba(148,163,184,0.2);" title="Open Menu">
             <i class="fa-solid fa-bars text-base"></i>
           </button>
           <h1 id="page-title" class="text-sm md:text-lg font-extrabold text-slate-100 tracking-wide truncate">Home Dashboard</h1>
         </div>
 
-        <!-- 🌟 နိုင်ငံတကာ စံနှုန်းမီ သပ်ရပ်ကျယ်ဝန်းသော Header Status Indicators -->
-        <div class="flex items-center gap-2 sm:gap-3 shrink-0">
+        <!-- 🌟 နိုင်ငံတကာ စံနှုန်းမီ Minimal Borderless Header Utility Bar -->
+        <div class="flex items-center shrink-0" style="gap: 12px;">
           
           <!-- ၁။ Offline Sync Error Badge (Failed ဖြစ်မှသာ ပေါ်မည်) -->
-          <div id="sync-error-badge" class="hidden h-9 px-3 rounded-xl text-xs font-bold text-rose-300 bg-rose-500/10 border border-rose-500/30 items-center gap-2 shadow-sm shrink-0 cursor-pointer" onclick="if(typeof window.retryFailedSync === 'function') window.retryFailedSync();" title="မအောင်မြင်သော စာရင်းများ ပြန်လည်ပေးပို့ရန် နှိပ်ပါ">
+          <div id="sync-error-badge" class="hidden h-8 px-2.5 rounded-lg text-xs font-bold text-rose-300 bg-rose-500/10 border border-rose-500/30 items-center gap-1.5 shrink-0 cursor-pointer" onclick="if(typeof window.retryFailedSync === 'function') window.retryFailedSync();" title="မအောင်မြင်သော စာရင်းများ ပြန်လည်ပေးပို့ရန် နှိပ်ပါ">
             <i class="fa-solid fa-cloud-arrow-up animate-pulse"></i>
             <span class="hidden sm:inline">Sync Failed: <span id="sync-failed-count">0</span></span>
             <span class="sm:hidden"><span id="sync-failed-count-mobile">0</span></span>
           </div>
 
-          <!-- ၂။ သပ်ရပ်သော Online/Offline Status Chip (🌟 Wifi Icon ဖြင့်) -->
-          <div id="network-status-badge" class="h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0">
-            <!-- Content will be injected by updateNetworkStatus() -->
+          <!-- ၂။ Borderless Wifi Icon (Icon သီးသန့်) -->
+          <div id="network-status-badge" style="display:flex;align-items:center;justify-content:center;padding:4px;" title="Network Status"></div>
+
+          <!-- ၃။ Date & Time (Borderless Calm Slate, Hidden on narrow mobile) -->
+          <div class="header-clock-wrap">
+            <div class="header-divider"></div>
+            <span id="live-clock-display" class="font-mono whitespace-nowrap" style="font-size:12px;color:#94a3b8;font-weight:500;">--</span>
           </div>
 
-          <!-- ၃။ ရာထူးနှင့် နာရီ ပေါင်းစပ်ထားသော Badge (🌟 Date | Time | User format) -->
-          <div id="user-badge" class="h-9 px-3 sm:px-3.5 rounded-xl text-xs font-mono font-medium text-slate-200 bg-[#0f172a] border border-amber-500/30 flex items-center gap-2 shadow-sm shrink-0">
-            <div class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center text-[10px]">
+          <div class="header-divider"></div>
+
+          <!-- ၄။ User Role Only (Borderless Clean Avatar + Admin) -->
+          <div id="user-badge" style="display:flex;align-items:center;gap:8px;padding:2px 4px;">
+            <div style="width:26px;height:26px;border-radius:9999px;background:rgba(245,158,11,0.14);color:#fbbf24;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;" id="user-avatar-initial">
               <i class="fa-solid fa-user-shield"></i>
             </div>
-            <span id="current-user-display" class="whitespace-nowrap">Loading...</span>
+            <span id="current-user-display" class="whitespace-nowrap" style="font-size:12.5px;font-weight:700;color:#e2e8f0;">User</span>
           </div>
 
         </div>
       </header>
 
-      <main id="main-content" class="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#020617] relative">
+      <main id="main-content" class="p-3 sm:p-6 overflow-y-auto flex-1 bg-[#0c1118] relative">
         <div id="view-container"></div>
       </main>
     </div>
@@ -270,24 +294,24 @@
   <!-- Loading Overlay -->
   <div id="loading-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[150] flex flex-col items-center justify-center hidden">
     <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-amber-500 mb-3"></div>
-    <p class="text-xs font-bold text-amber-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
+    <p class="text-xs font-bold text-slate-200 tracking-wide">အချက်အလက်များ လုပ်ဆောင်နေပါသည်...</p>
   </div>
 
-  <!-- 🌟 Soft Re-Authentication Modal (Session Expired ဖြစ်ပါက Data မပျက်စေရန်) -->
-  <div id="reauth-modal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 hidden" style="background-color: rgba(2, 6, 23, 0.95); backdrop-filter: blur(8px);">
-    <div style="width: 100%; max-width: 380px; background-color: #090d16; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.95);">
+  <!-- 🌟 Soft Re-Authentication Modal -->
+  <div id="reauth-modal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 hidden" style="background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);">
+    <div style="width: 100%; max-width: 380px; background-color: #111722; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
       <div style="text-align: center; margin-bottom: 20px;">
         <i class="fa-solid fa-lock text-amber-400 text-3xl mb-3"></i>
-        <h2 style="font-size: 16px; font-weight: 800; color: #fef08a; margin: 0;">Session သက်တမ်းကုန်သွားပါပြီ</h2>
+        <h2 style="font-size: 16px; font-weight: 800; color: #f8fafc; margin: 0;">Session သက်တမ်းကုန်သွားပါပြီ</h2>
         <p style="font-size: 11px; color: #94a3b8; margin-top: 6px;">လုံခြုံရေးအရ စနစ်သို့ ပြန်လည်ဝင်ရောက်ပေးပါ။ သင်ရေးသားဆဲ ဒေတာများ မပျက်သွားပါ။</p>
       </div>
       <form id="reauth-form" onsubmit="handleReAuthSubmit(event)" style="display: flex; flex-direction: column; gap: 14px;">
         <div style="text-align: center; font-size: 13px; color: #cbd5e1; font-weight: 700;" id="reauth-username-display">User</div>
-        <input type="password" id="reauth-password" required placeholder="လျှို့ဝှက်နံပါတ် (Password) အား ရိုက်ထည့်ပါ" style="width: 100%; height: 42px; padding: 0 14px; background-color: #050811; border: 1px solid #334155; border-radius: 10px; color: #f8fafc; font-size: 13px; outline: none;" class="focus:border-amber-400">
-        <div id="reauth-error" class="hidden" style="color: #fb7185; font-size: 11px; font-weight: 600; text-align: center;"></div>
+        <input type="password" id="reauth-password" required placeholder="လျှို့ဝှက်နံပါတ် (Password) အား ရိုက်ထည့်ပါ" style="width: 100%; height: 42px; padding: 0 14px; background-color: #0a0f17; border: 1px solid #2b374b; border-radius: 10px; color: #f8fafc; font-size: 13px; outline: none;" class="focus:border-amber-400">
+        <div id="reauth-error" class="hidden" style="color: #fda4af; font-size: 11px; font-weight: 600; text-align: center;"></div>
         <div style="display: flex; gap: 10px; margin-top: 8px;">
           <button type="button" onclick="cancelReAuth()" style="flex: 1; padding: 10px; border-radius: 10px; background-color: #1e293b; color: #cbd5e1; font-size: 12px; font-weight: 700; border: none; cursor: pointer;">Cancel / Logout</button>
-          <button type="submit" style="flex: 1; padding: 10px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #020617; font-size: 12px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.3);">ဆက်လက်ဝင်ရောက်မည်</button>
+          <button type="submit" style="flex: 1; padding: 10px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #0c1118; font-size: 12px; font-weight: 900; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(217, 119, 6, 0.25);">ဆက်လက်ဝင်ရောက်မည်</button>
         </div>
       </form>
     </div>
@@ -304,19 +328,18 @@
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
-  <!-- 🌟 Real-Time Live Clock & Network Status Scripts -->
+  <!-- 🌟 Real-Time Live Clock & Borderless Network Status Scripts -->
   <script>
-    // 🌟 Wifi Icon အစိမ်းလေး ပြပြီး Online, Wifi ကို မျဉ်းစောင်းဖြတ်ထားတဲ့ အနီရောင် (Slashed) Offline
     function updateNetworkStatus() {
       const badge = document.getElementById('network-status-badge');
       if (!badge) return;
 
       if (navigator.onLine) {
-        badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<i class="fa-solid fa-wifi animate-pulse"></i><span id="network-status-text" class="hidden sm:inline">Online</span>`;
+        badge.title = 'Online — အင်တာနက် ချိတ်ဆက်ထားပါသည်';
+        badge.innerHTML = `<i class="fa-solid fa-wifi" style="color:#34d399;font-size:14px;"></i>`;
       } else {
-        badge.className = "h-9 px-3 rounded-xl text-xs font-semibold flex items-center gap-2 bg-rose-500/10 text-rose-400 border border-rose-500/30 shadow-sm transition-all shrink-0";
-        badge.innerHTML = `<span class="fa-stack" style="width: 1em; height: 1em; line-height: 1em; font-size: 13px;"><i class="fa-solid fa-wifi fa-stack-1x text-rose-400"></i><i class="fa-solid fa-slash fa-stack-1x text-rose-500"></i></span><span id="network-status-text" class="hidden sm:inline">Offline</span>`;
+        badge.title = 'Offline — အင်တာနက် ပြတ်တောက်နေပါသည်';
+        badge.innerHTML = `<span class="fa-stack" style="width:1.1em;height:1em;line-height:1em;font-size:13px;"><i class="fa-solid fa-wifi fa-stack-1x" style="color:#fb7185;"></i><i class="fa-solid fa-slash fa-stack-1x" style="color:#f43f5e;"></i></span>`;
       }
     }
 
@@ -325,29 +348,28 @@
     window.addEventListener('load', updateNetworkStatus);
     updateNetworkStatus();
 
-    // 🌟 Combined Badge: 2026-10-06 | Tue: 5:38 Pm | Admin (စီမံအုပ်ချုပ်သူ)
     function updateLiveHeaderClock() {
+      const clockEl = document.getElementById("live-clock-display");
       const userEl = document.getElementById("current-user-display");
-      if (!userEl) return;
 
       const now = new Date();
       const yyyy = now.getFullYear();
       const mm = String(now.getMonth() + 1).padStart(2, '0');
       const dd = String(now.getDate()).padStart(2, '0');
-      
-      const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-      const dayName = days[now.getDay()];
 
       let hours = now.getHours();
       const minutes = String(now.getMinutes()).padStart(2, '0');
-      const ampm = hours >= 12 ? 'Pm' : 'Am';
+      const ampm = hours >= 12 ? 'PM' : 'AM';
       hours = hours % 12 || 12;
-      const timeStr = `${hours}:${minutes} ${ampm}`;
 
-      const username = localStorage.getItem('sasana_user_name') || 'Admin';
-      const displayName = localStorage.getItem('sasana_display_name') || 'စီမံအုပ်ချုပ်သူ';
+      if (clockEl) {
+        clockEl.textContent = `${yyyy}-${mm}-${dd} · ${hours}:${minutes} ${ampm}`;
+      }
 
-      userEl.innerHTML = `${yyyy}-${mm}-${dd} <span class="text-slate-500 mx-1.5">|</span> ${dayName}: ${timeStr} <span class="text-slate-500 mx-1.5">|</span> <span class="text-amber-400 font-bold">${username} (${displayName})</span>`;
+      if (userEl) {
+        const username = localStorage.getItem('sasana_user_name') || localStorage.getItem('yogi_user_name') || '';
+        userEl.textContent = username || 'Guest';
+      }
     }
 
     setInterval(updateLiveHeaderClock, 1000);
@@ -365,3 +387,4 @@
 
 </body>
 </html>
+<!-- === END OF index.html === -->
