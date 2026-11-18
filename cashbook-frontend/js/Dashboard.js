@@ -81,9 +81,6 @@ window.downloadFullSystemBackup = async function () {
   }
 };
 
-/**
- * 💡 Sub-Tab Switch Controller (ရန်ပုံငွေ <-> စာအုပ်စာရင်း <-> ယောဂီ <-> ဆက်သွယ်ရန်)
- */
 window.switchDashboardTab = function (tabName) {
   activeDashTab = tabName || 'fund';
 
@@ -143,9 +140,6 @@ window.switchDashboardTab = function (tabName) {
   }
 };
 
-/**
- * 📊 Main Dashboard View Render Function
- */
 window.renderDashboardView = async function (isSilent = false) {
   const fetchToken = ++activeDashFetchToken;
   const container = document.getElementById("view-container");
@@ -205,17 +199,14 @@ window.renderDashboardView = async function (isSilent = false) {
     const padethaSummary = data.padethaSummary || [];
     const yogiSummary = data.yogiSummary || {};
 
-    // 1. TOP KPIS
     const setKpi = (id, val, baseClass) => {
       const el = document.getElementById(id);
       if (!el) return;
       const num = Number(val || 0);
       el.textContent = `${num.toLocaleString()} MMK`;
-      if (num < 0) {
-        el.className = "text-base font-extrabold text-rose-400 mt-1 truncate font-mono";
-      } else {
-        el.className = baseClass;
-      }
+      el.className = (num < 0)
+        ? "text-base font-extrabold text-rose-400 mt-1 truncate font-mono"
+        : baseClass;
     };
     setKpi("kpi-home-fund", kpis.totalFund, "text-base font-extrabold text-amber-300 mt-1 truncate font-mono");
     setKpi("kpi-home-bank", kpis.totalBank, "text-base font-extrabold text-sky-400 mt-1 truncate font-mono");
@@ -224,7 +215,6 @@ window.renderDashboardView = async function (isSilent = false) {
     const countEl = document.getElementById("kpi-home-count");
     if (countEl) countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
 
-    // 2. FUND SUMMARY TABLE (စာအုပ် ၁၀ အုပ်)
     if (bankTableElem) {
       let fundHtml = `
       <div class="overflow-x-auto">
@@ -299,7 +289,6 @@ window.renderDashboardView = async function (isSilent = false) {
       bankTableElem.innerHTML = fundHtml;
     }
 
-    // 3. BOOK SUMMARY TABLE (ပဒေသာပင် ၄ အုပ်)
     if (padethaTableElem) {
       let padethaHtml = `
       <div class="overflow-x-auto">
@@ -356,7 +345,6 @@ window.renderDashboardView = async function (isSilent = false) {
       padethaTableElem.innerHTML = padethaHtml;
     }
 
-    // 4. YOGI SUMMARY MATRIX TABLE (Valid HTML <thead> / <tbody> Structure)
     if (yogiTableElem) {
       const residentData = yogiSummary.resident || {};
       const retreatData = yogiSummary.retreat || {};
@@ -440,4 +428,77 @@ window.renderDashboardView = async function (isSilent = false) {
           <td class="py-3 px-4 text-amber-300 font-black">ပေါင်း (စခန်းဝင်)</td>
           <td class="text-center font-mono text-sky-300 font-black py-3 px-4">${retMale.toLocaleString()}</td>
           <td class="text-center font-mono text-rose-300 font-black py-3 px-4">${retFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border
+          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${retTotal.toLocaleString()}</td>
+        </tr>`;
+
+      const grandMale = resMale + retMale;
+      const grandFemale = resFemale + retFemale;
+      const grandTotal = resTotal + retTotal;
+
+      yogiHtml += `
+        <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 font-black text-amber-300 shadow-2xl">
+          <td class="text-center py-4 px-3 font-mono text-amber-500/60">-</td>
+          <td class="py-4 px-4">
+            <span class="inline-flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
+              <i class="fa-solid fa-users text-amber-400"></i> စုစုပေါင်း ယောဂီ
+            </span>
+          </td>
+          <td class="text-center font-mono text-sky-400 font-black py-4 px-4 text-xs">${grandMale.toLocaleString()}</td>
+          <td class="text-center font-mono text-rose-400 font-black py-4 px-4 text-xs">${grandFemale.toLocaleString()}</td>
+          <td class="text-center font-mono text-amber-200 font-black py-4 px-4 bg-amber-500/20 border-l border-amber-500/30 text-sm shadow-inner">${grandTotal.toLocaleString()}</td>
+        </tr>
+      </tbody></table></div>`;
+
+      yogiTableElem.innerHTML = yogiHtml;
+    }
+  };
+
+  const hasContentOnScreen = Boolean(
+    document.getElementById("home-bank-table")?.querySelector('table')
+  );
+
+  if (!hasContentOnScreen) {
+    try {
+      const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
+      if (cachedStr) {
+        const cachedData = JSON.parse(cachedStr);
+        lastRenderedDashboardHash = JSON.stringify(cachedData.data || cachedData);
+        renderHomeData(cachedData);
+      }
+    } catch (_) {}
+  }
+
+  const shouldShowOverlay = !isSilent && !hasContentOnScreen && !localStorage.getItem(DASH_CACHE_KEY);
+  if (typeof window.showLoading === 'function' && shouldShowOverlay) {
+    window.showLoading(true);
+  }
+
+  try {
+    const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
+    if (typeof fetchFunc === 'function') {
+      const freshData = await fetchFunc();
+      if (fetchToken !== activeDashFetchToken) return;
+
+      if (freshData && freshData.success) {
+        const freshHash = JSON.stringify(freshData.data || freshData);
+        try { localStorage.setItem(DASH_CACHE_KEY, JSON.stringify(freshData)); } catch (_) {}
+
+        if (freshHash !== lastRenderedDashboardHash || !document.getElementById("home-bank-table")?.querySelector('table')) {
+          lastRenderedDashboardHash = freshHash;
+          renderHomeData(freshData);
+        }
+      }
+    }
+  } catch (error) {
+    if (fetchToken !== activeDashFetchToken) return;
+    console.warn("Silent background dashboard sync warning:", error);
+  } finally {
+    if (typeof window.showLoading === 'function' && shouldShowOverlay) {
+      window.showLoading(false);
+    }
+  }
+};
+
+window.loadDashboardView = window.renderDashboardView;
+window.renderHomeView = window.renderDashboardView;
+// === END OF Dashboard.js ===
