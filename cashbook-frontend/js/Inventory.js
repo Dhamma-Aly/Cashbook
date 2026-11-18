@@ -1,6 +1,6 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller (v4.1)
-// Features: Colored-Dot FinTech UI, Anti-Jitter DOM, Versioned Sync,
+// js/Inventory.js - Inventory Management Logic & Controller (v4.2)
+// Features: Calm Eye-Comfort FinTech UI, Anti-Jitter DOM, Versioned Sync,
 // Double-Submit Lock, Myanmar Digit Support, Role Guards & XSS Safe
 // ===================================================================
 
@@ -68,24 +68,14 @@ function formatInvMonthYear(dateStr) {
   return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-function getInventoryCategoryStyle(category) {
+function getInventoryCategoryDotColor(category) {
   const cat = String(category || '');
-  if (cat.includes('လျှပ်စစ်')) {
-    return { dot: '#38bdf8', glow: 'rgba(56,189,248,0.55)', text: '#bae6fd' };
-  }
-  if (cat.includes('မီးဖို')) {
-    return { dot: '#10b981', glow: 'rgba(16,185,129,0.55)', text: '#a7f3d0' };
-  }
-  if (cat.includes('ဆေး') || cat.includes('ကျန်းမာ')) {
-    return { dot: '#fb7185', glow: 'rgba(244,63,94,0.55)', text: '#fecdd3' };
-  }
-  if (cat.includes('အဝတ်') || cat.includes('အခင်း')) {
-    return { dot: '#c084fc', glow: 'rgba(192,132,252,0.55)', text: '#e9d5ff' };
-  }
-  if (cat.includes('ပရိဘောဂ')) {
-    return { dot: '#fbbf24', glow: 'rgba(251,191,36,0.55)', text: '#fde68a' };
-  }
-  return { dot: '#f59e0b', glow: 'rgba(245,158,11,0.5)', text: '#fef3c7' };
+  if (cat.includes('လျှပ်စစ်')) return '#38bdf8';
+  if (cat.includes('မီးဖို')) return '#34d399';
+  if (cat.includes('ဆေး') || cat.includes('ကျန်းမာ')) return '#fb7185';
+  if (cat.includes('အဝတ်') || cat.includes('အခင်း')) return '#a78bfa';
+  if (cat.includes('ပရိဘောဂ')) return '#fbbf24';
+  return '#94a3b8';
 }
 
 window.renderInventoryView = async function (isSilent = false) {
@@ -192,7 +182,7 @@ function renderInventoryTable() {
 
   let html = "";
   if (total === 0) {
-    html = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
+    html = `<tr><td colspan="11" class="text-center py-8 font-bold" style="color:#64748b;"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
   } else {
     pageRows.forEach((entry, idx) => {
       const uid = String(entry.unique_id || entry.uniqueId || entry.id || "");
@@ -203,10 +193,10 @@ function renderInventoryTable() {
       const monthYearFormatted = escapeInvHtml(entry.month_year || formatInvMonthYear(dateText));
 
       const catName = entry.category || "-";
-      const catStyle = getInventoryCategoryStyle(catName);
+      const catDot = getInventoryCategoryDotColor(catName);
       const categoryHtml = `
-        <span class="inline-flex items-center gap-2 text-[12.5px] font-bold whitespace-nowrap" style="color: ${catStyle.text};">
-          <span style="width: 8px; height: 8px; border-radius: 9999px; background-color: ${catStyle.dot}; box-shadow: 0 0 6px ${catStyle.glow}; flex-shrink: 0; display: inline-block;"></span>
+        <span class="inline-flex items-center gap-2 text-[13px] font-medium whitespace-nowrap" style="color: #e2e8f0;">
+          <span style="width: 7px; height: 7px; border-radius: 9999px; background-color: ${catDot}; flex-shrink: 0; display: inline-block;"></span>
           <span>${escapeInvHtml(catName)}</span>
         </span>
       `;
@@ -214,34 +204,34 @@ function renderInventoryTable() {
       const rawDesc = entry.description || entry.item_desc || entry.item_name || "";
       const escapedDesc = escapeInvHtml(rawDesc);
       const pendingBadge = entry.pending
-        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold">Pending</span>`
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);">Pending</span>`
         : '';
       const descHtml = rawDesc
-        ? `<div class="min-w-[240px] max-w-[420px] text-slate-100 text-xs leading-relaxed font-semibold whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${escapedDesc}${pendingBadge}</div>`
-        : '<span class="text-slate-600 font-mono">-</span>';
+        ? `<div class="min-w-[240px] max-w-[420px] text-[13px] leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" style="color:#e2e8f0;" title="${escapedDesc}">${escapedDesc}${pendingBadge}</div>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
 
       const rawRemark = entry.remark || entry.note || "";
       const escapedRemark = escapeInvHtml(rawRemark);
       const remarkHtml = rawRemark
-        ? `<div class="min-w-[160px] max-w-[280px] text-amber-200/80 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedRemark}">${escapedRemark}</div>`
-        : '<span class="text-slate-600 font-mono">-</span>';
+        ? `<div class="min-w-[160px] max-w-[280px] text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" style="color:#94a3b8;" title="${escapedRemark}">${escapedRemark}</div>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
 
       html += `
-        <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20 text-xs">
-          <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${escapeInvHtml(dateText)}</td>
-          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${escapeInvHtml(entry.location || "-")}</td>
+        <tr class="transition-colors text-xs">
+          <td class="text-center font-mono text-xs py-3" style="color:#64748b;">${srNo}</td>
+          <td class="font-mono text-xs whitespace-nowrap px-2" style="color:#94a3b8;">${escapeInvHtml(dateText)}</td>
+          <td class="font-medium whitespace-nowrap px-2" style="color:#cbd5e1;">${escapeInvHtml(entry.location || "-")}</td>
           <td class="whitespace-nowrap px-3">${categoryHtml}</td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
-          <td class="text-slate-300 font-semibold whitespace-nowrap px-2">${escapeInvHtml(entry.unit || "-")}</td>
-          <td class="text-right font-mono font-bold text-emerald-400 whitespace-nowrap px-3">${qty.toLocaleString()}</td>
+          <td class="whitespace-nowrap px-2" style="color:#94a3b8;">${escapeInvHtml(entry.unit || "-")}</td>
+          <td class="text-right font-mono font-semibold whitespace-nowrap px-3" style="color:${qty > 0 ? '#6ee7b7' : '#64748b'};">${qty.toLocaleString()}</td>
           <td class="py-2.5 px-2 align-middle text-left">${remarkHtml}</td>
-          <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${escapeInvHtml(entry.book_name || "Inventory")}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
-            <div class="flex items-center justify-center gap-2">
-              <button type="button" onclick="editInvEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button type="button" onclick="deleteInvEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
+          <td class="font-mono text-xs whitespace-nowrap px-2" style="color:#94a3b8;">${monthYearFormatted}</td>
+          <td class="text-xs whitespace-nowrap px-2" style="color:#64748b;">${escapeInvHtml(entry.book_name || "Inventory")}</td>
+          <td class="text-center right-0 sticky px-3 z-10">
+            <div class="flex items-center justify-center gap-1.5">
+              <button type="button" onclick="editInvEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button type="button" onclick="deleteInvEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
