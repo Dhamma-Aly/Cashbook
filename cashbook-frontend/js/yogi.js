@@ -1,17 +1,66 @@
 // ===================================================================
-// js/yogi.js - Yogi Management Controller (Permanent Yogi & Camp Yogi) 
-// 100% Aligned with D1 Schema: end_date Status Tracking, Smart NRC & 0s Cache
-// Features: Natural Typography, Clamped Tooltips & Polished Sticky Actions
+// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.0)
+// Features: Preserves end_date on Edit, Anti-Jitter, Race-Condition Guard,
+// Myanmar Digit Support, Role Guards, Double-Submit Lock & XSS Safe
 // ===================================================================
 
 const YOGI_CACHE_PREFIX = 'sasana_yogi_cache_';
 const yogiRowsPerPage = 15;
 
-let currentYogiTable = 'Permanent Yogi'; 
-let currentYogiStatus = 'Active';        
+let currentYogiTable = 'Permanent Yogi';
+let currentYogiStatus = 'Active';
 let allYogiEntries = [];
 let filteredYogiEntries = [];
 let yogiCurrentPage = 1;
+let isYogiSubmitting = false;
+let lastRenderedYogiHTML = '';
+let activeYogiFetchToken = 0;
+
+function escapeYogiHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toEngDigitsYogi(str) {
+  if (typeof window.toEnglishDigits === 'function') return window.toEnglishDigits(str);
+  if (str === null || str === undefined) return '';
+  const mm = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
+  return String(str).replace(/[၀-၉]/g, ch => mm.indexOf(ch));
+}
+
+function notifyYogi(msg, type = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type);
+  } else if (type === 'error' || type === 'warning') {
+    alert(msg);
+  }
+}
+
+function setYogiSelectSafe(selectEl, val) {
+  if (!selectEl) return;
+  const v = String(val ?? '').trim();
+  if (!v) return;
+  if (!Array.from(selectEl.options).some(o => o.value === v)) {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = v;
+}
+
+function getTodayYogiISO() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 function resolveYogiTable(nameOrKey) {
   const k = String(nameOrKey || '').trim();
@@ -40,45 +89,68 @@ function isYogiActive(entry) {
   return !entry.end_date || entry.end_date.trim() === '' || entry.end_date.trim() === '-';
 }
 
-window.renderYogiView = async function(isSilent = false) {
-  currentYogiTable = resolveYogiTable(window.currentYogiTable || window.currentSheet || 'Permanent Yogi');
+window.renderYogiView = async function (isSilent = false) {
+  const targetTable = resolveYogiTable(window.currentYogiTable || window.currentSheet || 'Permanent Yogi');
+  const isTableChanged = (currentYogiTable !== targetTable) || !isSilent;
+  const fetchToken = ++activeYogiFetchToken;
+
+  if (currentYogiTable !== targetTable) {
+    allYogiEntries = [];
+    filteredYogiEntries = [];
+    yogiCurrentPage = 1;
+    lastRenderedYogiHTML = '';
+  } else if (!isSilent) {
+    yogiCurrentPage = 1;
+    lastRenderedYogiHTML = '';
+  }
+
+  currentYogiTable = targetTable;
   window.currentYogiTable = currentYogiTable;
   window.currentTable = currentYogiTable;
 
   const cacheKey = `${YOGI_CACHE_PREFIX}${currentYogiTable}`;
 
-  try {
-    const cachedStr = localStorage.getItem(cacheKey);
-    if (cachedStr) {
-      const cached = JSON.parse(cachedStr);
-      if (cached && cached.data) {
-        allYogiEntries = cached.data || [];
-        updateYogiKPIs(cached.kpis);
-        applyYogiFilters();
+  if (!isSilent && allYogiEntries.length === 0) {
+    try {
+      const cachedStr = localStorage.getItem(cacheKey);
+      if (cachedStr) {
+        const cached = JSON.parse(cachedStr);
+        if (cached && cached.data) {
+          allYogiEntries = cached.data || [];
+          updateYogiKPIs(cached.kpis);
+          applyYogiFilters();
+        }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 
-  if (!isSilent && allYogiEntries.length === 0 && typeof window.showLoading === 'function') {
+  const shouldShowOverlay = !isSilent && allYogiEntries.length === 0;
+  if (shouldShowOverlay && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
 
   try {
     const sheetParam = (currentYogiTable === 'Camp Yogi') ? '13Yogi' : '12Yogi';
     const response = await window.fetchYogiDataAPI(sheetParam);
+    if (fetchToken !== activeYogiFetchToken) return;
 
     if (response && response.success) {
       allYogiEntries = response.data || [];
-      localStorage.setItem(cacheKey, JSON.stringify(response));
+      try { localStorage.setItem(cacheKey, JSON.stringify(response)); } catch (_) {}
       updateYogiKPIs(response.kpis);
       applyYogiFilters();
     }
   } catch (err) {
+    if (fetchToken !== activeYogiFetchToken) return;
     console.error('Yogi Fetch Error from D1:', err);
   } finally {
-    if (!isSilent && typeof window.showLoading === 'function') {
+    if (shouldShowOverlay && typeof window.showLoading === 'function') {
       window.showLoading(false);
     }
+  }
+
+  if (isTableChanged && !isSilent) {
+    window.switchYogiStatusTab(currentYogiStatus);
   }
 };
 
@@ -96,9 +168,10 @@ function updateYogiKPIs(kpis) {
   setElem('kpi-yogi-total', kpis.totalActiveYogis || kpis.total);
 }
 
-window.switchYogiStatusTab = function(status) {
+window.switchYogiStatusTab = function (status) {
   currentYogiStatus = status;
   yogiCurrentPage = 1;
+  lastRenderedYogiHTML = '';
 
   const activeBtn = document.getElementById('tab-yogi-active');
   const inactiveBtn = document.getElementById('tab-yogi-inactive');
@@ -114,32 +187,33 @@ window.switchYogiStatusTab = function(status) {
   applyYogiFilters();
 };
 
-window.onYogiSearchInput = function() {
+window.onYogiSearchInput = function () {
   yogiCurrentPage = 1;
+  lastRenderedYogiHTML = '';
   applyYogiFilters();
 };
 
 function applyYogiFilters() {
   const searchInput = document.getElementById('yogi-search-input');
-  const searchTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const rawTerm = (searchInput ? searchInput.value : '').toLowerCase().trim();
+  const engTerm = toEngDigitsYogi(rawTerm);
 
   filteredYogiEntries = allYogiEntries.filter(entry => {
     const active = isYogiActive(entry);
     const matchesStatus = (currentYogiStatus === 'Active') ? active : !active;
+    if (!matchesStatus) return false;
+    if (!rawTerm) return true;
 
     const nrcText = entry.nrc || entry.full_nrc || '';
     const phoneText = entry.yogi_phone || entry.phone || '';
+    const homePhone = entry.home_phone || '';
     const catText = entry.yogi_type || entry.category || '';
 
-    const matchesSearch = !searchTerm ||
-      (entry.name || '').toLowerCase().includes(searchTerm) ||
-      (entry.father_name || '').toLowerCase().includes(searchTerm) ||
-      nrcText.toLowerCase().includes(searchTerm) ||
-      phoneText.toLowerCase().includes(searchTerm) ||
-      (entry.address || '').toLowerCase().includes(searchTerm) ||
-      catText.toLowerCase().includes(searchTerm);
-
-    return matchesStatus && matchesSearch;
+    return [entry.name, entry.father_name, nrcText, phoneText, homePhone, entry.address, catText]
+      .some(v => {
+        const s = (v || '').toString().toLowerCase();
+        return s.includes(rawTerm) || s.includes(engTerm);
+      });
   });
 
   renderYogiTable();
@@ -150,8 +224,20 @@ function renderYogiTable() {
   if (!tbody) return;
 
   const totalEntries = filteredYogiEntries.length;
+  const maxPage = Math.max(1, Math.ceil(totalEntries / yogiRowsPerPage));
+  if (yogiCurrentPage > maxPage) yogiCurrentPage = maxPage;
+  if (yogiCurrentPage < 1) yogiCurrentPage = 1;
+
+  const startIndex = (yogiCurrentPage - 1) * yogiRowsPerPage;
+  const endIndex = Math.min(startIndex + yogiRowsPerPage, totalEntries);
+  const pageEntries = filteredYogiEntries.slice(startIndex, endIndex);
+
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
+  const canDelete = typeof window.canUserDelete === 'function' ? window.canUserDelete() : canEdit;
+
+  let html = '';
   if (totalEntries === 0) {
-    tbody.innerHTML = `
+    html = `
       <tr>
         <td colspan="14" class="text-center py-8 text-amber-400/60 font-semibold">
           <i class="fa-solid fa-users-slash mr-2"></i>
@@ -159,70 +245,71 @@ function renderYogiTable() {
         </td>
       </tr>
     `;
-    updateYogiPaginationInfo(0, 0, 0);
-    return;
+  } else {
+    pageEntries.forEach((entry, idx) => {
+      const srNo = (startIndex + idx + 1);
+      const uid = String(entry.unique_id || entry.uniqueId || entry.id || '');
+      const safeUidAttr = escapeYogiHtml(uid);
+      const active = isYogiActive(entry);
+      const nrcVal = entry.nrc || entry.full_nrc || '-';
+      const phoneVal = entry.yogi_phone || entry.phone || '-';
+      const categoryVal = entry.yogi_type || entry.category || '-';
+
+      const pendingBadge = entry.pending
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold">Pending</span>`
+        : '';
+
+      const rawAddr = entry.address || '';
+      const escapedAddr = escapeYogiHtml(rawAddr);
+      const addrHtml = rawAddr
+        ? `<div class="min-w-[180px] max-w-[320px] text-slate-300 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedAddr}">${escapedAddr}</div>`
+        : '<span class="text-slate-600 font-mono">-</span>';
+
+      html += `
+        <tr class="hover:bg-amber-500/5 transition border-b border-amber-500/20 text-xs">
+          <td class="text-center font-bold text-amber-400/80 py-3 font-mono">${srNo}</td>
+          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.start_date || '-')}</td>
+          <td class="font-mono whitespace-nowrap px-2 ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${escapeYogiHtml(entry.end_date || '-')}</td>
+          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${escapeYogiHtml(categoryVal)}</td>
+          <td class="font-extrabold text-amber-100 whitespace-nowrap px-2">${escapeYogiHtml(entry.name || '-')}${pendingBadge}</td>
+          <td class="text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.father_name || '-')}</td>
+          <td class="font-mono text-amber-200 whitespace-nowrap px-2">${escapeYogiHtml(nrcVal)}</td>
+          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.dob || '-')}</td>
+          <td class="text-center font-bold text-amber-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.age || '-')}</td>
+          <td class="text-center font-bold whitespace-nowrap px-2 ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${escapeYogiHtml(entry.gender || '-')}</td>
+          <td class="font-mono text-amber-200 whitespace-nowrap px-2">${escapeYogiHtml(phoneVal)}</td>
+          <td class="font-mono text-slate-300 whitespace-nowrap px-2">${escapeYogiHtml(entry.home_phone || '-')}</td>
+          <td class="py-2.5 px-3 align-middle text-left">${addrHtml}</td>
+          <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-3 py-2 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
+            <div class="flex items-center justify-center gap-1.5">
+              <button type="button" onclick="openEditYogiModal('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer"'} title="ပြင်ဆင်မည်">
+                <i class="fa-solid fa-pen-to-square"></i>
+              </button>
+              ${active ? `
+                <button type="button" onclick="checkoutYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer"'} title="စခန်းထွက်ပေးမည်">
+                  <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                </button>
+              ` : `
+                <button type="button" onclick="reactivateYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
+                  <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                </button>
+              `}
+              <button type="button" onclick="deleteYogiPrompt('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed text-slate-500 rounded"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer"'} title="ဖျက်မည်">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    });
   }
 
-  const startIndex = (yogiCurrentPage - 1) * yogiRowsPerPage;
-  const endIndex = Math.min(startIndex + yogiRowsPerPage, totalEntries);
-  const pageEntries = filteredYogiEntries.slice(startIndex, endIndex);
-  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
+  if (lastRenderedYogiHTML !== html) {
+    lastRenderedYogiHTML = html;
+    tbody.innerHTML = html;
+  }
 
-  let html = '';
-  pageEntries.forEach((entry, idx) => {
-    const srNo = entry.no || (startIndex + idx + 1);
-    const uid = entry.unique_id || entry.uniqueId || entry.id || '';
-    const active = isYogiActive(entry);
-    const nrcVal = entry.nrc || entry.full_nrc || '-';
-    const phoneVal = entry.yogi_phone || entry.phone || '-';
-    const categoryVal = entry.yogi_type || entry.category || '-';
-
-    const rawAddr = entry.address || '';
-    const escapedAddr = rawAddr.replace(/"/g, '&quot;');
-    const addrHtml = rawAddr
-      ? `<div class="min-w-[180px] max-w-[320px] text-slate-300 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedAddr}">${rawAddr}</div>`
-      : '<span class="text-slate-600 font-mono">-</span>';
-
-    html += `
-      <tr class="hover:bg-amber-500/5 transition border-b border-amber-500/20 text-xs">
-        <td class="text-center font-bold text-amber-400/80 py-3 font-mono">${srNo}</td>
-        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.start_date || '-'}</td>
-        <td class="font-mono whitespace-nowrap px-2 ${entry.end_date ? 'text-rose-400 font-bold' : 'text-slate-500'}">${entry.end_date || '-'}</td>
-        <td class="font-bold text-amber-300 whitespace-nowrap px-2">${categoryVal}</td>
-        <td class="font-extrabold text-amber-100 whitespace-nowrap px-2">${entry.name || '-'}</td>
-        <td class="text-slate-300 whitespace-nowrap px-2">${entry.father_name || '-'}</td>
-        <td class="font-mono text-amber-200 whitespace-nowrap px-2">${nrcVal}</td>
-        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.dob || '-'}</td>
-        <td class="text-center font-bold text-amber-300 whitespace-nowrap px-2">${entry.age || '-'}</td>
-        <td class="text-center font-bold whitespace-nowrap px-2 ${entry.gender === 'ကျား' ? 'text-sky-400' : 'text-rose-400'}">${entry.gender || '-'}</td>
-        <td class="font-mono text-amber-200 whitespace-nowrap px-2">${phoneVal}</td>
-        <td class="font-mono text-slate-300 whitespace-nowrap px-2">${entry.home_phone || '-'}</td>
-        <td class="py-2.5 px-3 align-middle text-left">${addrHtml}</td>
-        <td class="text-center right-0 sticky bg-[#080d1a] z-10 px-3 py-2 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
-          <div class="flex items-center justify-center gap-1.5">
-            <button onclick="openEditYogiModal('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 rounded transition cursor-pointer"'} title="ပြင်ဆင်မည်">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-            ${active ? `
-              <button onclick="checkoutYogiPrompt('${uid}', '${entry.name}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition font-bold cursor-pointer"'} title="စခန်းထွက်ပေးမည်">
-                <i class="fa-solid fa-arrow-right-from-bracket"></i>
-              </button>
-            ` : `
-              <button onclick="reactivateYogiPrompt('${uid}', '${entry.name}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 rounded transition font-bold cursor-pointer"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
-                <i class="fa-solid fa-arrow-right-to-bracket"></i>
-              </button>
-            `}
-            <button onclick="deleteYogiPrompt('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded transition cursor-pointer"'} title="ဖျက်မည်">
-              <i class="fa-solid fa-trash"></i>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  });
-
-  tbody.innerHTML = html;
-  updateYogiPaginationInfo(startIndex + 1, endIndex, totalEntries);
+  updateYogiPaginationInfo(totalEntries ? startIndex + 1 : 0, endIndex, totalEntries);
 }
 
 function updateYogiPaginationInfo(start, end, total) {
@@ -235,28 +322,35 @@ function updateYogiPaginationInfo(start, end, total) {
   if (totalEl) totalEl.textContent = total;
 
   const prevBtn = document.getElementById('btn-yogi-prev-page');
-  const nextBtn = document.getElementById('btn-yogi-next-page');
+  const nextBtn = document.getElementById('btn-yogi-next-page') || document.getElementById('btn-next-page');
 
-  if (prevBtn) prevBtn.disabled = (yogiCurrentPage === 1);
+  if (prevBtn) prevBtn.disabled = (yogiCurrentPage <= 1);
   if (nextBtn) nextBtn.disabled = (end >= total);
 }
 
-window.prevYogiPage = function() {
+window.prevYogiPage = function () {
   if (yogiCurrentPage > 1) {
     yogiCurrentPage--;
+    lastRenderedYogiHTML = '';
     renderYogiTable();
   }
 };
 
-window.nextYogiPage = function() {
+window.nextYogiPage = function () {
   const maxPage = Math.max(1, Math.ceil(filteredYogiEntries.length / yogiRowsPerPage));
   if (yogiCurrentPage < maxPage) {
     yogiCurrentPage++;
+    lastRenderedYogiHTML = '';
     renderYogiTable();
   }
 };
 
-window.openAddYogiModal = function() {
+window.openAddYogiModal = function () {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ယောဂီအသစ်ထည့်ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
   const modal = document.getElementById('yogi-entry-modal');
   const form = document.getElementById('yogi-entry-form');
   if (form) form.reset();
@@ -264,11 +358,14 @@ window.openAddYogiModal = function() {
   const uidInput = document.getElementById('yogi-uniqueId');
   if (uidInput) uidInput.value = '';
 
+  const sheetInput = document.getElementById('yogi-sheet-type');
+  if (sheetInput) sheetInput.value = resolveYogiTable(window.currentYogiTable || window.currentSheet);
+
   const titleEl = document.getElementById('yogi-modal-title');
   if (titleEl) titleEl.textContent = 'ယောဂီ အသစ် သွင်းယူရန်';
 
   const startDateInput = document.getElementById('yogi-start-date');
-  if (startDateInput) startDateInput.value = new Date().toISOString().split('T')[0];
+  if (startDateInput) startDateInput.value = getTodayYogiISO();
 
   const catSelect = document.getElementById('yogi-category');
   if (catSelect) {
@@ -279,7 +376,12 @@ window.openAddYogiModal = function() {
   if (modal) modal.classList.remove('hidden');
 };
 
-window.openEditYogiModal = function(uid) {
+window.openEditYogiModal = function (uid) {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပြင်ဆင်ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
   const entry = allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(uid));
   if (!entry) return;
 
@@ -289,21 +391,24 @@ window.openEditYogiModal = function(uid) {
   const titleEl = document.getElementById('yogi-modal-title');
   if (titleEl) titleEl.textContent = 'ယောဂီ အချက်အလက် ပြင်ဆင်ရန်';
 
-  document.getElementById('yogi-uniqueId').value = uid;
-  document.getElementById('yogi-category').value = entry.yogi_type || entry.category || 'လူပုဂ္ဂိုလ်';
+  document.getElementById('yogi-uniqueId').value = entry.unique_id || entry.uniqueId || uid;
+  const sheetInput = document.getElementById('yogi-sheet-type');
+  if (sheetInput) sheetInput.value = resolveYogiTable(window.currentYogiTable || window.currentSheet);
+
+  setYogiSelectSafe(document.getElementById('yogi-category'), entry.yogi_type || entry.category || 'လူပုဂ္ဂိုလ်');
   document.getElementById('yogi-start-date').value = entry.start_date || '';
   document.getElementById('yogi-name').value = entry.name || '';
   document.getElementById('yogi-father-name').value = entry.father_name || '';
 
   const parsedNrc = parseNrcString(entry.nrc || entry.full_nrc || '');
-  if (document.getElementById('yogi-nrc-state')) document.getElementById('yogi-nrc-state').value = parsedNrc.state || '12';
+  setYogiSelectSafe(document.getElementById('yogi-nrc-state'), parsedNrc.state || '12');
   if (document.getElementById('yogi-nrc-township')) document.getElementById('yogi-nrc-township').value = parsedNrc.township || '';
-  if (document.getElementById('yogi-nrc-type')) document.getElementById('yogi-nrc-type').value = parsedNrc.type || '(နိုင်)';
+  setYogiSelectSafe(document.getElementById('yogi-nrc-type'), parsedNrc.type || '(နိုင်)');
   if (document.getElementById('yogi-nrc-number')) document.getElementById('yogi-nrc-number').value = parsedNrc.number || '';
 
   document.getElementById('yogi-dob').value = entry.dob || '';
   document.getElementById('yogi-age').value = entry.age || '';
-  document.getElementById('yogi-gender').value = entry.gender || 'ကျား';
+  setYogiSelectSafe(document.getElementById('yogi-gender'), entry.gender || 'ကျား');
   document.getElementById('yogi-phone').value = entry.yogi_phone || entry.phone || '';
   document.getElementById('yogi-home-phone').value = entry.home_phone || '';
   document.getElementById('yogi-address').value = entry.address || '';
@@ -311,7 +416,7 @@ window.openEditYogiModal = function(uid) {
   modal.classList.remove('hidden');
 };
 
-window.onYogiCategoryChange = function(category) {
+window.onYogiCategoryChange = function (category) {
   const genderSelect = document.getElementById('yogi-gender');
   if (!genderSelect) return;
 
@@ -325,86 +430,157 @@ window.onYogiCategoryChange = function(category) {
   }
 };
 
-window.onYogiDoBChange = function(dobString) {
+window.onYogiDoBChange = function (dobString) {
   const age = calcAgeFromDoB(dobString);
   const ageInput = document.getElementById('yogi-age');
   if (ageInput) ageInput.value = age > 0 ? age : '';
 };
 
-window.onYogiNameChange = function(nameString) {
+window.onYogiNameChange = function (nameString) {
   const catVal = document.getElementById('yogi-category') ? document.getElementById('yogi-category').value : '';
-  
+  const genderSelect = document.getElementById('yogi-gender');
+  if (!genderSelect) return;
+
   if (catVal === 'ရဟန်း' || catVal === 'ကိုရင်') {
-    document.getElementById('yogi-gender').value = 'ကျား';
+    genderSelect.value = 'ကျား';
     return;
   }
   if (catVal === 'သီလရှင်') {
-    document.getElementById('yogi-gender').value = 'မ';
+    genderSelect.value = 'မ';
     return;
   }
 
-  const gender = detectGenderFromName(nameString);
-  const genderSelect = document.getElementById('yogi-gender');
-  if (genderSelect) genderSelect.value = gender;
+  genderSelect.value = detectGenderFromName(nameString);
 };
 
-window.saveYogiEntryForm = async function(event) {
+window.saveYogiEntryForm = async function (event) {
   if (event && event.preventDefault) event.preventDefault();
+  if (isYogiSubmitting) return;
 
-  const unique_id = document.getElementById('yogi-uniqueId').value;
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ သိမ်းဆည်းခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
+  const startDateEl = document.getElementById('yogi-start-date');
+  const start_date = startDateEl ? startDateEl.value.trim() : '';
+  if (!start_date) {
+    alert('စတင်ရက်စွဲ (Start Date) အား ရွေးချယ်ပေးပါခင်ဗျာ။');
+    if (startDateEl) startDateEl.focus();
+    return;
+  }
+
+  const nameEl = document.getElementById('yogi-name');
+  const name = nameEl ? nameEl.value.trim() : '';
+  if (!name) {
+    alert('ယောဂီအမည် (Name) အား ထည့်သွင်းပေးပါခင်ဗျာ။');
+    if (nameEl) nameEl.focus();
+    return;
+  }
+
+  const unique_id = (document.getElementById('yogi-uniqueId')?.value || '').trim();
   const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
+  const isEdit = !!unique_id;
 
-  const category = document.getElementById('yogi-category').value;
-  const start_date = document.getElementById('yogi-start-date').value;
-  const name = document.getElementById('yogi-name').value.trim();
-  const father_name = document.getElementById('yogi-father-name').value.trim();
+  // 🌟 Inactive ယောဂီကို Edit လုပ်ပါက မူလ end_date မပျောက်စေရန် ထိန်းသိမ်းခြင်း
+  const existingEntry = isEdit
+    ? allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(unique_id))
+    : null;
+  const preservedEndDate = isEdit ? (existingEntry?.end_date || '') : '';
+
+  const category = document.getElementById('yogi-category')?.value || 'လူပုဂ္ဂိုလ်';
+  const father_name = (document.getElementById('yogi-father-name')?.value || '').trim();
 
   const nrc_state = document.getElementById('yogi-nrc-state')?.value || '12';
   const nrc_township = (document.getElementById('yogi-nrc-township')?.value || '').trim();
   const nrc_type = document.getElementById('yogi-nrc-type')?.value || '(နိုင်)';
-  const nrc_number = (document.getElementById('yogi-nrc-number')?.value || '').trim();
-  
+  const nrc_number = toEngDigitsYogi((document.getElementById('yogi-nrc-number')?.value || '').trim());
+
   let full_nrc = '';
   if (nrc_township && nrc_number) {
     full_nrc = `${nrc_state}/${nrc_township}${nrc_type}${nrc_number}`;
+  } else if (!nrc_township && nrc_number) {
+    full_nrc = nrc_number;
   }
 
-  const dob = document.getElementById('yogi-dob').value;
-  const age = parseInt(document.getElementById('yogi-age').value) || calcAgeFromDoB(dob);
-  const gender = document.getElementById('yogi-gender').value;
-  const phone = document.getElementById('yogi-phone').value.trim();
-  const home_phone = (document.getElementById('yogi-home-phone')?.value || '').trim();
+  const dob = document.getElementById('yogi-dob')?.value || '';
+  const rawAge = toEngDigitsYogi(document.getElementById('yogi-age')?.value || '');
+  const age = parseInt(rawAge, 10) || calcAgeFromDoB(dob);
+  const gender = document.getElementById('yogi-gender')?.value || 'ကျား';
+  const phone = toEngDigitsYogi((document.getElementById('yogi-phone')?.value || '').trim());
+  const home_phone = toEngDigitsYogi((document.getElementById('yogi-home-phone')?.value || '').trim());
   const address = (document.getElementById('yogi-address')?.value || '').trim();
 
-  const isEdit = !!unique_id;
+  const finalUid = unique_id || (typeof crypto !== 'undefined' && crypto.randomUUID
+    ? `YOGI-${crypto.randomUUID()}`
+    : `YOGI_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
 
   const payload = {
-    unique_id: unique_id || `YOGI-${crypto.randomUUID()}`,
-    sheet_type: currentTable, book_name: currentTable, yogi_type: category,
-    start_date, end_date: '', name, father_name, nrc: full_nrc, dob, age, gender,
-    yogi_phone: phone, home_phone, address, uniqueId: unique_id, category, phone, full_nrc
+    unique_id: finalUid,
+    sheet_type: currentTable,
+    book_name: currentTable,
+    yogi_type: category,
+    start_date,
+    end_date: preservedEndDate,
+    name,
+    father_name,
+    nrc: full_nrc,
+    dob,
+    age,
+    gender,
+    yogi_phone: phone,
+    home_phone,
+    address,
+    uniqueId: finalUid,
+    category,
+    phone,
+    full_nrc
   };
 
+  const form = document.getElementById('yogi-entry-form');
+  const submitBtn = form ? form.querySelector("button[type='submit']") : null;
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : 'Save';
+
+  isYogiSubmitting = true;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+  }
   if (typeof window.showLoading === 'function') window.showLoading(true);
 
   try {
     const response = await window.saveYogiAPI(payload, isEdit);
     if (response && response.success) {
+      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
+      lastRenderedYogiHTML = '';
       if (typeof window.closeYogiModal === 'function') window.closeYogiModal();
+      notifyYogi(response.message || (isEdit ? 'ယောဂီစာရင်း ပြင်ဆင်ပြီးပါပြီ' : 'ယောဂီစာရင်း သိမ်းဆည်းပြီးပါပြီ'), response.offline ? 'warning' : 'success');
       await window.renderYogiView(false);
-    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
-      alert('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: ' + (response.error ? response.error : ''));
+    } else if (!response || response.status !== 401) {
+      notifyYogi('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: ' + (response?.error || ''), 'error');
     }
   } catch (err) {
     console.error('Save Yogi Error:', err);
-    alert('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။');
+    notifyYogi('ယောဂီစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။', 'error');
   } finally {
+    isYogiSubmitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-window.checkoutYogiPrompt = async function(uniqueId, name) {
-  const todayStr = new Date().toISOString().split('T')[0];
+window.checkoutYogiPrompt = async function (uniqueId) {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ လုပ်ဆောင်ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
+  const entry = allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(uniqueId));
+  const name = entry ? entry.name : '';
+  const todayStr = getTodayYogiISO();
   const confirmCheckout = confirm(`ယောဂီ "${name}" အား ယနေ့ (${todayStr}) ရက်စွဲဖြင့် စခန်းထွက် (Inactive) စာရင်းသို့ ပြောင်းလဲပါမည်လော။`);
 
   if (!confirmCheckout) return;
@@ -412,24 +588,34 @@ window.checkoutYogiPrompt = async function(uniqueId, name) {
   if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
-    const response = await window.checkoutYogiAPI({ 
-      unique_id: uniqueId, uniqueId: uniqueId, end_date: todayStr, sheet_type: currentTable 
+    const response = await window.checkoutYogiAPI({
+      unique_id: uniqueId, uniqueId: uniqueId, end_date: todayStr, sheet_type: currentTable
     });
 
     if (response && response.success) {
+      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
+      lastRenderedYogiHTML = '';
+      notifyYogi('စခန်းထွက်စာရင်းသို့ ပြောင်းလဲပြီးပါပြီ', 'success');
       await window.renderYogiView(false);
-    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
-      alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
+    } else if (!response || response.status !== 401) {
+      notifyYogi('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်: ' + (response?.error || ''), 'error');
     }
   } catch (err) {
     console.error('Checkout Error:', err);
-    alert('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်');
+    notifyYogi('စခန်းထွက် ပြုလုပ်ရာတွင် အမှားရှိပါသည်', 'error');
   } finally {
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-window.reactivateYogiPrompt = async function(uniqueId, name) {
+window.reactivateYogiPrompt = async function (uniqueId) {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ လုပ်ဆောင်ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
+  const entry = allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(uniqueId));
+  const name = entry ? entry.name : '';
   const confirmReactivate = confirm(`ယောဂီ "${name}" အား စခန်းတွင်း Active စာရင်းသို့ ပြန်လည်ပြောင်းလဲပါမည်လော။`);
 
   if (!confirmReactivate) return;
@@ -437,24 +623,33 @@ window.reactivateYogiPrompt = async function(uniqueId, name) {
   if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
-    const response = await window.reactivateYogiAPI({ 
-      unique_id: uniqueId, uniqueId: uniqueId, sheet_type: currentTable 
+    const response = await window.reactivateYogiAPI({
+      unique_id: uniqueId, uniqueId: uniqueId, sheet_type: currentTable
     });
 
     if (response && response.success) {
+      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
+      lastRenderedYogiHTML = '';
+      notifyYogi('Active စာရင်းသို့ ပြန်လည်ပြောင်းလဲပြီးပါပြီ', 'success');
       await window.renderYogiView(false);
-    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
-      alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
+    } else if (!response || response.status !== 401) {
+      notifyYogi('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်: ' + (response?.error || ''), 'error');
     }
   } catch (err) {
     console.error('Reactivate Error:', err);
-    alert('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်');
+    notifyYogi('Active စာရင်းသို့ ပြန်ပြောင်းရာတွင် အမှားရှိပါသည်', 'error');
   } finally {
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-window.deleteYogiPrompt = async function(uniqueId) {
+window.deleteYogiPrompt = async function (uniqueId) {
+  const canDelete = typeof window.canUserDelete === 'function' ? window.canUserDelete() : true;
+  if (!canDelete) {
+    notifyYogi('သင့်ရာထူးအဆင့်တွင် ယောဂီစာရင်း ဖျက်သိမ်းခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+
   if (!confirm('ဤယောဂီစာရင်းကို ပယ်ဖျက်ရန် သေချာပါသလား။')) return;
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
@@ -462,12 +657,16 @@ window.deleteYogiPrompt = async function(uniqueId) {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
     const response = await window.deleteYogiAPI(uniqueId, currentTable);
     if (response && response.success) {
+      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
+      lastRenderedYogiHTML = '';
+      notifyYogi(response.message || 'ယောဂီစာရင်း ဖျက်သိမ်းပြီးပါပြီ', response.offline ? 'warning' : 'success');
       await window.renderYogiView(false);
-    } else if (response && response.status !== 401) { // 🌟 Added 401 Check
-      alert('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + (response.error ? response.error : ''));
+    } else if (!response || response.status !== 401) {
+      notifyYogi('ဖျက်ရာတွင် အမှားရှိပါသည်: ' + (response?.error || ''), 'error');
     }
   } catch (err) {
     console.error('Delete Yogi Error:', err);
+    notifyYogi('ဖျက်ရာတွင် အမှားရှိပါသည်', 'error');
   } finally {
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
@@ -512,28 +711,44 @@ function detectGenderFromName(name) {
   return 'ကျား';
 }
 
-window.exportYogiCSV = function() {
+window.exportYogiCSV = function () {
   if (!filteredYogiEntries || filteredYogiEntries.length === 0) {
-    alert('ထုတ်ယူရန် ဒေတာ မရှိပါ');
+    notifyYogi('ထုတ်ယူရန် ဒေတာ မရှိပါ', 'warning');
     return;
   }
 
   let csv = '\uFEFF';
   csv += 'စဉ်,စတင်ရက်စွဲ,စခန်းထွက်ရက်စွဲ,အမျိုးအစား,အမည်,အဘအမည်,မှတ်ပုံတင်,မွေးသက္ကရာဇ်,အသက်,ကျား/မ,ယောဂီဖုန်း,အိမ်ဖုန်း,နေရပ်လိပ်စာ,အခြေအနေ\n';
 
+  const esc = (v) => `"${(v ?? '').toString().replace(/"/g, '""')}"`;
+
   filteredYogiEntries.forEach((row, idx) => {
     const nrcVal = row.nrc || row.full_nrc || '';
     const phoneVal = row.yogi_phone || row.phone || '';
     const catVal = row.yogi_type || row.category || '';
-    const addrEsc = (row.address || '').replace(/"/g, '""');
     const statusVal = isYogiActive(row) ? 'Active' : 'Inactive';
 
-    csv += `"${row.no || (idx + 1)}","${row.start_date || ''}","${row.end_date || ''}","${catVal}","${row.name || ''}","${row.father_name || ''}","${nrcVal}","${row.dob || ''}","${row.age || ''}","${row.gender || ''}","${phoneVal}","${row.home_phone || ''}","${addrEsc}","${statusVal}"\n`;
+    csv += [
+      (idx + 1),
+      esc(row.start_date),
+      esc(row.end_date),
+      esc(catVal),
+      esc(row.name),
+      esc(row.father_name),
+      esc(nrcVal),
+      esc(row.dob),
+      row.age || 0,
+      esc(row.gender),
+      esc(phoneVal),
+      esc(row.home_phone),
+      esc(row.address),
+      esc(statusVal)
+    ].join(',') + '\n';
   });
 
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement("a");
+  const link = document.createElement('a');
   link.href = URL.createObjectURL(blob);
-  link.download = `${currentYogiTable}_List_${currentYogiStatus}_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `${currentYogiTable}_List_${currentYogiStatus}_${getTodayYogiISO()}.csv`;
   link.click();
 };
