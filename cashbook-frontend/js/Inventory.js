@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller 
-// 100% Aligned with D1 "Inventory" Schema (date, description, remark, etc.)
-// Features: Instant 0-Second Cache, Natural Typography & Polished Sticky Actions
+// js/Inventory.js - Inventory Management Logic & Controller (v4.0)
+// Features: Anti-Jitter DOM, Versioned Sync, Double-Submit Lock,
+// Myanmar Digit Support, Role Guards, XSS Safe & Legacy Value Safe
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -9,8 +9,57 @@ const INV_CACHE_KEY = 'sasana_inventory_cache';
 let currentInvPage = 1;
 let invAllEntries = [];
 let invFilteredEntries = [];
+let isInvSubmitting = false;
+let lastRenderedInvHTML = '';
+let activeInvFetchToken = 0;
 
-function formatMonthYear(dateStr) {
+function escapeInvHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toEngDigitsInv(str) {
+  if (typeof window.toEnglishDigits === 'function') return window.toEnglishDigits(str);
+  if (str === null || str === undefined) return '';
+  const mm = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
+  return String(str).replace(/[၀-၉]/g, ch => mm.indexOf(ch));
+}
+
+function notifyInv(msg, type = 'info') {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type);
+  } else if (type === 'error' || type === 'warning') {
+    alert(msg);
+  }
+}
+
+function setInvSelectSafe(selectEl, val) {
+  if (!selectEl) return;
+  const v = String(val ?? '').trim();
+  if (!v) return;
+  if (!Array.from(selectEl.options).some(o => o.value === v)) {
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    selectEl.appendChild(opt);
+  }
+  selectEl.value = v;
+}
+
+function getTodayInvISO() {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatInvMonthYear(dateStr) {
   if (!dateStr) return "-";
   const d = new Date(dateStr.length === 7 ? `${dateStr}-01` : dateStr);
   if (isNaN(d.getTime())) return dateStr;
@@ -19,40 +68,52 @@ function formatMonthYear(dateStr) {
   return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-window.renderInventoryView = async function(isSilent = false) {
-  currentInvPage = 1;
+window.renderInventoryView = async function (isSilent = false) {
+  const fetchToken = ++activeInvFetchToken;
+  if (!isSilent) {
+    currentInvPage = 1;
+    lastRenderedInvHTML = '';
+  }
+
   window.currentTable = "Inventory";
   window.currentSheet = "Inventory";
   window.currentSheetKey = "Inventory";
 
-  try {
-    const cachedStr = localStorage.getItem(INV_CACHE_KEY);
-    if (cachedStr) {
-      const cachedRes = JSON.parse(cachedStr);
-      if (cachedRes && cachedRes.data) {
-        invAllEntries = (cachedRes.data || []).slice().reverse();
-        updateInventoryKPIs(cachedRes.kpis);
-        applyInventoryFilter();
+  // 0-second Cache Display on initial open
+  if (!isSilent && invAllEntries.length === 0) {
+    try {
+      const cachedStr = localStorage.getItem(INV_CACHE_KEY);
+      if (cachedStr) {
+        const cachedRes = JSON.parse(cachedStr);
+        if (cachedRes && cachedRes.data) {
+          invAllEntries = (cachedRes.data || []).slice().reverse();
+          updateInventoryKPIs(cachedRes.kpis);
+          applyInventoryFilter();
+        }
       }
-    }
-  } catch (_) {}
+    } catch (_) {}
+  }
 
-  if (!isSilent && invAllEntries.length === 0 && typeof window.showLoading === 'function') {
+  const shouldShowOverlay = !isSilent && invAllEntries.length === 0;
+  if (shouldShowOverlay && typeof window.showLoading === 'function') {
     window.showLoading(true);
   }
 
   try {
     const res = await window.fetchInventoryDataAPI();
+    if (fetchToken !== activeInvFetchToken) return;
+
     if (res && res.success) {
-      localStorage.setItem(INV_CACHE_KEY, JSON.stringify(res));
+      try { localStorage.setItem(INV_CACHE_KEY, JSON.stringify(res)); } catch (_) {}
       invAllEntries = (res.data || []).slice().reverse();
       updateInventoryKPIs(res.kpis);
       applyInventoryFilter();
     }
   } catch (error) {
+    if (fetchToken !== activeInvFetchToken) return;
     console.error("Error fetching inventory data from D1:", error);
   } finally {
-    if (!isSilent && typeof window.showLoading === 'function') {
+    if (shouldShowOverlay && typeof window.showLoading === 'function') {
       window.showLoading(false);
     }
   }
@@ -72,18 +133,22 @@ function updateInventoryKPIs(kpis) {
 
 function applyInventoryFilter() {
   const searchInput = document.getElementById("inv-search-input");
-  const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const rawQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
+  const engQuery = toEngDigitsInv(rawQuery);
 
-  if (!query) {
+  if (!rawQuery) {
     invFilteredEntries = invAllEntries;
   } else {
     invFilteredEntries = invAllEntries.filter(e => {
       const desc = e.description || e.item_desc || e.item_name || "";
       const remark = e.remark || e.note || "";
-      const my = e.month_year || formatMonthYear(e.date || e.entry_date);
+      const my = e.month_year || formatInvMonthYear(e.date || e.entry_date);
       const d = e.date || e.entry_date || "";
       return [d, e.location, e.category, desc, e.unit, e.qty, remark, my, e.book_name]
-        .some(v => (v || "").toString().toLowerCase().includes(query));
+        .some(v => {
+          const s = (v ?? "").toString().toLowerCase();
+          return s.includes(rawQuery) || s.includes(engQuery);
+        });
     });
   }
 
@@ -102,52 +167,62 @@ function renderInventoryTable() {
   const start = (currentInvPage - 1) * INV_ROWS_PER_PAGE;
   const end = Math.min(start + INV_ROWS_PER_PAGE, total);
   const pageRows = invFilteredEntries.slice(start, end);
-  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
 
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
+  const canDelete = typeof window.canUserDelete === 'function' ? window.canUserDelete() : canEdit;
+
+  let html = "";
   if (total === 0) {
-    tbody.innerHTML = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
+    html = `<tr><td colspan="11" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-boxes-packing mr-2"></i> ပစ္စည်းစာရင်း မရှိသေးပါ။</td></tr>`;
   } else {
-    let html = "";
     pageRows.forEach((entry, idx) => {
-      const uid = entry.unique_id || entry.uniqueId || entry.id || "";
-      const srNo = entry.no || (start + idx + 1);
+      const uid = String(entry.unique_id || entry.uniqueId || entry.id || "");
+      const safeUidAttr = escapeInvHtml(uid);
+      const srNo = (start + idx + 1);
       const qty = parseFloat(entry.qty) || 0;
       const dateText = entry.date || entry.entry_date || "-";
-      const monthYearFormatted = entry.month_year || formatMonthYear(dateText);
+      const monthYearFormatted = escapeInvHtml(entry.month_year || formatInvMonthYear(dateText));
 
       const rawDesc = entry.description || entry.item_desc || entry.item_name || "";
-      const escapedDesc = rawDesc.replace(/"/g, '&quot;');
+      const escapedDesc = escapeInvHtml(rawDesc);
+      const pendingBadge = entry.pending
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold">Pending</span>`
+        : '';
       const descHtml = rawDesc
-        ? `<div class="min-w-[240px] max-w-[420px] text-slate-100 text-xs leading-relaxed font-semibold whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${rawDesc}</div>`
+        ? `<div class="min-w-[240px] max-w-[420px] text-slate-100 text-xs leading-relaxed font-semibold whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${escapedDesc}${pendingBadge}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
       const rawRemark = entry.remark || entry.note || "";
-      const escapedRemark = rawRemark.replace(/"/g, '&quot;');
+      const escapedRemark = escapeInvHtml(rawRemark);
       const remarkHtml = rawRemark
-        ? `<div class="min-w-[160px] max-w-[280px] text-amber-200/80 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedRemark}">${rawRemark}</div>`
+        ? `<div class="min-w-[160px] max-w-[280px] text-amber-200/80 text-xs leading-relaxed whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedRemark}">${escapedRemark}</div>`
         : '<span class="text-slate-600 font-mono">-</span>';
 
       html += `
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20 text-xs">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${dateText}</td>
-          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${entry.location || "-"}</td>
-          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${entry.category || "-"}</span></td>
+          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${escapeInvHtml(dateText)}</td>
+          <td class="font-bold text-amber-300 whitespace-nowrap px-2">${escapeInvHtml(entry.location || "-")}</td>
+          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${escapeInvHtml(entry.category || "-")}</span></td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
-          <td class="text-slate-300 font-semibold whitespace-nowrap px-2">${entry.unit || "-"}</td>
+          <td class="text-slate-300 font-semibold whitespace-nowrap px-2">${escapeInvHtml(entry.unit || "-")}</td>
           <td class="text-right font-mono font-bold text-emerald-400 whitespace-nowrap px-3">${qty.toLocaleString()}</td>
           <td class="py-2.5 px-2 align-middle text-left">${remarkHtml}</td>
           <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${entry.book_name || "Inventory"}</td>
+          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-2">${escapeInvHtml(entry.book_name || "Inventory")}</td>
           <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-8px_0_12px_rgba(0,0,0,0.5)]">
             <div class="flex items-center justify-center gap-2">
-              <button onclick="editInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="Edit"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button onclick="deleteInvEntry('${uid}')" ${!canEdit ? 'disabled class="opacity-30 cursor-not-allowed"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="Delete"><i class="fa-solid fa-trash"></i></button>
+              <button type="button" onclick="editInvEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button type="button" onclick="deleteInvEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
       `;
     });
+  }
+
+  if (lastRenderedInvHTML !== html) {
+    lastRenderedInvHTML = html;
     tbody.innerHTML = html;
   }
 
@@ -164,27 +239,35 @@ function renderInventoryTable() {
   if (btnNext) btnNext.disabled = end >= total;
 }
 
-window.onInvSearchInput = function() {
+window.onInvSearchInput = function () {
   currentInvPage = 1;
+  lastRenderedInvHTML = '';
   applyInventoryFilter();
 };
 
-window.nextInvPage = function() {
+window.nextInvPage = function () {
   const maxPage = Math.max(1, Math.ceil(invFilteredEntries.length / INV_ROWS_PER_PAGE));
   if (currentInvPage < maxPage) {
     currentInvPage++;
+    lastRenderedInvHTML = '';
     renderInventoryTable();
   }
 };
 
-window.prevInvPage = function() {
+window.prevInvPage = function () {
   if (currentInvPage > 1) {
     currentInvPage--;
+    lastRenderedInvHTML = '';
     renderInventoryTable();
   }
 };
 
-window.openAddInvModal = function() {
+window.openAddInvModal = function () {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyInv("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပစ္စည်းအသစ်ထည့်ခွင့် မရှိပါ။", "warning");
+    return;
+  }
+
   const modal = document.getElementById("inv-entry-modal");
   const form = document.getElementById("inv-entry-form");
   if (form) form.reset();
@@ -193,7 +276,7 @@ window.openAddInvModal = function() {
   if (idInput) idInput.value = "";
 
   const dateInput = document.getElementById("inv-date");
-  if (dateInput) dateInput.value = new Date().toISOString().split('T')[0];
+  if (dateInput) dateInput.value = getTodayInvISO();
 
   const unitSelect = document.getElementById("inv-unit");
   if (unitSelect) unitSelect.value = "ခု";
@@ -204,52 +287,106 @@ window.openAddInvModal = function() {
   if (modal) modal.classList.remove("hidden");
 };
 
-window.closeInvModal = function() {
+window.closeInvModal = function () {
   const modal = document.getElementById("inv-entry-modal");
   if (modal) modal.classList.add("hidden");
 };
 
-window.saveInventoryForm = async function(event) {
+window.saveInventoryForm = async function (event) {
   if (event && event.preventDefault) event.preventDefault();
+  if (isInvSubmitting) return;
 
-  const unique_id = document.getElementById("inv-id").value;
-  const date = document.getElementById("inv-date").value;
-  const location = document.getElementById("inv-location").value;
-  const category = document.getElementById("inv-category").value;
-  const description = document.getElementById("inv-item-name").value.trim();
-  const unit = document.getElementById("inv-unit").value;
-  const qty = parseFloat(document.getElementById("inv-qty").value) || 0;
-  const remark = document.getElementById("inv-remark").value.trim();
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyInv("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ သိမ်းဆည်းခွင့် မရှိပါ။", "warning");
+    return;
+  }
 
-  const month_year = formatMonthYear(date);
+  const dateEl = document.getElementById("inv-date");
+  const date = dateEl ? dateEl.value.trim() : "";
+  if (!date) {
+    alert("ရက်စွဲ (Date) အား ရွေးချယ်ပေးပါခင်ဗျာ။");
+    if (dateEl) dateEl.focus();
+    return;
+  }
+
+  const descEl = document.getElementById("inv-item-name");
+  const description = descEl ? descEl.value.trim() : "";
+  if (!description) {
+    alert("ပစ္စည်းအမည် / အကြောင်းအရာ အား ထည့်သွင်းပေးပါခင်ဗျာ။");
+    if (descEl) descEl.focus();
+    return;
+  }
+
+  const qtyEl = document.getElementById("inv-qty");
+  const rawQty = toEngDigitsInv(qtyEl ? qtyEl.value : "").replace(/,/g, "").trim();
+  const qty = parseFloat(rawQty);
+  if (rawQty === "" || !Number.isFinite(qty) || qty < 0) {
+    alert("အရေအတွက် (Quantity) ကို ၀ သို့မဟုတ် ၀ ထက်ကြီးသော ဂဏန်း မှန်ကန်စွာ ထည့်သွင်းပေးပါခင်ဗျာ။");
+    if (qtyEl) qtyEl.focus();
+    return;
+  }
+
+  const unique_id = (document.getElementById("inv-id")?.value || "").trim();
+  const location = document.getElementById("inv-location")?.value || "စတို";
+  const category = document.getElementById("inv-category")?.value || "အထွေထွေ";
+  const unit = document.getElementById("inv-unit")?.value || "ခု";
+  const remark = (document.getElementById("inv-remark")?.value || "").trim();
+
+  const month_year = formatInvMonthYear(date);
   const isEdit = !!unique_id;
+  const finalUid = unique_id || (typeof crypto !== 'undefined' && crypto.randomUUID
+    ? `INV-${crypto.randomUUID()}`
+    : `INV_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
 
   const payload = {
-    unique_id: unique_id || crypto.randomUUID(),
+    unique_id: finalUid,
     date, location, category, description, unit, qty, remark, month_year, book_name: "Inventory",
-    uniqueId: unique_id, entry_date: date, item_desc: description, item_name: description, note: remark
+    uniqueId: finalUid, entry_date: date, item_desc: description, item_name: description, note: remark
   };
 
+  const form = document.getElementById("inv-entry-form");
+  const submitBtn = form ? form.querySelector("button[type='submit']") : null;
+  const originalBtnHtml = submitBtn ? submitBtn.innerHTML : "Save";
+
+  isInvSubmitting = true;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+  }
   if (typeof window.showLoading === 'function') window.showLoading(true);
+
   try {
     const res = await window.saveInventoryEntryAPI(payload, isEdit);
     if (res && res.success) {
+      try { localStorage.removeItem(INV_CACHE_KEY); } catch (_) {}
+      lastRenderedInvHTML = '';
       window.closeInvModal();
-      await window.renderInventoryView();
-    } else if (res && res.status !== 401) { // 🌟 Added 401 Check
-      alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
+      notifyInv(res.message || (isEdit ? 'ပစ္စည်းစာရင်း ပြင်ဆင်ပြီးပါပြီ' : 'ပစ္စည်းစာရင်း သိမ်းဆည်းပြီးပါပြီ'), res.offline ? 'warning' : 'success');
+      await window.renderInventoryView(false);
+    } else if (!res || res.status !== 401) {
+      notifyInv("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ: " + (res?.error || ""), "error");
     }
   } catch (err) {
     console.error("Save Inventory Error:", err);
-    alert("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။");
+    notifyInv("ပစ္စည်းစာရင်း သိမ်းဆည်းခြင်း မအောင်မြင်ပါ။", "error");
   } finally {
+    isInvSubmitting = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnHtml;
+    }
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
 window.saveInvEntryForm = window.saveInventoryForm;
 
-window.editInvEntry = function(uid) {
+window.editInvEntry = function (uid) {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyInv("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပြင်ဆင်ခွင့် မရှိပါ။", "warning");
+    return;
+  }
+
   const entry = invAllEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(uid));
   if (!entry) return;
 
@@ -259,46 +396,49 @@ window.editInvEntry = function(uid) {
   const titleEl = document.getElementById("inv-modal-title");
   if (titleEl) titleEl.textContent = "ပစ္စည်း ပြင်ဆင်ရန်";
 
-  document.getElementById("inv-id").value = uid;
+  document.getElementById("inv-id").value = entry.unique_id || entry.uniqueId || uid;
   document.getElementById("inv-date").value = entry.date || entry.entry_date || "";
-  
-  const locSelect = document.getElementById("inv-location");
-  if (locSelect) locSelect.value = entry.location || "မီးဖိုဆောင်";
-  
-  const catSelect = document.getElementById("inv-category");
-  if (catSelect) catSelect.value = entry.category || "ပရိဘောဂ";
-  
-  document.getElementById("inv-item-name").value = entry.description || entry.item_desc || entry.item_name || "";
-  
-  const unitSelect = document.getElementById("inv-unit");
-  if (unitSelect) unitSelect.value = entry.unit || "ခု";
 
-  document.getElementById("inv-qty").value = parseFloat(entry.qty) || 1;
+  setInvSelectSafe(document.getElementById("inv-location"), entry.location || "မီးဖိုဆောင်");
+  setInvSelectSafe(document.getElementById("inv-category"), entry.category || "ပရိဘောဂ");
+  document.getElementById("inv-item-name").value = entry.description || entry.item_desc || entry.item_name || "";
+  setInvSelectSafe(document.getElementById("inv-unit"), entry.unit || "ခု");
+
+  document.getElementById("inv-qty").value = parseFloat(entry.qty) ?? 1;
   document.getElementById("inv-remark").value = entry.remark || entry.note || "";
 };
 
-window.deleteInvEntry = async function(uid) {
+window.deleteInvEntry = async function (uid) {
+  const canDelete = typeof window.canUserDelete === 'function' ? window.canUserDelete() : true;
+  if (!canDelete) {
+    notifyInv("သင့်ရာထူးအဆင့်တွင် ပစ္စည်းစာရင်း ဖျက်သိမ်းခွင့် မရှိပါ။", "warning");
+    return;
+  }
+
   if (!confirm("ဤပစ္စည်းစာရင်းကို ဖျက်ရန် သေချာပါသလား?")) return;
 
   if (typeof window.showLoading === 'function') window.showLoading(true);
   try {
     const res = await window.deleteInventoryEntryAPI(uid);
     if (res && res.success) {
-      await window.renderInventoryView();
-    } else if (res && res.status !== 401) { // 🌟 Added 401 Check
-      alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res.error ? res.error : ""));
+      try { localStorage.removeItem(INV_CACHE_KEY); } catch (_) {}
+      lastRenderedInvHTML = '';
+      notifyInv(res.message || 'ပစ္စည်းစာရင်း ဖျက်သိမ်းပြီးပါပြီ', res.offline ? 'warning' : 'success');
+      await window.renderInventoryView(false);
+    } else if (!res || res.status !== 401) {
+      notifyInv("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ: " + (res?.error || ""), "error");
     }
   } catch (err) {
     console.error("Delete Inventory Error:", err);
-    alert("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။");
+    notifyInv("ဖျက်သိမ်းခြင်း မအောင်မြင်ပါ။", "error");
   } finally {
     if (typeof window.showLoading === 'function') window.showLoading(false);
   }
 };
 
-window.exportInventoryCSV = function() {
+window.exportInventoryCSV = function () {
   if (!invFilteredEntries || invFilteredEntries.length === 0) {
-    alert("Export လုပ်ရန် ဒေတာ မရှိပါ။");
+    notifyInv("Export လုပ်ရန် ဒေတာ မရှိပါ။", "warning");
     return;
   }
 
@@ -310,11 +450,11 @@ window.exportInventoryCSV = function() {
     const desc = e.description || e.item_desc || e.item_name || "";
     const remark = e.remark || e.note || "";
     const dateText = e.date || e.entry_date || "";
-    const my = e.month_year || formatMonthYear(dateText);
+    const my = e.month_year || formatInvMonthYear(dateText);
 
     csv += [
-      e.no || (idx + 1), esc(dateText), esc(e.location), esc(e.category), 
-      esc(desc), esc(e.unit), e.qty || 0, esc(remark), 
+      (idx + 1), esc(dateText), esc(e.location), esc(e.category),
+      esc(desc), esc(e.unit), e.qty || 0, esc(remark),
       esc(my), esc(e.book_name || "Inventory")
     ].join(",") + "\n";
   });
@@ -322,6 +462,6 @@ window.exportInventoryCSV = function() {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `Inventory_Export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `Inventory_Export_${getTodayInvISO()}.csv`;
   link.click();
 };
