@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Dashboard.js - Home Dashboard View Renderer & Tab Controller (v4.0)
-// Features: Summary-Powered 0-Second Load, 4 Sub-Tabs, Valid HTML Matrix,
-// Click-to-Open Book, Admin 1-Click JSON Backup & Anti-Flicker Sync
+// js/Dashboard.js - Home Dashboard View Renderer & Tab Controller (v4.1)
+// Features: Calm Eye-Comfort Palette, Summary-Powered 0-Second Load,
+// 4 Sub-Tabs, Click-to-Open Book, Admin JSON Backup & Anti-Flicker Sync
 // ===================================================================
 
 const DASH_CACHE_KEY = 'sasana_dashboard_cache';
@@ -181,11 +181,11 @@ window.renderDashboardView = async function (isSilent = false) {
 
   const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
 
-  const formatMoney = (val, defaultColor = "text-slate-200") => {
+  const formatMoney = (val, colorHex = "#cbd5e1", weight = "font-medium") => {
     const num = Number(val || 0);
-    if (num === 0) return `<span class="text-slate-600 font-mono font-medium">-</span>`;
-    if (num < 0) return `<span class="text-rose-400 font-mono font-black">${num.toLocaleString()}</span>`;
-    return `<span class="${defaultColor} font-mono font-bold">${num.toLocaleString()}</span>`;
+    if (num === 0) return `<span class="font-mono" style="color:#475569;">-</span>`;
+    if (num < 0) return `<span class="font-mono font-bold" style="color:#fda4af;">${num.toLocaleString()}</span>`;
+    return `<span class="font-mono ${weight}" style="color:${colorHex};">${num.toLocaleString()}</span>`;
   };
 
   const renderHomeData = (raw) => {
@@ -199,40 +199,43 @@ window.renderDashboardView = async function (isSilent = false) {
     const padethaSummary = data.padethaSummary || [];
     const yogiSummary = data.yogiSummary || {};
 
-    const setKpi = (id, val, baseClass) => {
+    const setKpi = (id, val, colorHex) => {
       const el = document.getElementById(id);
       if (!el) return;
       const num = Number(val || 0);
       el.textContent = `${num.toLocaleString()} MMK`;
-      el.className = (num < 0)
-        ? "text-base font-extrabold text-rose-400 mt-1 truncate font-mono"
-        : baseClass;
+      el.className = "text-base font-extrabold mt-1 truncate font-mono";
+      el.style.color = num < 0 ? '#fda4af' : colorHex;
     };
-    setKpi("kpi-home-fund", kpis.totalFund, "text-base font-extrabold text-amber-300 mt-1 truncate font-mono");
-    setKpi("kpi-home-bank", kpis.totalBank, "text-base font-extrabold text-sky-400 mt-1 truncate font-mono");
-    setKpi("kpi-home-cash", kpis.totalCash, "text-base font-extrabold text-emerald-400 mt-1 truncate font-mono");
+    setKpi("kpi-home-fund", kpis.totalFund, "#fbbf24");
+    setKpi("kpi-home-bank", kpis.totalBank, "#7dd3fc");
+    setKpi("kpi-home-cash", kpis.totalCash, "#6ee7b7");
 
     const countEl = document.getElementById("kpi-home-count");
-    if (countEl) countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
+    if (countEl) {
+      countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
+      countEl.style.color = "#e2e8f0";
+    }
 
+    // 1. FUND SUMMARY TABLE
     if (bankTableElem) {
       let fundHtml = `
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[780px] text-xs">
           <thead>
-            <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 font-extrabold uppercase tracking-wider">
+            <tr>
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
               <th class="min-w-[200px] py-3.5 px-4">စာအုပ်အမည်</th>
-              <th class="text-right w-36 py-3.5 px-4 text-sky-400">ဘဏ်လက်ကျန်</th>
-              <th class="text-right w-32 py-3.5 px-3 text-emerald-400">USER 1 လက်ကျန်</th>
-              <th class="text-right w-32 py-3.5 px-3 text-emerald-400">USER 2 လက်ကျန်</th>
-              <th class="text-right w-32 py-3.5 px-3 text-emerald-400">USER 3 လက်ကျန်</th>
-              <th class="text-right w-44 py-3.5 px-4 text-amber-300 font-black bg-gradient-to-b from-amber-500/10 to-amber-500/20 border-l border-amber-500/30 shadow-inner">
-                ✨ လက်ကျန် ပေါင်း
+              <th class="text-right w-36 py-3.5 px-4">ဘဏ်လက်ကျန်</th>
+              <th class="text-right w-32 py-3.5 px-3">USER 1 လက်ကျန်</th>
+              <th class="text-right w-32 py-3.5 px-3">USER 2 လက်ကျန်</th>
+              <th class="text-right w-32 py-3.5 px-3">USER 3 လက်ကျန်</th>
+              <th class="text-right w-44 py-3.5 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">
+                လက်ကျန် ပေါင်း
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-amber-500/10">`;
+          <tbody>`;
 
       let sumBank = 0, sumU1 = 0, sumU2 = 0, sumU3 = 0, sumTotal = 0;
 
@@ -249,62 +252,63 @@ window.renderDashboardView = async function (isSilent = false) {
         sumBank += bb; sumU1 += u1; sumU2 += u2; sumU3 += u3; sumTotal += tot;
 
         const totalCellHtml = tot < 0
-          ? `<span class="font-mono font-black text-rose-400">${tot.toLocaleString()}</span>`
+          ? `<span class="font-mono font-bold" style="color:#fda4af;">${tot.toLocaleString()}</span>`
           : (tot === 0
-            ? `<span class="font-mono font-medium text-slate-600">-</span>`
-            : `<span class="font-mono font-black text-amber-300">${tot.toLocaleString()}</span>`);
+            ? `<span class="font-mono" style="color:#475569;">-</span>`
+            : `<span class="font-mono font-bold" style="color:#f8fafc;">${tot.toLocaleString()}</span>`);
 
         fundHtml += `
-        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer" title="စာအုပ်ဖွင့်ကြည့်ရန် နှိပ်ပါ">
-          <td class="text-center font-bold text-amber-500/70 py-3 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-3 px-4">${escapeDashHtml(name)}</td>
-          <td class="text-right py-3 px-4">${formatMoney(bb, "text-sky-300 font-bold")}</td>
-          <td class="text-right py-3 px-3">${formatMoney(u1, "text-slate-200 font-semibold")}</td>
-          <td class="text-right py-3 px-3">${formatMoney(u2, "text-slate-200 font-semibold")}</td>
-          <td class="text-right py-3 px-3">${formatMoney(u3, "text-slate-200 font-semibold")}</td>
-          <td class="text-right py-3 px-4 bg-amber-500/5 border-l border-amber-500/15">${totalCellHtml}</td>
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="transition-colors cursor-pointer">
+          <td class="text-center py-3 px-3 font-mono text-xs" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium py-3 px-4" style="color:#e2e8f0;">${escapeDashHtml(name)}</td>
+          <td class="text-right py-3 px-4">${formatMoney(bb, "#7dd3fc", "font-semibold")}</td>
+          <td class="text-right py-3 px-3">${formatMoney(u1, "#cbd5e1", "font-medium")}</td>
+          <td class="text-right py-3 px-3">${formatMoney(u2, "#cbd5e1", "font-medium")}</td>
+          <td class="text-right py-3 px-3">${formatMoney(u3, "#cbd5e1", "font-medium")}</td>
+          <td class="text-right py-3 px-4" style="border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${totalCellHtml}</td>
         </tr>`;
       });
 
       const grandTotalBadge = sumTotal < 0
-        ? `<span class="px-3.5 py-1.5 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 font-mono font-black text-sm shadow-sm">${sumTotal.toLocaleString()}</span>`
-        : `<span class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/25 to-amber-600/35 border border-amber-400/50 text-amber-200 font-mono font-black text-sm shadow-md shadow-amber-500/15">${sumTotal.toLocaleString()}</span>`;
+        ? `<span class="px-3 py-1 rounded-lg font-mono font-extrabold text-sm" style="background:rgba(244,63,94,0.14);border:1px solid rgba(244,63,94,0.3);color:#fda4af;">${sumTotal.toLocaleString()}</span>`
+        : `<span class="px-3 py-1 rounded-lg font-mono font-extrabold text-sm" style="background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.35);color:#fde68a;">${sumTotal.toLocaleString()}</span>`;
 
       fundHtml += `
-        <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 shadow-2xl">
-          <td class="text-center py-4 px-3 font-mono text-amber-500/60 font-bold">-</td>
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.22);">
+          <td class="text-center py-4 px-3 font-mono font-bold" style="color:#64748b;">-</td>
           <td class="py-4 px-4">
-            <span class="inline-flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
-              <i class="fa-solid fa-calculator text-amber-400"></i> စုစုပေါင်း
+            <span class="inline-flex items-center gap-2 font-bold text-xs uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-calculator" style="color:#fbbf24;"></i> စုစုပေါင်း
             </span>
           </td>
-          <td class="text-right py-4 px-4"><span class="font-mono text-sky-300 font-black text-xs">${sumBank.toLocaleString()}</span></td>
-          <td class="text-right py-4 px-3">${formatMoney(sumU1, "text-emerald-300 font-black")}</td>
-          <td class="text-right py-4 px-3">${formatMoney(sumU2, "text-emerald-300 font-black")}</td>
-          <td class="text-right py-4 px-3">${formatMoney(sumU3, "text-emerald-300 font-black")}</td>
-          <td class="text-right py-4 px-4 bg-amber-500/15 border-l border-amber-500/30">${grandTotalBadge}</td>
+          <td class="text-right py-4 px-4">${formatMoney(sumBank, "#7dd3fc", "font-bold")}</td>
+          <td class="text-right py-4 px-3">${formatMoney(sumU1, "#6ee7b7", "font-bold")}</td>
+          <td class="text-right py-4 px-3">${formatMoney(sumU2, "#6ee7b7", "font-bold")}</td>
+          <td class="text-right py-4 px-3">${formatMoney(sumU3, "#6ee7b7", "font-bold")}</td>
+          <td class="text-right py-4 px-4" style="border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.05);">${grandTotalBadge}</td>
         </tr>
       </tbody></table></div>`;
 
       bankTableElem.innerHTML = fundHtml;
     }
 
+    // 2. BOOK SUMMARY TABLE (ပဒေသာပင် ၄ အုပ်)
     if (padethaTableElem) {
       let padethaHtml = `
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[700px] text-xs">
           <thead>
-            <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 font-extrabold uppercase tracking-wider">
+            <tr>
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
-              <th class="min-w-[220px] py-3.5 px-4 text-amber-200">စာအုပ်အမည်</th>
-              <th class="text-right w-40 py-3.5 px-4 text-emerald-400">ဝင်ငွေ</th>
-              <th class="text-right w-40 py-3.5 px-4 text-rose-400">ဘဏ်အပ်နှံ (ထွက်ငွေ)</th>
-              <th class="text-right w-44 py-3.5 px-4 text-amber-300 bg-amber-500/10 font-black border-l border-amber-500/20">
-                ✨ လက်ကျန်ငွေ
+              <th class="min-w-[220px] py-3.5 px-4">စာအုပ်အမည်</th>
+              <th class="text-right w-40 py-3.5 px-4">ဝင်ငွေ</th>
+              <th class="text-right w-40 py-3.5 px-4">ဘဏ်အပ်နှံ (ထွက်ငွေ)</th>
+              <th class="text-right w-44 py-3.5 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">
+                လက်ကျန်ငွေ
               </th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-amber-500/10">`;
+          <tbody>`;
 
       let totalPadethaIncome = 0, totalPadethaExpense = 0, totalPadethaBalance = 0;
 
@@ -319,32 +323,33 @@ window.renderDashboardView = async function (isSilent = false) {
         totalPadethaBalance += bal;
 
         padethaHtml += `
-        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer" title="စာအုပ်ဖွင့်ကြည့်ရန် နှိပ်ပါ">
-          <td class="text-center font-bold text-amber-500/70 py-3 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-3 px-4 text-sm">${escapeDashHtml(spec.title)}</td>
-          <td class="text-right py-3 px-4 font-mono text-emerald-400 font-bold text-sm">${inc ? inc.toLocaleString() : '-'}</td>
-          <td class="text-right py-3 px-4 font-mono text-rose-400 font-bold text-sm">${exp ? exp.toLocaleString() : '-'}</td>
-          <td class="text-right py-3 px-4 font-mono ${bal < 0 ? 'text-rose-400' : 'text-amber-300'} font-black text-sm bg-amber-500/5 border-l border-amber-500/15">${bal.toLocaleString()}</td>
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="transition-colors cursor-pointer">
+          <td class="text-center py-3 px-3 font-mono text-xs" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium py-3 px-4" style="color:#e2e8f0;">${escapeDashHtml(spec.title)}</td>
+          <td class="text-right py-3 px-4">${formatMoney(inc, "#6ee7b7", "font-semibold")}</td>
+          <td class="text-right py-3 px-4">${formatMoney(exp, "#fda4af", "font-semibold")}</td>
+          <td class="text-right py-3 px-4 font-mono font-bold" style="color:${bal < 0 ? '#fda4af' : '#f8fafc'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${bal.toLocaleString()}</td>
         </tr>`;
       });
 
       padethaHtml += `
-        <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 shadow-2xl">
-          <td class="text-center py-4 px-3 font-mono text-amber-500/60 font-bold">-</td>
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.22);">
+          <td class="text-center py-4 px-3 font-mono font-bold" style="color:#64748b;">-</td>
           <td class="py-4 px-4">
-            <span class="inline-flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
-              <i class="fa-solid fa-calculator text-amber-400"></i> စုစုပေါင်း
+            <span class="inline-flex items-center gap-2 font-bold text-xs uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-calculator" style="color:#fbbf24;"></i> စုစုပေါင်း
             </span>
           </td>
-          <td class="text-right py-4 px-4 font-mono text-emerald-300 font-black text-sm">${totalPadethaIncome.toLocaleString()}</td>
-          <td class="text-right py-4 px-4 font-mono text-rose-300 font-black text-sm">${totalPadethaExpense.toLocaleString()}</td>
-          <td class="text-right py-4 px-4 font-mono ${totalPadethaBalance < 0 ? 'text-rose-300' : 'text-amber-200'} font-black text-sm bg-amber-500/20 border-l border-amber-500/30 shadow-inner">${totalPadethaBalance.toLocaleString()}</td>
+          <td class="text-right py-4 px-4 font-mono font-bold" style="color:#6ee7b7;">${totalPadethaIncome.toLocaleString()}</td>
+          <td class="text-right py-4 px-4 font-mono font-bold" style="color:#fda4af;">${totalPadethaExpense.toLocaleString()}</td>
+          <td class="text-right py-4 px-4 font-mono font-extrabold text-sm" style="color:${totalPadethaBalance < 0 ? '#fda4af' : '#fde68a'};border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.05);">${totalPadethaBalance.toLocaleString()}</td>
         </tr>
       </tbody></table></div>`;
 
       padethaTableElem.innerHTML = padethaHtml;
     }
 
+    // 3. YOGI SUMMARY MATRIX TABLE
     if (yogiTableElem) {
       const residentData = yogiSummary.resident || {};
       const retreatData = yogiSummary.retreat || {};
@@ -354,15 +359,15 @@ window.renderDashboardView = async function (isSilent = false) {
       <div class="overflow-x-auto">
         <table class="w-full text-left border-collapse min-w-[650px] text-xs">
           <thead>
-            <tr class="bg-[#080d1a] border-b border-amber-500/30 text-amber-300 font-extrabold uppercase tracking-wider">
+            <tr>
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
-              <th class="min-w-[200px] py-3.5 px-4 text-amber-200">အမြဲနေယောဂီစာရင်း</th>
-              <th class="text-center w-28 py-3.5 px-4 text-sky-400">ကျား</th>
-              <th class="text-center w-28 py-3.5 px-4 text-rose-400">မ</th>
-              <th class="text-center w-36 py-3.5 px-4 text-amber-300 bg-amber-500/10 font-black border-l border-amber-500/20">ပေါင်း</th>
+              <th class="min-w-[200px] py-3.5 px-4">အမြဲနေယောဂီစာရင်း</th>
+              <th class="text-center w-28 py-3.5 px-4">ကျား</th>
+              <th class="text-center w-28 py-3.5 px-4">မ</th>
+              <th class="text-center w-36 py-3.5 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">ပေါင်း</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-amber-500/10">`;
+          <tbody>`;
 
       let resMale = 0, resFemale = 0, resTotal = 0;
 
@@ -374,34 +379,34 @@ window.renderDashboardView = async function (isSilent = false) {
         resMale += m; resFemale += f; resTotal += t;
 
         yogiHtml += `
-        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('12Yogi')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer">
-          <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-2.5 px-4">${escapeDashHtml(cat)}</td>
-          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
-          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
-          <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('12Yogi')" class="transition-colors cursor-pointer">
+          <td class="text-center py-2.5 px-3 font-mono text-xs" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium py-2.5 px-4" style="color:#e2e8f0;">${escapeDashHtml(cat)}</td>
+          <td class="text-center font-mono font-semibold py-2.5 px-4" style="color:${m ? '#7dd3fc' : '#475569'};">${fmt(m)}</td>
+          <td class="text-center font-mono font-semibold py-2.5 px-4" style="color:${f ? '#fda4af' : '#475569'};">${fmt(f)}</td>
+          <td class="text-center font-mono font-bold py-2.5 px-4" style="color:${t ? '#f8fafc' : '#475569'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${fmt(t)}</td>
         </tr>`;
       });
 
       yogiHtml += `
-        <tr class="bg-[#0b1329] font-extrabold text-amber-300 border-t border-amber-500/30">
-          <td class="text-center py-3 px-3 font-mono text-amber-500/60">-</td>
-          <td class="py-3 px-4 text-amber-300 font-black">ပေါင်း (အမြဲနေ)</td>
-          <td class="text-center font-mono text-sky-300 font-black py-3 px-4">${resMale.toLocaleString()}</td>
-          <td class="text-center font-mono text-rose-300 font-black py-3 px-4">${resFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${resTotal.toLocaleString()}</td>
+        <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.18);">
+          <td class="text-center py-3 px-3 font-mono" style="color:#64748b;">-</td>
+          <td class="py-3 px-4 font-bold" style="color:#cbd5e1;">ပေါင်း (အမြဲနေ)</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#7dd3fc;">${resMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#fda4af;">${resFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#f8fafc;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.05);">${resTotal.toLocaleString()}</td>
         </tr>
           </tbody>
           <thead>
-            <tr class="bg-[#080d1a] border-t-2 border-b border-amber-500/40 text-amber-300 font-extrabold uppercase tracking-wider">
+            <tr>
               <th class="w-12 text-center py-3.5 px-3">စဉ်</th>
-              <th class="min-w-[200px] py-3.5 px-4 text-amber-200">စခန်းဝင်ယောဂီစာရင်း</th>
-              <th class="text-center w-28 py-3.5 px-4 text-sky-400">ကျား</th>
-              <th class="text-center w-28 py-3.5 px-4 text-rose-400">မ</th>
-              <th class="text-center w-36 py-3.5 px-4 text-amber-300 bg-amber-500/10 font-black border-l border-amber-500/20">ပေါင်း</th>
+              <th class="min-w-[200px] py-3.5 px-4">စခန်းဝင်ယောဂီစာရင်း</th>
+              <th class="text-center w-28 py-3.5 px-4">ကျား</th>
+              <th class="text-center w-28 py-3.5 px-4">မ</th>
+              <th class="text-center w-36 py-3.5 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">ပေါင်း</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-amber-500/10">`;
+          <tbody>`;
 
       let retMale = 0, retFemale = 0, retTotal = 0;
 
@@ -413,22 +418,22 @@ window.renderDashboardView = async function (isSilent = false) {
         retMale += m; retFemale += f; retTotal += t;
 
         yogiHtml += `
-        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('13Yogi')" class="hover:bg-[#1e293b]/40 transition-colors cursor-pointer">
-          <td class="text-center font-bold text-amber-500/70 py-2.5 px-3 font-mono">${idx + 1}</td>
-          <td class="font-bold text-amber-100 py-2.5 px-4">${escapeDashHtml(cat)}</td>
-          <td class="text-center font-mono text-sky-300 font-bold py-2.5 px-4">${fmt(m)}</td>
-          <td class="text-center font-mono text-rose-300 font-bold py-2.5 px-4">${fmt(f)}</td>
-          <td class="text-center font-mono font-black text-amber-300 py-2.5 px-4 bg-amber-500/5 border-l border-amber-500/15">${fmt(t)}</td>
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('13Yogi')" class="transition-colors cursor-pointer">
+          <td class="text-center py-2.5 px-3 font-mono text-xs" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium py-2.5 px-4" style="color:#e2e8f0;">${escapeDashHtml(cat)}</td>
+          <td class="text-center font-mono font-semibold py-2.5 px-4" style="color:${m ? '#7dd3fc' : '#475569'};">${fmt(m)}</td>
+          <td class="text-center font-mono font-semibold py-2.5 px-4" style="color:${f ? '#fda4af' : '#475569'};">${fmt(f)}</td>
+          <td class="text-center font-mono font-bold py-2.5 px-4" style="color:${t ? '#f8fafc' : '#475569'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${fmt(t)}</td>
         </tr>`;
       });
 
       yogiHtml += `
-        <tr class="bg-[#0b1329] font-extrabold text-amber-300 border-t border-amber-500/30">
-          <td class="text-center py-3 px-3 font-mono text-amber-500/60">-</td>
-          <td class="py-3 px-4 text-amber-300 font-black">ပေါင်း (စခန်းဝင်)</td>
-          <td class="text-center font-mono text-sky-300 font-black py-3 px-4">${retMale.toLocaleString()}</td>
-          <td class="text-center font-mono text-rose-300 font-black py-3 px-4">${retFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-300 font-black py-3 px-4 bg-amber-500/15 border-l border-amber-500/20">${retTotal.toLocaleString()}</td>
+        <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.18);">
+          <td class="text-center py-3 px-3 font-mono" style="color:#64748b;">-</td>
+          <td class="py-3 px-4 font-bold" style="color:#cbd5e1;">ပေါင်း (စခန်းဝင်)</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#7dd3fc;">${retMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#fda4af;">${retFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-3 px-4" style="color:#f8fafc;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.05);">${retTotal.toLocaleString()}</td>
         </tr>`;
 
       const grandMale = resMale + retMale;
@@ -436,16 +441,16 @@ window.renderDashboardView = async function (isSilent = false) {
       const grandTotal = resTotal + retTotal;
 
       yogiHtml += `
-        <tr class="bg-gradient-to-r from-[#091122] via-[#0f1d3a] to-[#091122] border-t-2 border-amber-400/70 font-black text-amber-300 shadow-2xl">
-          <td class="text-center py-4 px-3 font-mono text-amber-500/60">-</td>
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.25);">
+          <td class="text-center py-4 px-3 font-mono font-bold" style="color:#64748b;">-</td>
           <td class="py-4 px-4">
-            <span class="inline-flex items-center gap-2 text-amber-300 font-black text-xs uppercase tracking-wider bg-amber-500/10 border border-amber-500/20 px-3 py-1 rounded-lg">
-              <i class="fa-solid fa-users text-amber-400"></i> စုစုပေါင်း ယောဂီ
+            <span class="inline-flex items-center gap-2 font-bold text-xs uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-users" style="color:#fbbf24;"></i> စုစုပေါင်း ယောဂီ
             </span>
           </td>
-          <td class="text-center font-mono text-sky-400 font-black py-4 px-4 text-xs">${grandMale.toLocaleString()}</td>
-          <td class="text-center font-mono text-rose-400 font-black py-4 px-4 text-xs">${grandFemale.toLocaleString()}</td>
-          <td class="text-center font-mono text-amber-200 font-black py-4 px-4 bg-amber-500/20 border-l border-amber-500/30 text-sm shadow-inner">${grandTotal.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-4 px-4 text-xs" style="color:#7dd3fc;">${grandMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold py-4 px-4 text-xs" style="color:#fda4af;">${grandFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-extrabold py-4 px-4 text-sm" style="color:#fde68a;border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.06);">${grandTotal.toLocaleString()}</td>
         </tr>
       </tbody></table></div>`;
 
