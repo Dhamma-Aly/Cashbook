@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.0)
-// Features: Anti-Jitter DOM, Versioned Cache Sync, Role-Guarded Actions,
-// XSS Safe, Double-Submit Lock, Offline Pending Badge & Atomic Transfers
+// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.1)
+// Features: Colored-Dot FinTech UI, Anti-Jitter DOM, Versioned Sync,
+// Role-Guarded Actions, XSS Safe, Double-Submit Lock & Atomic Transfers
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -265,7 +265,7 @@ function applyLedgerSearchFilter(isSilent = false) {
 }
 
 // ===================================================================
-// 🌟 TABLE RENDERER (Anti-Jitter + Role Guards)
+// 🌟 TABLE RENDERER (Colored-Dot FinTech Style + Anti-Jitter)
 // ===================================================================
 function renderLedgerTable(isSilent = false) {
   const tbody = document.getElementById("table-body");
@@ -305,19 +305,38 @@ function renderLedgerTable(isSilent = false) {
 
       const isTransferIn = uid.endsWith('_IN');
       const isTransferOut = uid.endsWith('_OUT');
+      const isBankDeposit = titleText.includes('ဘဏ်အပ်') || (entry.sub_title && entry.sub_title.includes('ဘဏ်အပ်နှံ'));
       const isTransfer = isTransferIn || isTransferOut || titleText === "စာရင်းပြောင်း" || titleText === "ဘဏ်ထုတ်ငွေ" || (entry.sub_title && entry.sub_title.includes("လွှဲပြောင်း"));
 
-      let badgeClass = 'bg-rose-500/10 text-rose-400 border border-rose-500/20';
-      if (isIncome && !isTransfer) badgeClass = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
-      if (isTransfer) {
-        badgeClass = isIncome
-          ? 'bg-purple-500/15 text-purple-300 border border-purple-400/40'
-          : 'bg-indigo-500/10 text-indigo-300 border border-indigo-500/20';
+      // 🌟 International FinTech Colored-Dot Theme (ဘောင်မခတ်ဘဲ ညီညာသပ်ရပ်စေရန်)
+      let dotColor = '#fb7185';    // Rose (ထွက်ငွေ)
+      let dotGlow = 'rgba(244,63,94,0.55)';
+      let dotTextColor = '#fecdd3';
+
+      if (isBankDeposit) {
+        dotColor = '#38bdf8';      // Sky Blue (ဘဏ်အပ်ငွေ)
+        dotGlow = 'rgba(56,189,248,0.55)';
+        dotTextColor = '#bae6fd';
+      } else if (isTransfer) {
+        dotColor = '#c084fc';      // Purple (စာရင်းပြောင်း / ဘဏ်ထုတ်ငွေ)
+        dotGlow = 'rgba(192,132,252,0.55)';
+        dotTextColor = '#e9d5ff';
+      } else if (isIncome) {
+        dotColor = '#10b981';      // Emerald (ဝင်ငွေ)
+        dotGlow = 'rgba(16,185,129,0.55)';
+        dotTextColor = '#a7f3d0';
       }
 
       const pendingBadge = entry.pending
-        ? `<span class="ml-1 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold" title="Offline မှ Server သို့ ပို့ရန် စောင့်ဆိုင်းနေပါသည်">Pending</span>`
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold" title="Offline မှ Server သို့ ပို့ရန် စောင့်ဆိုင်းနေပါသည်">Pending</span>`
         : '';
+
+      const titleHtml = `
+        <span class="inline-flex items-center gap-2 text-[12.5px] font-bold whitespace-nowrap" style="color: ${dotTextColor};">
+          <span style="width: 8px; height: 8px; border-radius: 9999px; background-color: ${dotColor}; box-shadow: 0 0 6px ${dotGlow}; flex-shrink: 0; display: inline-block;"></span>
+          <span>${escapeHtml(titleText)}</span>
+        </span>${pendingBadge}
+      `;
 
       const monthYearFormatted = escapeHtml(entry.month_year || formatMonthYear(entry.date));
       const incomeHtml = income ? `<span class="text-emerald-400 font-mono font-bold">${income.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
@@ -354,7 +373,7 @@ function renderLedgerTable(isSilent = false) {
         <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${escapeHtml(entry.date || "-")}</td>
-          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold ${badgeClass}">${escapeHtml(titleText)}</span>${pendingBadge}</td>
+          <td class="whitespace-nowrap px-3">${titleHtml}</td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
@@ -1020,3 +1039,4 @@ window.exportCSV = function () {
   link.download = `${currentTable}_export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
+// === END OF Banks.js ===
