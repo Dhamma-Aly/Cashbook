@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.1)
-// Features: Colored-Dot FinTech UI, Anti-Jitter DOM, Versioned Sync,
-// Role-Guarded Actions, XSS Safe, Double-Submit Lock & Atomic Transfers
+// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.2)
+// Features: Calm Eye-Comfort FinTech UI, Borderless Receiver, Pastel Numbers,
+// Anti-Jitter DOM, Versioned Sync, Role Guards, XSS Safe & Atomic Transfers
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -169,7 +169,7 @@ window.renderBankView = async function (tableIdentifier, isSilent = false) {
   if (!isSilent && isTableChanged) {
     const tbody = document.getElementById("table-body");
     if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-400 font-bold"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 font-bold" style="color:#94a3b8;"><i class="fa-solid fa-spinner fa-spin mr-2"></i> ဒေတာများ ဆွဲယူနေပါသည်...</td></tr>`;
     }
   }
 
@@ -193,7 +193,7 @@ window.renderBankView = async function (tableIdentifier, isSilent = false) {
       const tbody = document.getElementById("table-body");
       if (tbody) {
         lastRenderedTableHTML = '';
-        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 text-rose-400 font-bold"><i class="fa-solid fa-triangle-exclamation mr-2"></i> ဒေတာဆွဲယူရာတွင် အမှားအယွင်း ဖြစ်ပေါ်နေပါသည်။</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-8 font-bold" style="color:#fda4af;"><i class="fa-solid fa-triangle-exclamation mr-2"></i> ဒေတာဆွဲယူရာတွင် အမှားအယွင်း ဖြစ်ပေါ်နေပါသည်။</td></tr>`;
       }
       return;
     }
@@ -265,7 +265,7 @@ function applyLedgerSearchFilter(isSilent = false) {
 }
 
 // ===================================================================
-// 🌟 TABLE RENDERER (Colored-Dot FinTech Style + Anti-Jitter)
+// 🌟 TABLE RENDERER (60-30-10 Calm Eye-Comfort FinTech Style)
 // ===================================================================
 function renderLedgerTable(isSilent = false) {
   const tbody = document.getElementById("table-body");
@@ -289,7 +289,7 @@ function renderLedgerTable(isSilent = false) {
   let tableHTML = "";
 
   if (total === 0) {
-    tableHTML = `<tr><td colspan="13" class="text-center py-8 text-amber-500/50 font-bold"><i class="fa-solid fa-folder-open mr-2"></i> စာရင်း မရှိသေးပါ။</td></tr>`;
+    tableHTML = `<tr><td colspan="13" class="text-center py-8 font-bold" style="color:#64748b;"><i class="fa-solid fa-folder-open mr-2"></i> စာရင်း မရှိသေးပါ။</td></tr>`;
   } else {
     pageRows.forEach((entry, idx) => {
       const uid = String(entry.unique_id || entry.uniqueId || "");
@@ -308,83 +308,79 @@ function renderLedgerTable(isSilent = false) {
       const isBankDeposit = titleText.includes('ဘဏ်အပ်') || (entry.sub_title && entry.sub_title.includes('ဘဏ်အပ်နှံ'));
       const isTransfer = isTransferIn || isTransferOut || titleText === "စာရင်းပြောင်း" || titleText === "ဘဏ်ထုတ်ငွေ" || (entry.sub_title && entry.sub_title.includes("လွှဲပြောင်း"));
 
-      // 🌟 International FinTech Colored-Dot Theme (ဘောင်မခတ်ဘဲ ညီညာသပ်ရပ်စေရန်)
-      let dotColor = '#fb7185';    // Rose (ထွက်ငွေ)
-      let dotGlow = 'rgba(244,63,94,0.55)';
-      let dotTextColor = '#fecdd3';
-
+      // 🌟 Dot လေးတွင်သာ အရောင်ထားပြီး စာသားကို Calm Off-White (#e2e8f0) ထားခြင်း
+      let dotColor = '#fb7185';    // Soft Rose (ထွက်ငွေ)
       if (isBankDeposit) {
         dotColor = '#38bdf8';      // Sky Blue (ဘဏ်အပ်ငွေ)
-        dotGlow = 'rgba(56,189,248,0.55)';
-        dotTextColor = '#bae6fd';
       } else if (isTransfer) {
-        dotColor = '#c084fc';      // Purple (စာရင်းပြောင်း / ဘဏ်ထုတ်ငွေ)
-        dotGlow = 'rgba(192,132,252,0.55)';
-        dotTextColor = '#e9d5ff';
+        dotColor = '#a78bfa';      // Soft Lavender Purple (စာရင်းပြောင်း / ဘဏ်ထုတ်ငွေ)
       } else if (isIncome) {
-        dotColor = '#10b981';      // Emerald (ဝင်ငွေ)
-        dotGlow = 'rgba(16,185,129,0.55)';
-        dotTextColor = '#a7f3d0';
+        dotColor = '#34d399';      // Soft Emerald (ဝင်ငွေ)
       }
 
       const pendingBadge = entry.pending
-        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9px] font-bold" title="Offline မှ Server သို့ ပို့ရန် စောင့်ဆိုင်းနေပါသည်">Pending</span>`
+        ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);" title="Offline မှ Server သို့ ပို့ရန် စောင့်ဆိုင်းနေပါသည်">Pending</span>`
         : '';
 
       const titleHtml = `
-        <span class="inline-flex items-center gap-2 text-[12.5px] font-bold whitespace-nowrap" style="color: ${dotTextColor};">
-          <span style="width: 8px; height: 8px; border-radius: 9999px; background-color: ${dotColor}; box-shadow: 0 0 6px ${dotGlow}; flex-shrink: 0; display: inline-block;"></span>
+        <span class="inline-flex items-center gap-2 text-[13px] font-medium whitespace-nowrap" style="color: #e2e8f0;">
+          <span style="width: 7px; height: 7px; border-radius: 9999px; background-color: ${dotColor}; flex-shrink: 0; display: inline-block;"></span>
           <span>${escapeHtml(titleText)}</span>
         </span>${pendingBadge}
       `;
 
       const monthYearFormatted = escapeHtml(entry.month_year || formatMonthYear(entry.date));
-      const incomeHtml = income ? `<span class="text-emerald-400 font-mono font-bold">${income.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
-      const expenseHtml = expense ? `<span class="text-rose-400 font-mono font-bold">${expense.toLocaleString()}</span>` : '<span class="text-slate-600 font-mono">-</span>';
-      const balanceHtml = `<span class="text-amber-300 font-mono font-black">${balance.toLocaleString()}</span>`;
+      const incomeHtml = income
+        ? `<span class="font-mono font-semibold" style="color:#6ee7b7;">${income.toLocaleString()}</span>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
+      const expenseHtml = expense
+        ? `<span class="font-mono font-semibold" style="color:#fda4af;">${expense.toLocaleString()}</span>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
+      const balanceHtml = `<span class="font-mono font-bold" style="color:${balance < 0 ? '#fda4af' : '#f8fafc'};">${balance.toLocaleString()}</span>`;
 
+      // 🌟 လက်ခံသူ (Bank / User 1, 2, 3) ဘောင်ခတ်ထားတာ ဖြုတ်ပြီး Clean Text ပြသခြင်း
       const displayReceiver = entry.receiver || (isBankTable ? "Bank" : "-");
       const safeReceiver = escapeHtml(displayReceiver);
-      const receiverBadge = displayReceiver !== "-"
-        ? `<span class="px-2 py-0.5 rounded-md bg-sky-500/10 text-sky-300 border border-sky-500/20 font-bold text-[11px] whitespace-nowrap">${safeReceiver}</span>`
-        : '<span class="text-slate-600 font-mono">-</span>';
+      const receiverHtml = displayReceiver !== "-"
+        ? `<span class="text-[12.5px] font-medium whitespace-nowrap" style="color:#cbd5e1;">${safeReceiver}</span>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
 
       const escapedDesc = escapeHtml(entry.description || '');
       const descHtml = entry.description
-        ? `<div class="text-slate-100 text-[13px] leading-relaxed font-medium whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" title="${escapedDesc}">${escapedDesc}</div>`
-        : '<span class="text-slate-600 font-mono">-</span>';
+        ? `<div class="text-[13px] leading-relaxed font-normal whitespace-normal line-clamp-2 hover:line-clamp-none transition-all cursor-default" style="color:#e2e8f0;" title="${escapedDesc}">${escapedDesc}</div>`
+        : '<span class="font-mono" style="color:#475569;">-</span>';
 
       let actionButtons = '';
       if (isTransferIn) {
         actionButtons = `
-          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-800 text-amber-300 border border-amber-500/30 text-[11px] font-bold shadow-sm" title="ဤစာရင်းသည် လက်ခံစာရင်း ဖြစ်သောကြောင့် မူရင်းလွှဲပို့ခဲ့သည့် စာအုပ်မှသာ ပြင်ဆင်/ဖျက်ပစ်နိုင်ပါသည်">
-            <i class="fa-solid fa-lock text-[10px] text-amber-400"></i>
+          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium" style="color:#94a3b8;background:rgba(148,163,184,0.08);" title="ဤစာရင်းသည် လက်ခံစာရင်း ဖြစ်သောကြောင့် မူရင်းလွှဲပို့ခဲ့သည့် စာအုပ်မှသာ ပြင်ဆင်/ဖျက်ပစ်နိုင်ပါသည်">
+            <i class="fa-solid fa-lock text-[10px]" style="color:#64748b;"></i>
             <span>လက်ခံစာရင်း</span>
           </span>
         `;
       } else {
         actionButtons = `
-          <button type="button" onclick="editEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-200 transition-all text-xs cursor-pointer"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button type="button" onclick="deleteEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-slate-500 text-xs"' : 'class="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-200 transition-all text-xs cursor-pointer"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
+          <button type="button" onclick="editEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button type="button" onclick="deleteEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
         `;
       }
 
       tableHTML += `
-        <tr class="hover:bg-amber-500/5 transition-colors border-b border-amber-900/20">
-          <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
-          <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${escapeHtml(entry.date || "-")}</td>
+        <tr class="transition-colors">
+          <td class="text-center font-mono text-xs py-3" style="color:#64748b;">${srNo}</td>
+          <td class="font-mono text-xs whitespace-nowrap px-2" style="color:#94a3b8;">${escapeHtml(entry.date || "-")}</td>
           <td class="whitespace-nowrap px-3">${titleHtml}</td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${incomeHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${expenseHtml}</td>
           <td class="text-right py-3 whitespace-nowrap px-2 font-mono">${balanceHtml}</td>
-          <td class="font-medium text-amber-200/90 whitespace-nowrap px-2 text-[12.5px]">${escapeHtml(entry.sub_title || "-")}</td>
-          <td class="font-mono text-xs text-amber-300/80 whitespace-nowrap px-2">${escapeHtml(entry.voucher_no || "-")}</td>
-          <td class="whitespace-nowrap px-2">${receiverBadge}</td>
-          <td class="font-mono text-xs text-sky-200 font-bold whitespace-nowrap px-2">${monthYearFormatted}</td>
-          <td class="text-xs text-amber-500/70 font-semibold whitespace-nowrap px-3">${escapeHtml(entry.book_name || currentTable)}</td>
-          <td class="text-center right-0 sticky bg-[#080d1a] px-3 z-10 border-l border-amber-500/20 shadow-[-10px_0_15px_rgba(0,0,0,0.6)]">
-            <div class="flex items-center justify-center gap-2">
+          <td class="whitespace-nowrap px-2 text-[12.5px]" style="color:#94a3b8;">${escapeHtml(entry.sub_title || "-")}</td>
+          <td class="font-mono text-xs whitespace-nowrap px-2" style="color:#94a3b8;">${escapeHtml(entry.voucher_no || "-")}</td>
+          <td class="whitespace-nowrap px-2">${receiverHtml}</td>
+          <td class="font-mono text-xs whitespace-nowrap px-2" style="color:#94a3b8;">${monthYearFormatted}</td>
+          <td class="text-xs whitespace-nowrap px-3" style="color:#64748b;">${escapeHtml(entry.book_name || currentTable)}</td>
+          <td class="text-center right-0 sticky px-3 z-10">
+            <div class="flex items-center justify-center gap-1.5">
               ${actionButtons}
             </div>
           </td>
