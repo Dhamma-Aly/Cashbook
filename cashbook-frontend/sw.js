@@ -1,10 +1,10 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (v4.0 Pro Offline Engine)
+// sw.js - Sāsana ERP PWA Service Worker (v4.2 Calm Eye-Comfort D1)
 // Features: Auto Old-Cache Purge, Full Offline Navigation,
 // Font/Icon Caching, API Bypass & Safe Background Revalidation
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v4.1-pro-d1';
+const CACHE_NAME = 'sasana-erp-v4.2-calm-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
@@ -132,3 +132,4 @@ self.addEventListener('message', event => {
     self.skipWaiting();
   }
 });
+// === END OF sw.js ===
