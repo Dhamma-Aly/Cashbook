@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller (v4.0)
-// Features: Anti-Jitter DOM, Versioned Sync, Double-Submit Lock,
-// Myanmar Digit Support, Role Guards, XSS Safe & Legacy Value Safe
+// js/Inventory.js - Inventory Management Logic & Controller (v4.1)
+// Features: Colored-Dot FinTech UI, Anti-Jitter DOM, Versioned Sync,
+// Double-Submit Lock, Myanmar Digit Support, Role Guards & XSS Safe
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -68,6 +68,26 @@ function formatInvMonthYear(dateStr) {
   return `${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
+function getInventoryCategoryStyle(category) {
+  const cat = String(category || '');
+  if (cat.includes('လျှပ်စစ်')) {
+    return { dot: '#38bdf8', glow: 'rgba(56,189,248,0.55)', text: '#bae6fd' };
+  }
+  if (cat.includes('မီးဖို')) {
+    return { dot: '#10b981', glow: 'rgba(16,185,129,0.55)', text: '#a7f3d0' };
+  }
+  if (cat.includes('ဆေး') || cat.includes('ကျန်းမာ')) {
+    return { dot: '#fb7185', glow: 'rgba(244,63,94,0.55)', text: '#fecdd3' };
+  }
+  if (cat.includes('အဝတ်') || cat.includes('အခင်း')) {
+    return { dot: '#c084fc', glow: 'rgba(192,132,252,0.55)', text: '#e9d5ff' };
+  }
+  if (cat.includes('ပရိဘောဂ')) {
+    return { dot: '#fbbf24', glow: 'rgba(251,191,36,0.55)', text: '#fde68a' };
+  }
+  return { dot: '#f59e0b', glow: 'rgba(245,158,11,0.5)', text: '#fef3c7' };
+}
+
 window.renderInventoryView = async function (isSilent = false) {
   const fetchToken = ++activeInvFetchToken;
   if (!isSilent) {
@@ -79,7 +99,6 @@ window.renderInventoryView = async function (isSilent = false) {
   window.currentSheet = "Inventory";
   window.currentSheetKey = "Inventory";
 
-  // 0-second Cache Display on initial open
   if (!isSilent && invAllEntries.length === 0) {
     try {
       const cachedStr = localStorage.getItem(INV_CACHE_KEY);
@@ -183,6 +202,15 @@ function renderInventoryTable() {
       const dateText = entry.date || entry.entry_date || "-";
       const monthYearFormatted = escapeInvHtml(entry.month_year || formatInvMonthYear(dateText));
 
+      const catName = entry.category || "-";
+      const catStyle = getInventoryCategoryStyle(catName);
+      const categoryHtml = `
+        <span class="inline-flex items-center gap-2 text-[12.5px] font-bold whitespace-nowrap" style="color: ${catStyle.text};">
+          <span style="width: 8px; height: 8px; border-radius: 9999px; background-color: ${catStyle.dot}; box-shadow: 0 0 6px ${catStyle.glow}; flex-shrink: 0; display: inline-block;"></span>
+          <span>${escapeInvHtml(catName)}</span>
+        </span>
+      `;
+
       const rawDesc = entry.description || entry.item_desc || entry.item_name || "";
       const escapedDesc = escapeInvHtml(rawDesc);
       const pendingBadge = entry.pending
@@ -203,7 +231,7 @@ function renderInventoryTable() {
           <td class="text-center font-bold text-amber-500/70 py-3 font-mono">${srNo}</td>
           <td class="font-mono text-xs text-slate-300 whitespace-nowrap px-2">${escapeInvHtml(dateText)}</td>
           <td class="font-bold text-amber-300 whitespace-nowrap px-2">${escapeInvHtml(entry.location || "-")}</td>
-          <td class="whitespace-nowrap px-2"><span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-400 border border-amber-500/20">${escapeInvHtml(entry.category || "-")}</span></td>
+          <td class="whitespace-nowrap px-3">${categoryHtml}</td>
           <td class="py-2.5 px-3 align-middle text-left">${descHtml}</td>
           <td class="text-slate-300 font-semibold whitespace-nowrap px-2">${escapeInvHtml(entry.unit || "-")}</td>
           <td class="text-right font-mono font-bold text-emerald-400 whitespace-nowrap px-3">${qty.toLocaleString()}</td>
@@ -465,3 +493,4 @@ window.exportInventoryCSV = function () {
   link.download = `Inventory_Export_${getTodayInvISO()}.csv`;
   link.click();
 };
+// === END OF Inventory.js ===
