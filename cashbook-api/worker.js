@@ -1,5 +1,7 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v5.5 (Strict Validation & Anti-Duplicate)
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v6.0 (Pro D1 Edition)
+// Features: 100-Year Summary/Version Cache, Atomic Batch Sync,
+// Strict Role Security, Audit Trail, Yogi/Report/Transfer Fixes
 // ===================================================================
 
 const PBKDF2_ITER = 100000;
@@ -11,6 +13,7 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const enc = new TextEncoder();
 const dec = new TextDecoder();
 
+// ⚠️ Production တွင် `npx wrangler secret put AUTH_SECRET` ဖြင့် Secret သီးသန့် သတ်မှတ်ပါ
 const getSecret = (env) => env.AUTH_SECRET || 'SASANA_DEFAULT_SECRET_KEY_2026_!@#';
 
 class HttpError extends Error {
@@ -27,6 +30,7 @@ const TABLE_MAP = {
   .forEach(t => { TABLE_MAP[t] = t; });
 
 const LEDGER_TABLES = [...new Set(Object.values(TABLE_MAP))];
+const ALL_TRACKED_TABLES = [...LEDGER_TABLES, 'Inventory', 'Permanent Yogi', 'Camp Yogi'];
 const BANK_TABLES = new Set(['1CB Bank (General)', '2CB Bank (Meal)', '3CB Bank (UZ)']);
 const ALL_SHEETS = ['1CB', '2CB', '3CB', '4GB', '5FB', '6HB', '7PB', '8EB', '9MB', '10GB'];
 const BANK_SHEETS = ['1CB', '2CB', '3CB'];
@@ -34,7 +38,10 @@ const USERS = ['User 1', 'User 2', 'User 3'];
 const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
 
 const str = (v, d = '') => (v === null || v === undefined) ? d : String(v).trim();
-const num = (v) => { const n = parseFloat(String(v ?? '').replace(/,/g, '')); return Number.isFinite(n) ? n : 0; };
+const num = (v) => {
+  const n = parseFloat(String(v ?? '').replace(/,/g, ''));
+  return Number.isFinite(n) ? n : 0;
+};
 const todayMM = () => new Date(Date.now() + 6.5 * 3600 * 1000).toISOString().slice(0, 10);
 
 function formatMonthYear(dateStr) {
@@ -74,7 +81,9 @@ function parseKey(body, params) {
 }
 const keyWhere = (k) => (k.uid ? ['unique_id = ?', k.uid] : ['id = ?', k.id]);
 
-// Crypto Helpers
+// -------------------------------------------------------------------
+// Crypto & Auth Helpers
+// -------------------------------------------------------------------
 const b64u = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const b64uToBytes = (s) => {
   let t = s.replace(/-/g, '+').replace(/_/g, '/');
@@ -124,7 +133,11 @@ async function verifyToken(env, request) {
   } catch (_) { return null; }
 }
 
-const isViewer = (user) => String(user.r || '').toLowerCase() === 'viewer';
+// Strict Role Matrix
+const roleOf = (user) => String(user?.r || 'Viewer').trim().toLowerCase();
+const isAdmin = (user) => roleOf(user) === 'admin';
+const isViewer = (user) => roleOf(user) === 'viewer';
+const canDeleteRole = (user) => ['admin', 'finance', 'account'].includes(roleOf(user));
 
 function corsHeaders(request, env) {
   const allowed = String(env.ALLOWED_ORIGIN || '*').split(',').map(s => s.trim()).filter(Boolean);
@@ -140,7 +153,7 @@ function corsHeaders(request, env) {
 }
 
 // -------------------------------------------------------------------
-// Row normalizers
+// Row Normalizers
 // -------------------------------------------------------------------
 function normLedger(b, table) {
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
@@ -148,14 +161,19 @@ function normLedger(b, table) {
   let title = str(b.title || b.category);
   const sub_title = str(b.sub_title ?? b.subcategory);
   let income = num(b.income), expense = num(b.expense);
+
   if (b.amount != null && !income && !expense) {
     const a = num(b.amount);
-    if (title === 'ထွက်ငွေ' || title === 'စာရင်းပြောင်း') expense = a; else income = a;
+    const kindHint = str(b.type || title);
+    if (kindHint.includes('ထွက်ငွေ') || kindHint.includes('စာရင်းပြောင်း') || kindHint === 'ဘဏ်ထုတ်ငွေ') {
+      expense = a;
+    } else {
+      income = a;
+    }
   }
   if (income < 0 || expense < 0) throw new HttpError(400, 'Amount must not be negative');
   if (!title) title = income > 0 ? 'ဝင်ငွေ' : 'ထွက်ငွေ';
 
-  // 🌟 (၁) အကြောင်းအရာ (Description) မပါဘဲ သိမ်းတာ လုံးဝ လက်မခံစေရန် တားမြစ်ခြင်း
   const description = str(b.description);
   if (!description) {
     throw new HttpError(400, 'အကြောင်းအရာ (Description) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
@@ -164,11 +182,10 @@ function normLedger(b, table) {
   const no = parseInt(b.no, 10);
   const balance = b.balance !== undefined ? num(b.balance) : 0;
 
-  // ဘဏ်ထုတ်ငွေ ဖြစ်ပါက ငွေလက်ခံယူသူ User 1 (သို့မဟုတ် ရွေးချယ်သော User) အဖြစ် လက်ခံခွင့်ပြုခြင်း
   let defaultReceiver = 'User 1';
   if (BANK_TABLES.has(table)) {
-    defaultReceiver = (title === 'ဘဏ်ထုတ်ငွေ' || sub_title.includes('ကျောင်းရန်ပုံငွေ')) 
-      ? (str(b.receiver) || 'User 1') 
+    defaultReceiver = (title === 'ဘဏ်ထုတ်ငွေ' || sub_title.includes('ကျောင်းရန်ပုံငွေ'))
+      ? (str(b.receiver) || 'User 1')
       : 'Bank';
   }
   const receiver = str(b.receiver) || defaultReceiver;
@@ -192,6 +209,8 @@ function normInventory(b) {
   if (!description) throw new HttpError(400, 'အကြောင်းအရာ (Description) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
   const date = str(b.entry_date || b.date, todayMM()).slice(0, 10);
   if (!DATE_RE.test(date)) throw new HttpError(400, 'Invalid date (YYYY-MM-DD)');
+  const qty = num(b.qty);
+  if (qty < 0) throw new HttpError(400, 'အရေအတွက်သည် ၀ ထက် မငယ်ရပါ။');
   const no = parseInt(b.no, 10);
 
   return {
@@ -200,7 +219,7 @@ function normInventory(b) {
     location: str(b.location) || 'စတို',
     category: str(b.category) || 'အထွေထွေ',
     unit: str(b.unit) || 'ခု',
-    qty: num(b.qty),
+    qty,
     remark: str(b.remark ?? b.note),
     month_year: date.slice(0, 7),
     book_name: 'Inventory',
@@ -208,16 +227,18 @@ function normInventory(b) {
   };
 }
 
-function normYogi(b, table) {
+function normYogi(b, table, existingRow = null) {
   const name = str(b.name);
   if (!name) throw new HttpError(400, 'ယောဂီအမည် (Name) ထည့်သွင်းရန် လိုအပ်ပါသည်ခင်ဗျာ။');
   const no = parseInt(b.no, 10);
+  const startDate = str(b.start_date) || existingRow?.start_date || todayMM();
+  const endDate = b.end_date !== undefined ? str(b.end_date) : str(existingRow?.end_date);
 
   return {
     ...(Number.isInteger(no) ? { no } : {}),
-    start_date: str(b.start_date) || todayMM(),
-    end_date: str(b.end_date),
-    yogi_type: str(b.yogi_type || b.category) || (table === 'Camp Yogi' ? 'စခန်းဝင်' : 'အမြဲနေ'),
+    start_date: startDate,
+    end_date: endDate,
+    yogi_type: str(b.yogi_type || b.category) || existingRow?.yogi_type || (table === 'Camp Yogi' ? 'စခန်းဝင်' : 'အမြဲနေ'),
     name,
     father_name: str(b.father_name),
     nrc: str(b.nrc || b.full_nrc),
@@ -233,7 +254,7 @@ function normYogi(b, table) {
 const NORM = { ledger: normLedger, inventory: normInventory, yogi: normYogi };
 
 // -------------------------------------------------------------------
-// SQL builders
+// SQL Builders + Incremental Summary & Version Maintenance
 // -------------------------------------------------------------------
 function upsertStmt(env, table, row) {
   const keys = Object.keys(row);
@@ -255,17 +276,150 @@ function updateStmt(env, table, row, key) {
 
 const changes = (r) => r?.meta?.changes ?? 0;
 
-async function deleteTransferGroup(env, gid) {
+function summaryKey(table, row) {
+  const rawDate = str(row.date);
+  const ym = rawDate.length >= 7 && /^\d{4}-\d{2}/.test(rawDate) ? rawDate.slice(0, 7) : '0000-00';
+  const defaultRec = BANK_TABLES.has(table) ? 'Bank' : 'User 1';
+  const receiver = str(row.receiver) || defaultRec;
+  const title = str(row.title);
+  const sub_title = str(row.sub_title);
+  return { book_name: table, ym, receiver, title, sub_title };
+}
+
+function ledgerSummaryDeltaStmt(env, table, row, sign) {
+  const k = summaryKey(table, row);
+  const inc = (parseFloat(row.income) || 0) * sign;
+  const exp = (parseFloat(row.expense) || 0) * sign;
+  return env.DB.prepare(
+    `INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(book_name, ym, receiver, title, sub_title) DO UPDATE SET
+       total_income = total_income + excluded.total_income,
+       total_expense = total_expense + excluded.total_expense,
+       row_count = row_count + excluded.row_count`
+  ).bind(k.book_name, k.ym, k.receiver, k.title, k.sub_title, inc, exp, sign);
+}
+
+function cleanupEmptySummaryStmt(env, table) {
+  return env.DB.prepare(`DELETE FROM "ledger_summary" WHERE book_name = ? AND row_count <= 0`).bind(table);
+}
+
+function bumpVersionStmt(env, table, rowDelta = 0) {
+  return env.DB.prepare(
+    `INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+     VALUES (?, 2, MAX(0, ?), datetime('now'))
+     ON CONFLICT(table_name) DO UPDATE SET
+       version = version + 1,
+       row_count = MAX(0, row_count + ?),
+       updated_at = datetime('now')`
+  ).bind(table, rowDelta, rowDelta);
+}
+
+function rebuildTableSummaryStmts(env, table) {
+  const defaultRec = BANK_TABLES.has(table) ? 'Bank' : 'User 1';
+  return [
+    env.DB.prepare(`DELETE FROM "ledger_summary" WHERE book_name = ?`).bind(table),
+    env.DB.prepare(
+      `INSERT INTO "ledger_summary" (book_name, ym, receiver, title, sub_title, total_income, total_expense, row_count)
+       SELECT
+         ?,
+         COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+         COALESCE(NULLIF(TRIM(receiver), ''), ?),
+         COALESCE(TRIM(title), ''),
+         COALESCE(TRIM(sub_title), ''),
+         COALESCE(SUM(COALESCE(income, 0)), 0),
+         COALESCE(SUM(COALESCE(expense, 0)), 0),
+         COUNT(*)
+       FROM "${table}"
+       GROUP BY
+         COALESCE(NULLIF(TRIM(substr(date, 1, 7)), ''), '0000-00'),
+         COALESCE(NULLIF(TRIM(receiver), ''), ?),
+         COALESCE(TRIM(title), ''),
+         COALESCE(TRIM(sub_title), '')`
+    ).bind(table, defaultRec, defaultRec),
+    env.DB.prepare(
+      `INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+       VALUES (?, 2, (SELECT COUNT(*) FROM "${table}"), datetime('now'))
+       ON CONFLICT(table_name) DO UPDATE SET
+         version = version + 1,
+         row_count = excluded.row_count,
+         updated_at = datetime('now')`
+    ).bind(table),
+  ];
+}
+
+function auditStmt(env, user, action, targetTable, targetUid, summary) {
+  return env.DB.prepare(
+    `INSERT INTO "audit_logs" (actor, role, action, target_table, target_uid, summary) VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(str(user?.u || 'system'), str(user?.r || 'System'), action, targetTable, str(targetUid), str(summary).slice(0, 300));
+}
+
+async function getTableVersion(env, table) {
+  const r = await env.DB.prepare(`SELECT version FROM "book_versions" WHERE table_name = ? LIMIT 1`).bind(table).first();
+  return r ? Number(r.version) : 1;
+}
+
+async function getAllVersionsMap(env) {
+  const { results } = await env.DB.prepare(`SELECT table_name, version, row_count, updated_at FROM "book_versions"`).all();
+  const map = {};
+  (results || []).forEach(r => {
+    map[r.table_name] = { version: Number(r.version) || 1, row_count: Number(r.row_count) || 0, updated_at: r.updated_at || '' };
+  });
+  return map;
+}
+
+// Executes an array of statements safely inside D1 batch chunks
+async function runBatches(env, stmts, chunkSize = 40) {
+  const out = [];
+  for (let i = 0; i < stmts.length; i += chunkSize) {
+    const res = await env.DB.batch(stmts.slice(i, i + chunkSize));
+    out.push(...res);
+  }
+  return out;
+}
+
+async function deleteTransferGroup(env, gid, user = null) {
   const ids = [`${gid}_OUT`, `${gid}_IN`];
-  const res = await env.DB.batch(LEDGER_TABLES.map(t =>
-    env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(...ids)));
-  return res.reduce((s, r) => s + changes(r), 0);
+  // 1. Indexed lookup across ledger tables (0-1 row per table)
+  const foundRes = await env.DB.batch(
+    LEDGER_TABLES.map(t => env.DB.prepare(`SELECT * FROM "${t}" WHERE unique_id IN (?, ?)`).bind(...ids))
+  );
+
+  const stmts = [];
+  let deletedCount = 0;
+  const touchedTables = new Set();
+
+  foundRes.forEach((res, idx) => {
+    const t = LEDGER_TABLES[idx];
+    const rows = res.results || [];
+    if (rows.length === 0) return;
+    touchedTables.add(t);
+    rows.forEach(oldRow => {
+      stmts.push(ledgerSummaryDeltaStmt(env, t, oldRow, -1));
+      deletedCount++;
+    });
+    stmts.push(env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(...ids));
+    stmts.push(cleanupEmptySummaryStmt(env, t));
+    stmts.push(bumpVersionStmt(env, t, -rows.length));
+  });
+
+  if (stmts.length === 0) return 0;
+  if (user) {
+    stmts.push(auditStmt(env, user, 'DELETE_TRANSFER', [...touchedTables].join(', '), gid, `Deleted transfer group ${gid}`));
+  }
+  await runBatches(env, stmts);
+  return deletedCount;
 }
 
 // -------------------------------------------------------------------
-// Query Book
+// Query Book (Supports ?known_version=N for 1-row D1 read when unchanged)
 // -------------------------------------------------------------------
-async function queryBook(env, table, rawSheet) {
+async function queryBook(env, table, rawSheet, knownVersion = null) {
+  const currentVersion = await getTableVersion(env, table);
+  if (knownVersion !== null && Number(knownVersion) === currentVersion) {
+    return { success: true, book: table, version: currentVersion, unchanged: true };
+  }
+
   const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY date ASC, id ASC`).all();
   const rows = results || [];
   let running = 0, totalIncome = 0, totalExpense = 0;
@@ -285,7 +439,13 @@ async function queryBook(env, table, rawSheet) {
       month_year: row.month_year || formatMonthYear(row.date), book_name: row.book_name || table,
     };
   });
-  return { success: true, book: table, data, kpis: { totalIncome, totalExpense, balance: running, count: rows.length } };
+  return {
+    success: true,
+    book: table,
+    version: currentVersion,
+    data,
+    kpis: { totalIncome, totalExpense, balance: running, count: rows.length },
+  };
 }
 
 // -------------------------------------------------------------------
@@ -297,7 +457,6 @@ function buildTransfer(b, src) {
   const amt = num(b.amount || b.expense || b.income);
   if (!(amt > 0)) throw new HttpError(400, 'amount must be greater than 0');
 
-  // 🌟 (၂) Idempotency: Client က ပေးပို့လာသော group_id / unique_id အား ဦးစားပေးသုံးပြီး စာရင်း ၂ ခါ မဝင်စေရန် ထိန်းသိမ်းခြင်း
   const fromUid = TRF_RE.exec(str(b.unique_id));
   const gid = str(b.group_id) || (fromUid && fromUid[1]) || `TRF_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
   const sender = BANK_TABLES.has(src) ? 'Bank' : (str(b.receiver) || 'User 1');
@@ -309,13 +468,12 @@ function buildTransfer(b, src) {
     title: 'စာရင်းပြောင်း', income: 0, expense: 0, ...o,
   }];
 
-  // ဘဏ်စာအုပ် (၃) ခုမှ ဘဏ်ထုတ်ငွေ ထွက်လာသည့်အခါ:
   if (BANK_TABLES.has(src)) {
-    const isWithdrawalToSchool = b.title === 'ဘဏ်ထုတ်ငွေ' || 
-                                 target.includes('ကျောင်း') || 
-                                 target.includes('1General') || 
-                                 USERS.some(u => target.includes(u)) ||
-                                 (!target.includes('1CB') && !target.includes('2CB') && !target.includes('3CB'));
+    const isWithdrawalToSchool = b.title === 'ဘဏ်ထုတ်ငွေ' ||
+      target.includes('ကျောင်း') ||
+      target.includes('1General') ||
+      USERS.some(u => target.includes(u)) ||
+      (!target.includes('1CB') && !target.includes('2CB') && !target.includes('3CB'));
 
     if (isWithdrawalToSchool) {
       const destUser = USERS.find(u => target.includes(u)) || (b.receiver && b.receiver !== 'Bank' ? b.receiver : 'User 1');
@@ -329,151 +487,258 @@ function buildTransfer(b, src) {
             sub_title: 'ကျောင်းရန်ပုံငွေ စာအုပ်',
             description: desc,
             expense: amt,
-            receiver: destUser
+            receiver: destUser,
           }),
           mk('1General Book', 'IN', {
             title: 'ဘဏ်ထုတ်ငွေ',
             sub_title: `${src} မှ ထုတ်ယူရရှိ`,
             description: desc,
             income: amt,
-            receiver: destUser
+            receiver: destUser,
           }),
-        ]
+        ],
       };
-    } else {
-      let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
-      if (!targetBank) targetBank = src === '1CB Bank (General)' ? '2CB Bank (Meal)' : '1CB Bank (General)';
-
-      return { gid, rows: [
-        mk(src, 'OUT', { sub_title: `${targetBank} သို့ လွှဲပြောင်း`, description: str(b.description) || `${targetBank} သို့ ဘဏ်စာရင်းပြောင်း လွှဲပို့ခြင်း`, expense: amt, receiver: 'Bank' }),
-        [targetBank, { ...mk(targetBank, 'IN', {})[1], title: 'စာရင်းပြောင်း', sub_title: `${src} မှ လွှဲပြောင်းရရှိ`, description: `${src} မှ စာရင်းပြောင်း ရရှိခြင်း`, income: amt, receiver: 'Bank' }],
-      ] };
     }
+
+    let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
+    if (!targetBank) targetBank = src === '1CB Bank (General)' ? '2CB Bank (Meal)' : '1CB Bank (General)';
+
+    return {
+      gid,
+      rows: [
+        mk(src, 'OUT', {
+          sub_title: `${targetBank} သို့ လွှဲပြောင်း`,
+          description: str(b.description) || `${targetBank} သို့ ဘဏ်စာရင်းပြောင်း လွှဲပို့ခြင်း`,
+          expense: amt,
+          receiver: 'Bank',
+        }),
+        mk(targetBank, 'IN', {
+          title: 'စာရင်းပြောင်း',
+          sub_title: `${src} မှ လွှဲပြောင်းရရှိ`,
+          description: `${src} မှ စာရင်းပြောင်း ရရှိခြင်း`,
+          income: amt,
+          receiver: 'Bank',
+        }),
+      ],
+    };
   }
 
-  // ပင်မစာအုပ်များတွင် User အချင်းချင်း လွှဲပြောင်းခြင်း
   const targetUser = USERS.find(u => target.includes(u));
   if (targetUser && !target.includes('Bank') && !target.includes('ဘဏ်')) {
     if (targetUser === sender && !BANK_TABLES.has(src)) {
       throw new HttpError(400, 'Sender and target user must differ');
     }
-    return { gid, rows: [
-      mk(src, 'OUT', { sub_title: `${targetUser} သို့ လွှဲပြောင်း`, description: str(b.description) || `${targetUser} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`, expense: amt, receiver: sender }),
-      mk(src, 'IN', { sub_title: `${sender} ထံမှ လွှဲပြောင်းရရှိ`, description: str(b.description) ? `${str(b.description)} (ရရှိ)` : `${sender} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`, income: amt, receiver: targetUser }),
-    ] };
+    return {
+      gid,
+      rows: [
+        mk(src, 'OUT', {
+          sub_title: `${targetUser} သို့ လွှဲပြောင်း`,
+          description: str(b.description) || `${targetUser} ထံ စာရင်းပြောင်း ပေးပို့ခြင်း`,
+          expense: amt,
+          receiver: sender,
+        }),
+        mk(src, 'IN', {
+          sub_title: `${sender} ထံမှ လွှဲပြောင်းရရှိ`,
+          description: str(b.description) ? `${str(b.description)} (ရရှိ)` : `${sender} ထံမှ စာရင်းပြောင်း ရရှိခြင်း`,
+          income: amt,
+          receiver: targetUser,
+        }),
+      ],
+    };
   }
 
-  // ပင်မစာအုပ်များမှ ဘဏ်သို့ အပ်နှံခြင်း
   let targetBank = [...BANK_TABLES].find(bTbl => target.includes(bTbl) || target.includes(bTbl.split(' ')[0]));
   if (!targetBank && (target.includes('1CB') || target.includes('အထွေထွေ'))) targetBank = '1CB Bank (General)';
   if (!targetBank && (target.includes('2CB') || target.includes('ဆွမ်း'))) targetBank = '2CB Bank (Meal)';
   if (!targetBank && (target.includes('3CB') || target.includes('ဦးဇင်း') || target.includes('တစ်ဦးတည်း'))) targetBank = '3CB Bank (UZ)';
   if (!targetBank) targetBank = '1CB Bank (General)';
 
-  return { gid, rows: [
-    mk(src, 'OUT', { sub_title: 'ဘဏ်အပ်နှံခြင်း', description: str(b.description) || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`, expense: amt, receiver: sender }),
-    [targetBank, { ...mk(targetBank, 'IN', {})[1], title: 'ဘဏ်အပ်ငွေ', sub_title: 'ဘဏ်အပ်နှံခြင်း', description: `${src} [${sender}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`, income: amt, receiver: 'Bank' }],
-  ] };
+  return {
+    gid,
+    rows: [
+      mk(src, 'OUT', {
+        sub_title: 'ဘဏ်အပ်နှံခြင်း',
+        description: str(b.description) || `${targetBank} သို့ ဘဏ်အပ်နှံခြင်း`,
+        expense: amt,
+        receiver: sender,
+      }),
+      mk(targetBank, 'IN', {
+        title: 'ဘဏ်အပ်ငွေ',
+        sub_title: 'ဘဏ်အပ်နှံခြင်း',
+        description: `${src} [${sender}] မှ ဘဏ်အပ်ငွေ ရရှိခြင်း`,
+        income: amt,
+        receiver: 'Bank',
+      }),
+    ],
+  };
+}
+
+async function applyTransferAtomic(env, user, b, src, isEditOrReplace = false) {
+  const { gid, rows } = buildTransfer(b, src);
+  const ids = [`${gid}_OUT`, `${gid}_IN`];
+  const stmts = [];
+  const touchedTables = new Set(rows.map(([t]) => t));
+
+  // Always look up existing rows by unique_id so retries / edits keep ledger_summary 100% accurate
+  const existingChecks = await env.DB.batch(
+    LEDGER_TABLES.map(t => env.DB.prepare(`SELECT * FROM "${t}" WHERE unique_id IN (?, ?)`).bind(...ids))
+  );
+
+  existingChecks.forEach((res, idx) => {
+    const t = LEDGER_TABLES[idx];
+    const oldRows = res.results || [];
+    if (oldRows.length === 0) return;
+    touchedTables.add(t);
+    oldRows.forEach(oldRow => {
+      stmts.push(ledgerSummaryDeltaStmt(env, t, oldRow, -1));
+    });
+    if (isEditOrReplace || !rows.some(([rt]) => rt === t)) {
+      stmts.push(env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(...ids));
+      if (!rows.some(([rt]) => rt === t)) {
+        stmts.push(bumpVersionStmt(env, t, -oldRows.length));
+      }
+    }
+  });
+
+  const deltaPerTable = {};
+  existingChecks.forEach((res, idx) => {
+    const t = LEDGER_TABLES[idx];
+    deltaPerTable[t] = -(res.results?.length || 0);
+  });
+
+  rows.forEach(([t, row]) => {
+    stmts.push(upsertStmt(env, t, row));
+    stmts.push(ledgerSummaryDeltaStmt(env, t, row, +1));
+    deltaPerTable[t] = (deltaPerTable[t] || 0) + 1;
+  });
+
+  touchedTables.forEach(t => {
+    stmts.push(cleanupEmptySummaryStmt(env, t));
+    stmts.push(bumpVersionStmt(env, t, deltaPerTable[t] || 0));
+  });
+
+  stmts.push(auditStmt(env, user, isEditOrReplace ? 'UPDATE_TRANSFER' : 'TRANSFER', src, gid, `${rows[0]?.[1]?.description || gid}`));
+  await runBatches(env, stmts);
+  return gid;
 }
 
 async function handleTransfer(c) {
-  const { url, method, env } = c;
+  const { url, method, env, user } = c;
   if (method === 'DELETE') {
+    if (!canDeleteRole(user)) throw new HttpError(403, 'ဖျက်သိမ်းခွင့် မရှိပါ။');
     const m = TRF_RE.exec(str(url.searchParams.get('unique_id')));
     const gid = str(url.searchParams.get('group_id')) || (m && m[1]);
     if (!gid) throw new HttpError(400, 'group_id required');
-    return c.J({ success: true, deleted: await deleteTransferGroup(env, gid) });
+    return c.J({ success: true, deleted: await deleteTransferGroup(env, gid, user) });
   }
   if (method !== 'POST' && method !== 'PUT') throw new HttpError(405, 'Method not allowed');
 
   const b = await readJson(c.request);
   const src = ledgerTable(url.searchParams.get('sheet') || b.sheet_name || b.sheet_code || b.book_name);
-  const { gid, rows } = buildTransfer(b, src);
-
-  const stmts = [];
-  if (method === 'PUT' || str(b.unique_id).includes('TRF_')) {
-    LEDGER_TABLES.forEach(t => stmts.push(env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(`${gid}_OUT`, `${gid}_IN`)));
-  }
-  rows.forEach(([t, row]) => stmts.push(upsertStmt(env, t, row)));
-  await env.DB.batch(stmts);
+  const gid = await applyTransferAtomic(env, user, b, src, method === 'PUT' || str(b.unique_id).includes('TRF_'));
   return c.J({ success: true, group_id: gid, unique_id: `${gid}_OUT` });
 }
 
 async function handleEntries(c) {
-  const { url, method, env } = c;
+  const { url, method, env, user } = c;
   const sheetParam = url.searchParams.get('sheet') || url.searchParams.get('book');
 
   if (method === 'GET') {
     const raw = sheetParam || '1CB';
-    return c.J(await queryBook(env, ledgerTable(raw), raw));
+    const knownV = url.searchParams.get('known_version');
+    return c.J(await queryBook(env, ledgerTable(raw), raw, knownV ? parseInt(knownV, 10) : null));
   }
 
   const body = (method === 'POST' || method === 'PUT') ? await readJson(c.request) : null;
   const table = ledgerTable(sheetParam || body?.sheet_name || body?.sheet_code || body?.book_name);
 
-  // ဘဏ်စာအုပ်တွင် "ဘဏ်ထုတ်ငွေ" အဖြစ် သွင်းလိုက်ပါက အလိုအလျောက် Dual-Entry ချိတ်ဆက်ပေးခြင်း
   if (method === 'POST') {
-    const isBankWithdrawal = BANK_TABLES.has(table) && 
+    const isBankWithdrawal = BANK_TABLES.has(table) &&
       (body.title === 'ဘဏ်ထုတ်ငွေ' || body.category === 'ဘဏ်ထုတ်ငွေ' || str(body.sub_title).includes('ကျောင်းရန်ပုံငွေ'));
 
     if (isBankWithdrawal) {
-      const { gid, rows } = buildTransfer({
+      const gid = await applyTransferAtomic(env, user, {
         ...body,
         target: '1General Book',
         amount: body.amount || body.expense,
         receiver: body.receiver || 'User 1',
-        description: body.description || 'ကျောင်းအသုံးစရိတ် ထုတ်ပေးခြင်း (ဘဏ်မှရရှိငွေ)'
-      }, table);
-
-      const stmts = rows.map(([t, row]) => upsertStmt(env, t, row));
-      await env.DB.batch(stmts);
+        description: body.description || 'ကျောင်းအသုံးစရိတ် ထုတ်ပေးခြင်း (ဘဏ်မှရရှိငွေ)',
+      }, table, false);
       return c.J({ success: true, unique_id: `${gid}_OUT`, group_id: gid });
     }
 
     const row = normLedger(body, table);
-    await upsertStmt(env, table, row).run();
+    const existing = await env.DB.prepare(`SELECT * FROM "${table}" WHERE unique_id = ? LIMIT 1`).bind(row.unique_id).first();
+    const stmts = [];
+    if (existing) stmts.push(ledgerSummaryDeltaStmt(env, table, existing, -1));
+    stmts.push(upsertStmt(env, table, row));
+    stmts.push(ledgerSummaryDeltaStmt(env, table, row, +1));
+    stmts.push(cleanupEmptySummaryStmt(env, table));
+    stmts.push(bumpVersionStmt(env, table, existing ? 0 : 1));
+    stmts.push(auditStmt(env, user, existing ? 'UPSERT_LEDGER' : 'CREATE_LEDGER', table, row.unique_id, `${row.date} | ${row.title} | ${row.income || row.expense}`));
+    await env.DB.batch(stmts);
     return c.J({ success: true, unique_id: row.unique_id });
   }
 
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
 
-  // လက်ခံစာအုပ် (_IN) မှ တိုက်ရိုက် Edit/Delete လုပ်ခြင်းအား တားမြစ်ခြင်း
   if (key.uid && key.uid.endsWith('_IN')) {
     throw new HttpError(400, 'ဤစာရင်းသည် လက်ခံစာရင်း (Incoming Transfer) ဖြစ်သောကြောင့် မူရင်းလွှဲပို့သည့် စာအုပ်မှသာ ပြင်ဆင်/ဖျက်ပစ်နိုင်ပါသည်ခင်ဗျာ။');
   }
 
   if (method === 'PUT') {
     if (key.uid && TRF_RE.test(key.uid)) {
-      const { gid, rows } = buildTransfer(body, table);
-      const stmts = [];
-      LEDGER_TABLES.forEach(t => stmts.push(env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id IN (?, ?)`).bind(`${gid}_OUT`, `${gid}_IN`)));
-      rows.forEach(([t, row]) => stmts.push(upsertStmt(env, t, row)));
-      await env.DB.batch(stmts);
+      const gid = await applyTransferAtomic(env, user, body, table, true);
       return c.J({ success: true, group_id: gid });
     }
-    const r = await updateStmt(env, table, normLedger({ ...body, unique_id: key.uid }, table), key).run();
-    if (!changes(r)) throw new HttpError(404, 'Entry not found in this book');
+    const [where, val] = keyWhere(key);
+    const existing = await env.DB.prepare(`SELECT * FROM "${table}" WHERE ${where} LIMIT 1`).bind(val).first();
+    if (!existing) throw new HttpError(404, 'Entry not found in this book');
+
+    const newRow = normLedger({ ...body, unique_id: existing.unique_id || key.uid }, table);
+    const stmts = [
+      updateStmt(env, table, newRow, key),
+      ledgerSummaryDeltaStmt(env, table, existing, -1),
+      ledgerSummaryDeltaStmt(env, table, newRow, +1),
+      cleanupEmptySummaryStmt(env, table),
+      bumpVersionStmt(env, table, 0),
+      auditStmt(env, user, 'UPDATE_LEDGER', table, existing.unique_id || val, `${newRow.date} | ${newRow.title} | ${newRow.income || newRow.expense}`),
+    ];
+    await env.DB.batch(stmts);
     return c.J({ success: true });
   }
 
   if (method === 'DELETE') {
+    if (!canDeleteRole(user)) throw new HttpError(403, 'ဖျက်သိမ်းခွင့် မရှိပါ။');
     const trf = key.uid && TRF_RE.exec(key.uid);
     if (trf) {
-      return c.J({ success: true, deleted: await deleteTransferGroup(env, trf[1]) });
+      return c.J({ success: true, deleted: await deleteTransferGroup(env, trf[1], user) });
     }
     const [where, val] = keyWhere(key);
-    const r = await env.DB.prepare(`DELETE FROM "${table}" WHERE ${where}`).bind(val).run();
-    return c.J({ success: true, deleted: changes(r) });
+    const existing = await env.DB.prepare(`SELECT * FROM "${table}" WHERE ${where} LIMIT 1`).bind(val).first();
+    if (!existing) return c.J({ success: true, deleted: 0 });
+
+    const stmts = [
+      env.DB.prepare(`DELETE FROM "${table}" WHERE ${where}`).bind(val),
+      ledgerSummaryDeltaStmt(env, table, existing, -1),
+      cleanupEmptySummaryStmt(env, table),
+      bumpVersionStmt(env, table, -1),
+      auditStmt(env, user, 'DELETE_LEDGER', table, existing.unique_id || val, `${existing.date} | ${existing.title} | ${existing.income || existing.expense}`),
+    ];
+    await env.DB.batch(stmts);
+    return c.J({ success: true, deleted: 1 });
   }
   throw new HttpError(405, 'Method not allowed');
 }
 
 // -------------------------------------------------------------------
-// GOOGLE SHEETS BULK IMPORT (Clean & Batch Overwrite)
+// GOOGLE SHEETS BULK IMPORT (Admin Only + Auto Summary Rebuild)
 // -------------------------------------------------------------------
 async function handleBulkImport(c) {
-  const { env } = c;
+  const { env, user } = c;
+  if (!isAdmin(user)) throw new HttpError(403, 'Admin တစ်ဦးတည်းသာ Bulk Import ပြုလုပ်ခွင့် ရှိပါသည်။');
+
   const b = await readJson(c.request);
   const rawTable = str(b.table);
   const clearExisting = b.clearExisting === true;
@@ -497,39 +762,43 @@ async function handleBulkImport(c) {
     await env.DB.prepare(`DELETE FROM "${table}"`).run();
   }
 
-  if (rawRows.length === 0) {
-    return c.J({ success: true, count: 0, table, message: 'Table cleared successfully' });
-  }
-
-  const CHUNK_SIZE = 80;
   let insertedCount = 0;
-
+  const CHUNK_SIZE = 70;
   for (let i = 0; i < rawRows.length; i += CHUNK_SIZE) {
     const slice = rawRows.slice(i, i + CHUNK_SIZE);
     const stmts = slice.map((item, idx) => {
       const rowData = { ...item };
-      if (rowData.no === undefined) {
-        rowData.no = i + idx + 1;
-      }
-      // Bulk import အတွက် description အလွတ်ဖြစ်နေပါက title ဖြင့် အရန်သတ်မှတ်ပေးခြင်း
-      if (!rowData.description && rowData.title) {
-        rowData.description = rowData.title;
-      }
-      const normalized = NORM[kind](rowData, table);
-      return upsertStmt(env, table, normalized);
+      if (rowData.no === undefined) rowData.no = i + idx + 1;
+      if (!rowData.description && rowData.title) rowData.description = rowData.title;
+      return upsertStmt(env, table, NORM[kind](rowData, table));
     });
-
     await env.DB.batch(stmts);
     insertedCount += slice.length;
+  }
+
+  if (kind === 'ledger') {
+    await env.DB.batch([
+      ...rebuildTableSummaryStmts(env, table),
+      auditStmt(env, user, 'BULK_IMPORT', table, '', `clear=${clearExisting}, count=${insertedCount}`),
+    ]);
+  } else {
+    await env.DB.batch([
+      env.DB.prepare(
+        `INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+         VALUES (?, 2, (SELECT COUNT(*) FROM "${table}"), datetime('now'))
+         ON CONFLICT(table_name) DO UPDATE SET version = version + 1, row_count = excluded.row_count, updated_at = datetime('now')`
+      ).bind(table),
+      auditStmt(env, user, 'BULK_IMPORT', table, '', `clear=${clearExisting}, count=${insertedCount}`),
+    ]);
   }
 
   return c.J({ success: true, count: insertedCount, table });
 }
 
 // -------------------------------------------------------------------
-// Formatters & Handlers
+// Formatters & Yogi Classifier
 // -------------------------------------------------------------------
-function formatInventory(rows) {
+function formatInventory(rows, version = 1) {
   let kitchen = 0, dhammaHall = 0, sim = 0, store = 0, totalQty = 0;
   const data = rows.map((row, idx) => {
     const q = parseFloat(row.qty) || 0, loc = str(row.location);
@@ -548,7 +817,7 @@ function formatInventory(rows) {
       month_year: row.month_year || '', book_name: 'Inventory',
     };
   });
-  return { success: true, data, kpis: { kitchen, dhammaHall, sim, store, totalQty, totalItems: rows.length } };
+  return { success: true, version, data, kpis: { kitchen, dhammaHall, sim, store, totalQty, totalItems: rows.length } };
 }
 
 function classifyYogi(row) {
@@ -562,7 +831,7 @@ function classifyYogi(row) {
 }
 const yogiActive = (row) => { const e = str(row.end_date); return e === '' || e === '-'; };
 
-function formatYogi(rows, rawSheet, table) {
+function formatYogi(rows, rawSheet, table, version = 1) {
   let monks = 0, nuns = 0, males = 0, females = 0, active = 0, inactive = 0;
   const data = rows.map((row, idx) => {
     const isActive = yogiActive(row);
@@ -588,12 +857,17 @@ function formatYogi(rows, rawSheet, table) {
     };
   });
   return {
-    success: true, sheet: rawSheet, book: table, data,
-    kpis: { totalMonks: monks, totalNuns: nuns, totalMales: males, totalFemales: females,
-      totalActiveYogis: active, totalInactiveYogis: inactive, totalCount: rows.length },
+    success: true, sheet: rawSheet, book: table, version, data,
+    kpis: {
+      totalMonks: monks, totalNuns: nuns, totalMales: males, totalFemales: females,
+      totalActiveYogis: active, totalInactiveYogis: inactive, totalCount: rows.length,
+    },
   };
 }
 
+// -------------------------------------------------------------------
+// Auth & Account Handlers
+// -------------------------------------------------------------------
 async function handleLogin(c) {
   const b = await readJson(c.request);
   const username = str(b.username), password = str(b.password);
@@ -622,60 +896,186 @@ async function handleChangePassword(c) {
   return c.J({ success: true });
 }
 
+// -------------------------------------------------------------------
+// Version Check & Smart Bootstrap (13-row read check before full fetch!)
+// -------------------------------------------------------------------
+async function handleVersions(c) {
+  const versions = await getAllVersionsMap(c.env);
+  return c.J({ success: true, versions, timestamp: Date.now() });
+}
+
 async function handleBootstrap(c) {
-  const { env } = c;
-  const [books, inv, perm, camp] = await Promise.all([
-    Promise.all(ALL_SHEETS.map(code => queryBook(env, TABLE_MAP[code], code))),
-    env.DB.prepare(`SELECT * FROM "Inventory" ORDER BY date ASC, id ASC`).all(),
-    env.DB.prepare(`SELECT * FROM "Permanent Yogi" ORDER BY start_date ASC, id ASC`).all(),
-    env.DB.prepare(`SELECT * FROM "Camp Yogi" ORDER BY start_date ASC, id ASC`).all(),
+  const { env, url } = c;
+  let clientVersions = {};
+  const vParam = url.searchParams.get('versions');
+  if (vParam) {
+    try { clientVersions = JSON.parse(vParam) || {}; } catch (_) { clientVersions = {}; }
+  }
+
+  const serverVersions = await getAllVersionsMap(env);
+  const unchangedBooks = {};
+  const booksToFetch = [];
+
+  ALL_SHEETS.forEach(code => {
+    const tbl = TABLE_MAP[code];
+    const sv = serverVersions[tbl]?.version || 1;
+    const cv = Number(clientVersions[tbl] ?? clientVersions[code] ?? -1);
+    if (cv === sv) unchangedBooks[code] = sv;
+    else booksToFetch.push(code);
+  });
+
+  const invSv = serverVersions['Inventory']?.version || 1;
+  const fetchInv = Number(clientVersions['Inventory'] ?? -1) !== invSv;
+
+  const permSv = serverVersions['Permanent Yogi']?.version || 1;
+  const fetchPerm = Number(clientVersions['Permanent Yogi'] ?? clientVersions['12Yogi'] ?? -1) !== permSv;
+
+  const campSv = serverVersions['Camp Yogi']?.version || 1;
+  const fetchCamp = Number(clientVersions['Camp Yogi'] ?? clientVersions['13Yogi'] ?? -1) !== campSv;
+
+  const [booksRes, invRes, permRes, campRes] = await Promise.all([
+    Promise.all(booksToFetch.map(code => queryBook(env, TABLE_MAP[code], code))),
+    fetchInv ? env.DB.prepare(`SELECT * FROM "Inventory" ORDER BY date ASC, id ASC`).all() : Promise.resolve(null),
+    fetchPerm ? env.DB.prepare(`SELECT * FROM "Permanent Yogi" ORDER BY start_date ASC, id ASC`).all() : Promise.resolve(null),
+    fetchCamp ? env.DB.prepare(`SELECT * FROM "Camp Yogi" ORDER BY start_date ASC, id ASC`).all() : Promise.resolve(null),
   ]);
+
   const booksPayload = {};
-  ALL_SHEETS.forEach((code, i) => { booksPayload[code] = books[i]; });
-  const invF = formatInventory(inv.results || []);
-  const permF = formatYogi(perm.results || [], '12Yogi', 'Permanent Yogi');
-  const campF = formatYogi(camp.results || [], '13Yogi', 'Camp Yogi');
+  booksToFetch.forEach((code, i) => { booksPayload[code] = booksRes[i]; });
+
+  const invF = invRes ? formatInventory(invRes.results || [], invSv) : null;
+  const permF = permRes ? formatYogi(permRes.results || [], '12Yogi', 'Permanent Yogi', permSv) : null;
+  const campF = campRes ? formatYogi(campRes.results || [], '13Yogi', 'Camp Yogi', campSv) : null;
+
   return c.J({
-    success: true, timestamp: Date.now(), books: booksPayload,
-    inventory: invF.data, inventoryKpis: invF.kpis,
-    yogi: { '12Yogi': permF.data, '13Yogi': campF.data },
-    yogiKpis: { '12Yogi': permF.kpis, '13Yogi': campF.kpis },
+    success: true,
+    timestamp: Date.now(),
+    versions: serverVersions,
+    unchangedBooks,
+    books: booksPayload,
+    ...(invF ? { inventory: invF.data, inventoryKpis: invF.kpis } : {}),
+    yogi: {
+      ...(permF ? { '12Yogi': permF.data } : {}),
+      ...(campF ? { '13Yogi': campF.data } : {}),
+    },
+    yogiKpis: {
+      ...(permF ? { '12Yogi': permF.kpis } : {}),
+      ...(campF ? { '13Yogi': campF.kpis } : {}),
+    },
   });
 }
 
+// -------------------------------------------------------------------
+// Offline Batch Sync (/api/sync) - Handles Dual-Entry Transfers + Batching
+// -------------------------------------------------------------------
 async function handleSync(c) {
-  const { env } = c;
+  const { env, user } = c;
   const body = await readJson(c.request);
-  const queue = Array.isArray(body.queue) ? body.queue.slice(0, 500) : [];
+  const queue = Array.isArray(body.queue) ? body.queue.slice(0, 200) : [];
   const results = [];
+
   for (const item of queue) {
     const uid = str(item?.unique_id);
     const qid = item?.qid ?? null;
     try {
       const action = str(item?.action).toUpperCase();
-      let table, kind;
       const raw = str(item.table);
+
+      if (action === 'DELETE' && !canDeleteRole(user)) {
+        throw new HttpError(403, 'ဖျက်သိမ်းခွင့် မရှိပါ။');
+      }
+
+      let table, kind;
       if (TABLE_MAP[raw]) { table = TABLE_MAP[raw]; kind = 'ledger'; }
       else if (raw === 'Inventory') { table = 'Inventory'; kind = 'inventory'; }
       else if (['Permanent Yogi', 'Camp Yogi', '12Yogi', '13Yogi'].includes(raw)) {
         table = resolveYogiTable(item.data?.sheet_type || item.data?.book_name || raw); kind = 'yogi';
       } else throw new HttpError(400, `Table not allowed: ${raw}`);
 
-      if (action === 'CREATE' || action === 'UPDATE') {
-        const row = NORM[kind]({ ...(item.data || {}), unique_id: uid || item.data?.unique_id }, table);
-        await upsertStmt(env, table, row).run();
-        results.push({ qid, unique_id: row.unique_id, status: 'synced' });
-      } else if (action === 'DELETE') {
-        if (!uid) throw new HttpError(400, 'unique_id required');
-        const trf = TRF_RE.exec(uid);
-        if (trf) await deleteTransferGroup(env, trf[1]);
-        else {
-          const tables = kind === 'yogi' ? ['Permanent Yogi', 'Camp Yogi'] : [table];
-          await env.DB.batch(tables.map(t => env.DB.prepare(`DELETE FROM "${t}" WHERE unique_id = ?`).bind(uid)));
+      if (kind === 'ledger') {
+        if (action === 'CREATE' || action === 'UPDATE') {
+          const dataObj = { ...(item.data || {}), unique_id: uid || item.data?.unique_id };
+          const isTransferOrWithdrawal = TRF_RE.test(str(dataObj.unique_id)) ||
+            dataObj.title === 'စာရင်းပြောင်း' ||
+            (BANK_TABLES.has(table) && (dataObj.title === 'ဘဏ်ထုတ်ငွေ' || str(dataObj.sub_title).includes('ကျောင်းရန်ပုံငွေ')));
+
+          if (isTransferOrWithdrawal) {
+            const gid = await applyTransferAtomic(env, user, dataObj, table, action === 'UPDATE');
+            results.push({ qid, unique_id: `${gid}_OUT`, status: 'synced' });
+          } else {
+            const row = normLedger(dataObj, table);
+            const existing = await env.DB.prepare(`SELECT * FROM "${table}" WHERE unique_id = ? LIMIT 1`).bind(row.unique_id).first();
+            const stmts = [];
+            if (existing) stmts.push(ledgerSummaryDeltaStmt(env, table, existing, -1));
+            stmts.push(upsertStmt(env, table, row));
+            stmts.push(ledgerSummaryDeltaStmt(env, table, row, +1));
+            stmts.push(cleanupEmptySummaryStmt(env, table));
+            stmts.push(bumpVersionStmt(env, table, existing ? 0 : 1));
+            await env.DB.batch(stmts);
+            results.push({ qid, unique_id: row.unique_id, status: 'synced' });
+          }
+        } else if (action === 'DELETE') {
+          if (!uid) throw new HttpError(400, 'unique_id required');
+          const trf = TRF_RE.exec(uid);
+          if (trf) {
+            await deleteTransferGroup(env, trf[1], user);
+          } else {
+            const existing = await env.DB.prepare(`SELECT * FROM "${table}" WHERE unique_id = ? LIMIT 1`).bind(uid).first();
+            if (existing) {
+              await env.DB.batch([
+                env.DB.prepare(`DELETE FROM "${table}" WHERE unique_id = ?`).bind(uid),
+                ledgerSummaryDeltaStmt(env, table, existing, -1),
+                cleanupEmptySummaryStmt(env, table),
+                bumpVersionStmt(env, table, -1),
+              ]);
+            }
+          }
+          results.push({ qid, unique_id: uid, status: 'deleted' });
+        } else {
+          throw new HttpError(400, `Unknown action: ${action}`);
         }
-        results.push({ qid, unique_id: uid, status: 'deleted' });
-      } else {
-        throw new HttpError(400, `Unknown action: ${action}`);
+      } else if (kind === 'inventory') {
+        if (action === 'CREATE' || action === 'UPDATE') {
+          const row = normInventory({ ...(item.data || {}), unique_id: uid || item.data?.unique_id });
+          const existing = await env.DB.prepare(`SELECT id FROM "Inventory" WHERE unique_id = ? LIMIT 1`).bind(row.unique_id).first();
+          await env.DB.batch([
+            upsertStmt(env, 'Inventory', row),
+            bumpVersionStmt(env, 'Inventory', existing ? 0 : 1),
+          ]);
+          results.push({ qid, unique_id: row.unique_id, status: 'synced' });
+        } else if (action === 'DELETE') {
+          if (!uid) throw new HttpError(400, 'unique_id required');
+          const r = await env.DB.prepare(`DELETE FROM "Inventory" WHERE unique_id = ?`).bind(uid).run();
+          if (changes(r) > 0) await bumpVersionStmt(env, 'Inventory', -changes(r)).run();
+          results.push({ qid, unique_id: uid, status: 'deleted' });
+        } else {
+          throw new HttpError(400, `Unknown action: ${action}`);
+        }
+      } else if (kind === 'yogi') {
+        if (action === 'CREATE' || action === 'UPDATE') {
+          const existing = uid
+            ? await env.DB.prepare(`SELECT * FROM "${table}" WHERE unique_id = ? LIMIT 1`).bind(uid).first()
+            : null;
+          const row = normYogi({ ...(item.data || {}), unique_id: uid || item.data?.unique_id }, table, existing);
+          await env.DB.batch([
+            upsertStmt(env, table, row),
+            bumpVersionStmt(env, table, existing ? 0 : 1),
+          ]);
+          results.push({ qid, unique_id: row.unique_id, status: 'synced' });
+        } else if (action === 'DELETE') {
+          if (!uid) throw new HttpError(400, 'unique_id required');
+          const delRes = await env.DB.batch([
+            env.DB.prepare(`DELETE FROM "Permanent Yogi" WHERE unique_id = ?`).bind(uid),
+            env.DB.prepare(`DELETE FROM "Camp Yogi" WHERE unique_id = ?`).bind(uid),
+          ]);
+          const vers = [];
+          if (changes(delRes[0]) > 0) vers.push(bumpVersionStmt(env, 'Permanent Yogi', -changes(delRes[0])));
+          if (changes(delRes[1]) > 0) vers.push(bumpVersionStmt(env, 'Camp Yogi', -changes(delRes[1])));
+          if (vers.length) await env.DB.batch(vers);
+          results.push({ qid, unique_id: uid, status: 'deleted' });
+        } else {
+          throw new HttpError(400, `Unknown action: ${action}`);
+        }
       }
     } catch (e) {
       results.push({ qid, unique_id: uid, status: 'error', error: e.message });
@@ -685,108 +1085,197 @@ async function handleSync(c) {
   return c.J({ success: true, count: results.length, failed, results });
 }
 
+// -------------------------------------------------------------------
+// HOME SUMMARY (Reads ONLY ledger_summary + Active Yogis -> 99% Fewer Reads!)
+// -------------------------------------------------------------------
 async function handleHomeSummary(c) {
   const { env } = c;
   const fundSummary = {};
-  ALL_SHEETS.forEach(s => { fundSummary[s] = { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 }; });
+  const tableToSheet = {};
+  ALL_SHEETS.forEach(s => {
+    tableToSheet[TABLE_MAP[s]] = s;
+    fundSummary[s] = { bankBalance: 0, user1Balance: 0, user2Balance: 0, user3Balance: 0, totalBalance: 0 };
+  });
+
+  const padethaDefs = [
+    ['2Meal Book', 'ဆွမ်းပဒေသာပင် စာအုပ်'],
+    ['5Electronic Book', 'လျှပ်စစ်ပဒေသာပင် စာအုပ်'],
+    ['6Medical Book', 'ဆေးပဒေသာပင် စာအုပ်'],
+    ['7Other Book', 'အထွေထွေရန်ပုံငွေစာအုပ်'],
+  ];
+  const padethaTotals = {};
+  padethaDefs.forEach(([t]) => { padethaTotals[t] = { income: 0, expense: 0 }; });
+
   let totalFund = 0, totalBank = 0, totalCash = 0, totalCount = 0;
 
   try {
-    const batch = await env.DB.batch(ALL_SHEETS.map(sheet => {
-      const tbl = TABLE_MAP[sheet];
-      return BANK_SHEETS.includes(sheet)
-        ? env.DB.prepare(`SELECT '' as receiver, COALESCE(SUM(COALESCE(income,0) - COALESCE(expense,0)), 0) as net_amount, COUNT(*) as row_count FROM "${tbl}"`)
-        : env.DB.prepare(`SELECT COALESCE(receiver, 'User 1') as receiver, COALESCE(SUM(COALESCE(income,0) - COALESCE(expense,0)), 0) as net_amount, COUNT(*) as row_count FROM "${tbl}" GROUP BY COALESCE(receiver, 'User 1')`);
-    }));
-    batch.forEach((res, idx) => {
-      const sheet = ALL_SHEETS[idx];
-      (res.results || []).forEach(row => {
-        const receiver = str(row.receiver);
-        const amount = parseFloat(row.net_amount) || 0;
-        totalCount += parseInt(row.row_count, 10) || 0;
-        if (BANK_SHEETS.includes(sheet)) { fundSummary[sheet].bankBalance += amount; totalBank += amount; }
-        else {
-          if (receiver.includes('User 2') || receiver.includes('User2')) fundSummary[sheet].user2Balance += amount;
-          else if (receiver.includes('User 3') || receiver.includes('User3')) fundSummary[sheet].user3Balance += amount;
-          else fundSummary[sheet].user1Balance += amount;
-          totalCash += amount;
-        }
-        fundSummary[sheet].totalBalance += amount;
-        totalFund += amount;
-      });
-    });
-  } catch (e) { console.error('[Dashboard Fund]', e); }
-
-  let padethaSummary = [];
-  try {
-    const defs = [
-      ['2Meal Book', 'ဆွမ်းပဒေသာပင် စာအုပ်'], ['5Electronic Book', 'လျှပ်စစ်ပဒေသာပင် စာအုပ်'],
-      ['6Medical Book', 'ဆေးပဒေသာပင် စာအုပ်'], ['7Other Book', 'အထွေထွေရန်ပုံငွေစာအုပ်'],
-    ];
-    const res = await env.DB.batch(defs.map(([t]) => env.DB.prepare(`SELECT COALESCE(SUM(COALESCE(income,0)),0) as income, COALESCE(SUM(COALESCE(expense,0)),0) as expense FROM "${t}"`)));
-    padethaSummary = defs.map(([table_name, title], i) => {
-      const r = res[i].results?.[0] || {};
-      const income = parseFloat(r.income) || 0, expense = parseFloat(r.expense) || 0;
-      return { table_name, title, income, expense, balance: income - expense };
-    });
-  } catch (e) { console.error('[Dashboard Padetha]', e); }
-
-  const resident = {}, retreat = {};
-  YOGI_CATS.forEach(k => { resident[k] = { male: 0, female: 0, total: 0 }; retreat[k] = { male: 0, female: 0, total: 0 }; });
-  try {
-    const [p, k] = await env.DB.batch([
+    const [sumRes, pRes, kRes] = await env.DB.batch([
+      env.DB.prepare(
+        `SELECT book_name, receiver,
+                COALESCE(SUM(total_income), 0) as inc,
+                COALESCE(SUM(total_expense), 0) as exp,
+                COALESCE(SUM(row_count), 0) as cnt
+         FROM "ledger_summary"
+         WHERE row_count > 0
+         GROUP BY book_name, receiver`
+      ),
       env.DB.prepare(`SELECT yogi_type, name, gender FROM "Permanent Yogi" WHERE (end_date IS NULL OR end_date = '' OR end_date = '-')`),
       env.DB.prepare(`SELECT yogi_type, name, gender FROM "Camp Yogi" WHERE (end_date IS NULL OR end_date = '' OR end_date = '-')`),
     ]);
-    const add = (rows, target) => (rows || []).forEach(row => {
-      let type = str(row.yogi_type);
-      if (!YOGI_CATS.includes(type)) type = 'လူပုဂ္ဂိုလ်';
-      const t = target[type];
+
+    (sumRes.results || []).forEach(row => {
+      const tbl = str(row.book_name);
+      const sheet = tableToSheet[tbl];
+      if (!sheet) return;
+      const receiver = str(row.receiver);
+      const inc = parseFloat(row.inc) || 0;
+      const exp = parseFloat(row.exp) || 0;
+      const net = inc - exp;
+      const cnt = parseInt(row.cnt, 10) || 0;
+
+      totalCount += cnt;
+      if (BANK_SHEETS.includes(sheet)) {
+        fundSummary[sheet].bankBalance += net;
+        totalBank += net;
+      } else {
+        if (receiver.includes('User 2') || receiver.includes('User2')) fundSummary[sheet].user2Balance += net;
+        else if (receiver.includes('User 3') || receiver.includes('User3')) fundSummary[sheet].user3Balance += net;
+        else fundSummary[sheet].user1Balance += net;
+        totalCash += net;
+      }
+      fundSummary[sheet].totalBalance += net;
+      totalFund += net;
+
+      if (padethaTotals[tbl]) {
+        padethaTotals[tbl].income += inc;
+        padethaTotals[tbl].expense += exp;
+      }
+    });
+
+    const padethaSummary = padethaDefs.map(([table_name, title]) => {
+      const p = padethaTotals[table_name];
+      return { table_name, title, income: p.income, expense: p.expense, balance: p.income - p.expense };
+    });
+
+    const resident = {}, retreat = {};
+    YOGI_CATS.forEach(k => { resident[k] = { male: 0, female: 0, total: 0 }; retreat[k] = { male: 0, female: 0, total: 0 }; });
+
+    const addYogi = (rows, target) => (rows || []).forEach(row => {
+      const type = classifyYogi(row);
+      const t = target[type] || target['လူပုဂ္ဂိုလ်'];
       if (str(row.gender) === 'မ') t.female++; else t.male++;
       t.total++;
     });
-    add(p.results, resident); add(k.results, retreat);
-  } catch (e) { console.error('[Dashboard Yogi]', e); }
+    addYogi(pRes.results, resident);
+    addYogi(kRes.results, retreat);
 
-  return c.J({ success: true, kpis: { totalFund, totalBank, totalCash, totalCount }, fundSummary, padethaSummary, yogiSummary: { resident, retreat } });
+    return c.J({
+      success: true,
+      kpis: { totalFund, totalBank, totalCash, totalCount },
+      fundSummary,
+      padethaSummary,
+      yogiSummary: { resident, retreat },
+    });
+  } catch (e) {
+    console.error('[Dashboard Summary Error]', e);
+    throw new HttpError(500, 'Dashboard summary error');
+  }
 }
 
+// -------------------------------------------------------------------
+// Inventory Handler
+// -------------------------------------------------------------------
 async function handleInventory(c) {
-  const { url, method, env } = c;
+  const { url, method, env, user } = c;
   if (method === 'GET') {
+    const knownV = url.searchParams.get('known_version');
+    const sv = await getTableVersion(env, 'Inventory');
+    if (knownV !== null && Number(knownV) === sv) {
+      return c.J({ success: true, book: 'Inventory', version: sv, unchanged: true });
+    }
     const { results } = await env.DB.prepare(`SELECT * FROM "Inventory" ORDER BY date ASC, id ASC`).all();
-    return c.J(formatInventory(results || []));
+    return c.J(formatInventory(results || [], sv));
   }
+
   const body = (method === 'POST' || method === 'PUT') ? await readJson(c.request) : null;
   if (method === 'POST') {
     const row = normInventory(body);
-    await upsertStmt(env, 'Inventory', row).run();
+    const existing = await env.DB.prepare(`SELECT id FROM "Inventory" WHERE unique_id = ? LIMIT 1`).bind(row.unique_id).first();
+    await env.DB.batch([
+      upsertStmt(env, 'Inventory', row),
+      bumpVersionStmt(env, 'Inventory', existing ? 0 : 1),
+      auditStmt(env, user, existing ? 'UPSERT_INV' : 'CREATE_INV', 'Inventory', row.unique_id, `${row.description} (${row.qty})`),
+    ]);
     return c.J({ success: true, unique_id: row.unique_id });
   }
+
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
+
   if (method === 'PUT') {
-    const r = await updateStmt(env, 'Inventory', normInventory({ ...body, unique_id: key.uid }), key).run();
-    if (!changes(r)) throw new HttpError(404, 'Item not found');
+    const row = normInventory({ ...body, unique_id: key.uid });
+    const [where, val] = keyWhere(key);
+    const existing = await env.DB.prepare(`SELECT id, unique_id FROM "Inventory" WHERE ${where} LIMIT 1`).bind(val).first();
+    if (!existing) throw new HttpError(404, 'Item not found');
+    await env.DB.batch([
+      updateStmt(env, 'Inventory', row, key),
+      bumpVersionStmt(env, 'Inventory', 0),
+      auditStmt(env, user, 'UPDATE_INV', 'Inventory', existing.unique_id || val, `${row.description} (${row.qty})`),
+    ]);
     return c.J({ success: true });
   }
+
   if (method === 'DELETE') {
+    if (!canDeleteRole(user)) throw new HttpError(403, 'ဖျက်သိမ်းခွင့် မရှိပါ။');
     const [where, val] = keyWhere(key);
-    const r = await env.DB.prepare(`DELETE FROM "Inventory" WHERE ${where}`).bind(val).run();
-    return c.J({ success: true, deleted: changes(r) });
+    const existing = await env.DB.prepare(`SELECT id, unique_id, description FROM "Inventory" WHERE ${where} LIMIT 1`).bind(val).first();
+    if (!existing) return c.J({ success: true, deleted: 0 });
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM "Inventory" WHERE ${where}`).bind(val),
+      bumpVersionStmt(env, 'Inventory', -1),
+      auditStmt(env, user, 'DELETE_INV', 'Inventory', existing.unique_id || val, existing.description),
+    ]);
+    return c.J({ success: true, deleted: 1 });
   }
   throw new HttpError(405, 'Method not allowed');
 }
 
+// -------------------------------------------------------------------
+// Yogi Handler (Safe Cross-Table Resolution)
+// -------------------------------------------------------------------
+async function findYogiTableAndRow(env, key, explicitSheet) {
+  const [where, val] = keyWhere(key);
+  if (explicitSheet) {
+    const tbl = resolveYogiTable(explicitSheet);
+    const row = await env.DB.prepare(`SELECT * FROM "${tbl}" WHERE ${where} LIMIT 1`).bind(val).first();
+    return row ? { table: tbl, row } : null;
+  }
+  if (!key.uid) {
+    throw new HttpError(400, 'sheet_type or unique_id required for numeric ID lookup');
+  }
+  const [pRes, cRes] = await env.DB.batch([
+    env.DB.prepare(`SELECT * FROM "Permanent Yogi" WHERE unique_id = ? LIMIT 1`).bind(key.uid),
+    env.DB.prepare(`SELECT * FROM "Camp Yogi" WHERE unique_id = ? LIMIT 1`).bind(key.uid),
+  ]);
+  if (pRes.results?.[0]) return { table: 'Permanent Yogi', row: pRes.results[0] };
+  if (cRes.results?.[0]) return { table: 'Camp Yogi', row: cRes.results[0] };
+  return null;
+}
+
 async function handleYogi(c) {
-  const { url, method, env, path } = c;
+  const { url, method, env, path, user } = c;
   const sheetParam = url.searchParams.get('sheet');
 
   if (method === 'GET') {
     const raw = sheetParam || '12Yogi';
     const table = resolveYogiTable(raw);
+    const knownV = url.searchParams.get('known_version');
+    const sv = await getTableVersion(env, table);
+    if (knownV !== null && Number(knownV) === sv) {
+      return c.J({ success: true, sheet: raw, book: table, version: sv, unchanged: true });
+    }
     const { results } = await env.DB.prepare(`SELECT * FROM "${table}" ORDER BY start_date ASC, id ASC`).all();
-    return c.J(formatYogi(results || [], raw, table));
+    return c.J(formatYogi(results || [], raw, table, sv));
   }
 
   const body = (method === 'DELETE') ? null : await readJson(c.request);
@@ -795,42 +1284,65 @@ async function handleYogi(c) {
   if (method === 'POST') {
     const table = resolveYogiTable(explicit || '12Yogi');
     const row = normYogi(body, table);
-    await upsertStmt(env, table, row).run();
+    const existing = await env.DB.prepare(`SELECT id FROM "${table}" WHERE unique_id = ? LIMIT 1`).bind(row.unique_id).first();
+    await env.DB.batch([
+      upsertStmt(env, table, row),
+      bumpVersionStmt(env, table, existing ? 0 : 1),
+      auditStmt(env, user, existing ? 'UPSERT_YOGI' : 'CREATE_YOGI', table, row.unique_id, row.name),
+    ]);
     return c.J({ success: true, unique_id: row.unique_id });
   }
 
   const key = parseKey(body, url.searchParams);
   if (!key) throw new HttpError(400, 'unique_id or id required');
-  const tables = explicit ? [resolveYogiTable(explicit)] : ['Permanent Yogi', 'Camp Yogi'];
+
+  if (method === 'DELETE' && !canDeleteRole(user)) {
+    throw new HttpError(403, 'ဖျက်သိမ်းခွင့် မရှိပါ။');
+  }
+
+  const found = await findYogiTableAndRow(env, key, explicit);
+  if (!found) {
+    if (method === 'DELETE') return c.J({ success: true, deleted: 0 });
+    throw new HttpError(404, 'ယောဂီ မတွေ့ပါ');
+  }
+  const { table, row: existingRow } = found;
   const [where, val] = keyWhere(key);
 
   if (method === 'PUT' && (path.endsWith('/checkout') || path.endsWith('/reactivate'))) {
     const checkout = path.endsWith('/checkout');
     const end = checkout ? str(body.end_date, todayMM()) : '';
     if (checkout && !DATE_RE.test(end)) throw new HttpError(400, 'Invalid end_date (YYYY-MM-DD)');
-    const res = await env.DB.batch(tables.map(t => env.DB.prepare(
-      `UPDATE "${t}" SET end_date = ?, updated_at = datetime('now') WHERE ${where}`).bind(end, val)));
-    if (!res.some(r => changes(r))) throw new HttpError(404, 'ယောဂီ မတွေ့ပါ');
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE "${table}" SET end_date = ?, updated_at = datetime('now') WHERE ${where}`).bind(end, val),
+      bumpVersionStmt(env, table, 0),
+      auditStmt(env, user, checkout ? 'CHECKOUT_YOGI' : 'REACTIVATE_YOGI', table, existingRow.unique_id || val, `${existingRow.name} (${end || 'Active'})`),
+    ]);
     return c.J({ success: true });
   }
 
   if (method === 'PUT') {
-    const table = tables[0];
-    const row = normYogi({ ...body, unique_id: key.uid }, table);
-    const res = await env.DB.batch(tables.map(t => updateStmt(env, t, row, key)));
-    if (!res.some(r => changes(r))) throw new HttpError(404, 'ယောဂီ မတွေ့ပါ');
+    const row = normYogi({ ...body, unique_id: existingRow.unique_id || key.uid }, table, existingRow);
+    await env.DB.batch([
+      updateStmt(env, table, row, key),
+      bumpVersionStmt(env, table, 0),
+      auditStmt(env, user, 'UPDATE_YOGI', table, existingRow.unique_id || val, row.name),
+    ]);
     return c.J({ success: true });
   }
 
   if (method === 'DELETE') {
-    const res = await env.DB.batch(tables.map(t => env.DB.prepare(`DELETE FROM "${t}" WHERE ${where}`).bind(val)));
-    return c.J({ success: true, deleted: res.reduce((s, r) => s + changes(r), 0) });
+    await env.DB.batch([
+      env.DB.prepare(`DELETE FROM "${table}" WHERE ${where}`).bind(val),
+      bumpVersionStmt(env, table, -1),
+      auditStmt(env, user, 'DELETE_YOGI', table, existingRow.unique_id || val, existingRow.name),
+    ]);
+    return c.J({ success: true, deleted: 1 });
   }
   throw new HttpError(405, 'Method not allowed');
 }
 
 // -------------------------------------------------------------------
-// 🌟 REPORT HANDLER
+// REPORT HANDLER (Uses Indexed ledger_summary Instead of Full Scan!)
 // -------------------------------------------------------------------
 const PREDEFINED_INCOME = [
   { category: 'စာရင်းဖွင့်', subcategory: 'စာရင်းဖွင့်လက်ကျန်', keywords: ['စာရင်းဖွင့်'] },
@@ -864,10 +1376,22 @@ async function handleReport(c) {
   const targetYear = url.searchParams.get('year') || todayMM().slice(0, 4);
   if (!/^\d{4}$/.test(targetYear)) throw new HttpError(400, 'Invalid year');
 
+  const bookVersion = await getTableVersion(env, table);
+  const knownV = url.searchParams.get('known_version');
+  if (knownV !== null && Number(knownV) === bookVersion) {
+    return c.J({ success: true, sheet: rawSheet, book: table, year: targetYear, version: bookVersion, unchanged: true });
+  }
+
+  // Indexed query against ledger_summary (ym <= 'YYYY-12')
   const { results } = await env.DB.prepare(
-    `SELECT date, title, sub_title, COALESCE(income,0) as income, COALESCE(expense,0) as expense
-     FROM "${table}" WHERE strftime('%Y', date) <= ? ORDER BY date ASC`
-  ).bind(targetYear).all();
+    `SELECT ym, title, sub_title,
+            COALESCE(SUM(total_income), 0) as income,
+            COALESCE(SUM(total_expense), 0) as expense
+     FROM "ledger_summary"
+     WHERE book_name = ? AND row_count > 0 AND ym <= ?
+     GROUP BY ym, title, sub_title
+     ORDER BY ym ASC`
+  ).bind(table, `${targetYear}-12`).all();
 
   const mk = (defs, type) => defs.map((s) => ({ type, ...s, months: Array(12).fill(0), total: 0 }));
   const incRows = mk(PREDEFINED_INCOME, 'ဝင်ငွေ');
@@ -888,28 +1412,29 @@ async function handleReport(c) {
   const manualOpeningsCurrentYear = Array(12).fill(0);
 
   (results || []).forEach(r => {
+    const ym = str(r.ym);
+    if (!/^\d{4}-\d{2}$/.test(ym) || ym === '0000-00') return;
     const t = str(r.title), st = str(r.sub_title);
     const inc = parseFloat(r.income) || 0, exp = parseFloat(r.expense) || 0;
 
     const isBankDepositExpense = (t === 'စာရင်းပြောင်း' || st.includes('ဘဏ်အပ်နှံခြင်း')) && st.includes('ဘဏ်အပ်နှံခြင်း') && (exp > 0);
-
     if (!isBankDepositExpense) {
       if (REPORT_SKIP_TITLES.has(t) || t.includes('လွှဲပြောင်း') || st.includes('လွှဲပြောင်း') || t.includes('စာရင်းပြောင်း')) return;
     }
-    
-    const rYear = r.date.slice(0, 4);
-    
+
+    const rYear = ym.slice(0, 4);
     if (rYear < targetYear) {
       runningBalance += (inc - exp);
     } else if (rYear === targetYear) {
-      const rMonth = parseInt(r.date.slice(5, 7), 10) - 1;
+      const rMonth = parseInt(ym.slice(5, 7), 10) - 1;
+      if (rMonth < 0 || rMonth > 11) return;
+
       monthlyNetCurrentYear[rMonth] += (inc - exp);
-      
       const txt = `${t} ${st}`;
       if (t === 'စာရင်းဖွင့်' || st === 'စာရင်းဖွင့်လက်ကျန်') {
         manualOpeningsCurrentYear[rMonth] += inc;
-      } else {
-        if (inc > 0) add(incRows, dynInc, 'ဝင်ငွေ', 'အခြားဝင်ငွေ', t, st, txt, rMonth, inc);
+      } else if (inc > 0) {
+        add(incRows, dynInc, 'ဝင်ငွေ', 'အခြားဝင်ငွေ', t, st, txt, rMonth, inc);
       }
       if (exp > 0) add(expRows, dynExp, 'ထွက်ငွေ', 'အခြားထွက်ငွေ', t, st, txt, rMonth, exp);
     }
@@ -917,13 +1442,13 @@ async function handleReport(c) {
 
   const openingBalances = Array(12).fill(0);
   openingBalances[0] = runningBalance;
-  for(let i = 1; i < 12; i++) {
-    openingBalances[i] = openingBalances[i-1] + monthlyNetCurrentYear[i-1];
+  for (let i = 1; i < 12; i++) {
+    openingBalances[i] = openingBalances[i - 1] + monthlyNetCurrentYear[i - 1];
   }
 
   const openingRow = incRows.find(r => r.category === 'စာရင်းဖွင့်' && r.subcategory === 'စာရင်းဖွင့်လက်ကျန်');
   if (openingRow) {
-    for(let i = 0; i < 12; i++) {
+    for (let i = 0; i < 12; i++) {
       openingRow.months[i] = openingBalances[i] + manualOpeningsCurrentYear[i];
     }
   }
@@ -939,16 +1464,16 @@ async function handleReport(c) {
       if (catA === -1) catA = 999;
       if (catB === -1) catB = 999;
       if (catA !== catB) return catA - catB;
-      
+
       let subA = predefinedList.findIndex(x => x.category === a.category && x.subcategory === a.subcategory);
       let subB = predefinedList.findIndex(x => x.category === b.category && x.subcategory === b.subcategory);
       if (subA === -1) subA = 999;
       if (subB === -1) subB = 999;
       if (subA !== subB) return subA - subB;
-      
+
       return a.subcategory.localeCompare(b.subcategory);
     });
-    rows.forEach((r, i) => r.srNo = i + 1);
+    rows.forEach((r, i) => { r.srNo = i + 1; });
   }
 
   sortReportRows(incRows, PREDEFINED_INCOME);
@@ -957,31 +1482,81 @@ async function handleReport(c) {
   const incomeTotals = Array(12).fill(0), expenseTotals = Array(12).fill(0);
   let grandIncomeTotal = 0, grandExpenseTotal = 0;
 
-  incRows.forEach(r => { 
-    delete r.keywords; 
-    r.months.forEach((a, i) => { incomeTotals[i] += a; }); 
+  incRows.forEach(r => {
+    delete r.keywords;
+    r.months.forEach((a, i) => { incomeTotals[i] += a; });
     if (r.category === 'စာရင်းဖွင့်' && r.subcategory === 'စာရင်းဖွင့်လက်ကျန်') {
-      r.total = openingBalances[0] + manualOpeningsCurrentYear.reduce((a,b)=>a+b, 0);
+      r.total = openingBalances[0] + manualOpeningsCurrentYear.reduce((a, b) => a + b, 0);
     } else {
-      r.total = r.months.reduce((a,b)=>a+b, 0);
+      r.total = r.months.reduce((a, b) => a + b, 0);
     }
-    grandIncomeTotal += r.total; 
+    grandIncomeTotal += r.total;
   });
-  
-  expRows.forEach(r => { 
-    delete r.keywords; 
-    r.months.forEach((a, i) => { expenseTotals[i] += a; }); 
-    r.total = r.months.reduce((a,b)=>a+b, 0);
-    grandExpenseTotal += r.total; 
+
+  expRows.forEach(r => {
+    delete r.keywords;
+    r.months.forEach((a, i) => { expenseTotals[i] += a; });
+    r.total = r.months.reduce((a, b) => a + b, 0);
+    grandExpenseTotal += r.total;
   });
-  
+
   const balanceTotals = incomeTotals.map((v, i) => v - expenseTotals[i]);
 
   return c.J({
-    success: true, sheet: rawSheet, book: table, year: targetYear,
-    data: { incomeRows: incRows, incomeTotals, grandIncomeTotal, expenseRows: expRows, expenseTotals,
-      grandExpenseTotal, balanceTotals, grandNetBalance: grandIncomeTotal - grandExpenseTotal },
+    success: true, sheet: rawSheet, book: table, year: targetYear, version: bookVersion,
+    data: {
+      incomeRows: incRows, incomeTotals, grandIncomeTotal,
+      expenseRows: expRows, expenseTotals, grandExpenseTotal,
+      balanceTotals, grandNetBalance: grandIncomeTotal - grandExpenseTotal,
+    },
   });
+}
+
+// -------------------------------------------------------------------
+// ADMIN ENDPOINTS (Rebuild Summaries, Full JSON Backup, Audit Logs)
+// -------------------------------------------------------------------
+async function handleAdminRebuildSummaries(c) {
+  if (!isAdmin(c.user)) throw new HttpError(403, 'Admin တစ်ဦးတည်းသာ လုပ်ဆောင်ခွင့် ရှိပါသည်။');
+  const stmts = [];
+  LEDGER_TABLES.forEach(t => stmts.push(...rebuildTableSummaryStmts(c.env, t)));
+  ['Inventory', 'Permanent Yogi', 'Camp Yogi'].forEach(t => {
+    stmts.push(
+      c.env.DB.prepare(
+        `INSERT INTO "book_versions" (table_name, version, row_count, updated_at)
+         VALUES (?, 2, (SELECT COUNT(*) FROM "${t}"), datetime('now'))
+         ON CONFLICT(table_name) DO UPDATE SET version = version + 1, row_count = excluded.row_count, updated_at = datetime('now')`
+      ).bind(t)
+    );
+  });
+  stmts.push(auditStmt(c.user, 'REBUILD_SUMMARIES', 'ALL', '', 'Rebuilt ledger_summary & book_versions'));
+  await runBatches(c.env, stmts);
+  return c.J({ success: true, message: 'All summaries and versions rebuilt successfully' });
+}
+
+async function handleAdminBackup(c) {
+  if (!isAdmin(c.user)) throw new HttpError(403, 'Admin တစ်ဦးတည်းသာ Backup ထုတ်ယူခွင့် ရှိပါသည်။');
+  const tablesRes = await c.env.DB.batch(
+    ALL_TRACKED_TABLES.map(t => c.env.DB.prepare(`SELECT * FROM "${t}" ORDER BY id ASC`))
+  );
+  const backup = {};
+  ALL_TRACKED_TABLES.forEach((t, i) => {
+    backup[t] = tablesRes[i].results || [];
+  });
+  return c.J({
+    success: true,
+    exportedAt: new Date().toISOString(),
+    exportedBy: c.user.u,
+    tables: backup,
+  });
+}
+
+async function handleAdminAuditLogs(c) {
+  if (!isAdmin(c.user)) throw new HttpError(403, 'Admin တစ်ဦးတည်းသာ ကြည့်ရှုခွင့် ရှိပါသည်။');
+  const limit = Math.min(200, Math.max(10, parseInt(c.url.searchParams.get('limit') || '50', 10) || 50));
+  const { results } = await c.env.DB.prepare(
+    `SELECT * FROM "audit_logs" ORDER BY id DESC LIMIT ?`
+  ).bind(limit).all();
+  return c.J({ success: true, data: results || [] });
 }
 
 // -------------------------------------------------------------------
@@ -998,6 +1573,7 @@ async function route(c) {
   if (path === '/api/change-password' && method === 'POST') return handleChangePassword(c);
   if (method !== 'GET' && isViewer(c.user)) throw new HttpError(403, 'ကြည့်ရှုခွင့်သာ ရှိသောကြောင့် ပြင်ဆင်ခွင့် မရှိပါ။');
 
+  if (path === '/api/versions' && method === 'GET') return handleVersions(c);
   if (path === '/api/bootstrap' && method === 'GET') return handleBootstrap(c);
   if (path === '/api/sync' && method === 'POST') return handleSync(c);
   if (path === '/api/home-summary' && method === 'GET') return handleHomeSummary(c);
@@ -1007,6 +1583,10 @@ async function route(c) {
   if (path === '/api/inventory') return handleInventory(c);
   if (path.startsWith('/api/yogi')) return handleYogi(c);
   if (path === '/api/report' && method === 'GET') return handleReport(c);
+
+  if (path === '/api/admin/rebuild-summaries' && method === 'POST') return handleAdminRebuildSummaries(c);
+  if (path === '/api/admin/backup' && method === 'GET') return handleAdminBackup(c);
+  if (path === '/api/admin/audit-logs' && method === 'GET') return handleAdminAuditLogs(c);
 
   throw new HttpError(404, 'Endpoint not found');
 }
