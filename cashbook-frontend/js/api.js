@@ -1,7 +1,7 @@
 // ===================================================================
-// js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.1)
+// js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.2)
 // Features: 1-Row D1 Version Check, Single-Key Bootstrap Cache (50% Smaller),
-// 15-Item Safe Sync Batching, Derived Cache Invalidation & Token Renewal 
+// 15-Item Safe Sync Batching, System Control APIs & Custom Timeout Support
 // ===================================================================
 (function () {
   'use strict';
@@ -140,7 +140,7 @@
   };
 
   // ===================================================================
-  // 2. SAFE API REQUEST (Supports Smart 1-Row Version Checking)
+  // 2. SAFE API REQUEST (Supports Smart 1-Row Version Checking & Custom Timeout)
   // ===================================================================
   let reauthTriggered = false;
   function triggerSoftReAuth() {
@@ -155,7 +155,7 @@
   }
 
   async function safeApiRequest(endpoint, options = {}) {
-    const { noCache, useVersionCheck, ...fetchOpts } = options;
+    const { noCache, useVersionCheck, timeoutMs, ...fetchOpts } = options;
     const isGet = !fetchOpts.method || fetchOpts.method === 'GET';
     const cacheKey = cacheKeyOf(endpoint);
     const token = getToken();
@@ -184,7 +184,7 @@
     }
 
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs || REQUEST_TIMEOUT_MS);
     try {
       const res = await fetch(`${getApiBaseUrl()}${requestEndpoint}`, { ...fetchOpts, headers, signal: ctrl.signal });
       clearTimeout(timer);
@@ -205,7 +205,7 @@
       if (res.status === 401) {
         triggerSoftReAuth();
       }
-      if (res.status >= 500) {
+      if (res.status >= 500 && !noCache) {
         const c = fromCache();
         if (c) return c;
       }
@@ -219,8 +219,10 @@
     } catch (err) {
       clearTimeout(timer);
       console.warn(`[Network] ${endpoint}:`, err.message);
-      const c = fromCache({ offline: true });
-      if (c) return c;
+      if (!noCache) {
+        const c = fromCache({ offline: true });
+        if (c) return c;
+      }
       return {
         success: false,
         offline: true,
@@ -709,7 +711,7 @@
   };
 
   window.fetchAdminBackupAPI = async function () {
-    return safeApiRequest('/api/admin/backup', { noCache: true });
+    return safeApiRequest('/api/admin/backup', { noCache: true, timeoutMs: 45000 });
   };
 
   window.fetchAuditLogsAPI = async function (limit = 50) {
@@ -717,7 +719,51 @@
   };
 
   window.rebuildSummariesAPI = async function () {
-    return safeApiRequest('/api/admin/rebuild-summaries', { method: 'POST', noCache: true });
+    return safeApiRequest('/api/admin/rebuild-summaries', { method: 'POST', noCache: true, timeoutMs: 30000 });
+  };
+
+  // ===================================================================
+  // 12. SYSTEM CONTROL CENTER APIs (D1 Metrics, FY Excel, SQL, Mail, Drive)
+  // ===================================================================
+  window.fetchD1MetricsAPI = async function () {
+    return safeApiRequest('/api/system/d1-metrics', { noCache: true, timeoutMs: 20000 });
+  };
+
+  window.fetchSystemExportExcelAPI = async function (fy = 'ALL') {
+    return safeApiRequest(`/api/system/export-excel?fy=${encodeURIComponent(fy)}`, {
+      noCache: true,
+      timeoutMs: 45000,
+    });
+  };
+
+  window.fetchDailyChangesAPI = async function (date = '', mode = '') {
+    const qs = new URLSearchParams();
+    if (date) qs.set('date', date);
+    if (mode) qs.set('mode', mode);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return safeApiRequest(`/api/system/daily-changes${suffix}`, { noCache: true, timeoutMs: 20000 });
+  };
+
+  window.fetchSqlDumpAPI = async function () {
+    return safeApiRequest('/api/system/sql-dump', { noCache: true, timeoutMs: 45000 });
+  };
+
+  window.triggerDailyMailAPI = async function (payload = {}) {
+    return safeApiRequest('/api/system/trigger-mail', {
+      method: 'POST',
+      noCache: true,
+      timeoutMs: 55000,
+      body: JSON.stringify(payload),
+    });
+  };
+
+  window.triggerDriveBackupAPI = async function (payload = {}) {
+    return safeApiRequest('/api/system/trigger-drive-backup', {
+      method: 'POST',
+      noCache: true,
+      timeoutMs: 55000,
+      body: JSON.stringify(payload),
+    });
   };
 })();
 // === END OF api.js ===
