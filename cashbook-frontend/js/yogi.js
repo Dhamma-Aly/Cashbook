@@ -1,7 +1,7 @@
 // ===================================================================
-// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.1)
-// Features: Calm Eye-Comfort Palette, Preserves end_date on Edit,
-// Anti-Jitter, Race-Condition Guard, Myanmar Digits, Role Guards & XSS Safe
+// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.2)
+// Features: Event-Delegated XSS Safe Actions, No localStorage PII Cache,
+// Cursor-Safe MM->Eng Digits, Preserves end_date, CSV Formula Guard & Calm UI
 // ===================================================================
 
 const YOGI_CACHE_PREFIX = 'sasana_yogi_cache_';
@@ -26,11 +26,26 @@ function escapeYogiHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function yogiCsvCell(val) {
+  let s = (val === null || val === undefined) ? '' : String(val);
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 function toEngDigitsYogi(str) {
   if (typeof window.toEnglishDigits === 'function') return window.toEnglishDigits(str);
   if (str === null || str === undefined) return '';
   const mm = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
   return String(str).replace(/[၀-၉]/g, ch => mm.indexOf(ch));
+}
+
+function isValidYogiDate(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && (dt.getUTCMonth() + 1) === m && dt.getUTCDate() === d;
 }
 
 function notifyYogi(msg, type = 'info') {
@@ -52,6 +67,62 @@ function setYogiSelectSafe(selectEl, val) {
     selectEl.appendChild(opt);
   }
   selectEl.value = v;
+}
+
+function purgeLegacyYogiLocalStorage() {
+  try {
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(YOGI_CACHE_PREFIX))
+      .forEach(k => localStorage.removeItem(k));
+  } catch (_) {}
+}
+
+function bindYogiCursorSafeEngInput(el, digitsOnly = false) {
+  if (!el || el.dataset.engBound === '1') return;
+  el.dataset.engBound = '1';
+
+  const transform = () => {
+    const pos = el.selectionStart;
+    const raw = String(el.value ?? '');
+    let next = toEngDigitsYogi(raw);
+    if (digitsOnly) {
+      next = next.replace(/[^0-9]/g, '');
+    }
+    if (next !== raw) {
+      el.value = next;
+      if (typeof pos === 'number' && document.activeElement === el) {
+        const diff = raw.length - next.length;
+        const nextPos = Math.max(0, pos - diff);
+        try { el.setSelectionRange(nextPos, nextPos); } catch (_) {}
+      }
+    }
+  };
+
+  el.addEventListener('input', transform);
+  el.addEventListener('blur', transform);
+}
+
+function initYogiViewListeners() {
+  const tbody = document.getElementById('yogi-table-body');
+  if (tbody && tbody.dataset.delegated !== '1') {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action][data-uid]');
+      if (!btn || btn.disabled) return;
+      const uid = btn.dataset.uid;
+      if (!uid) return;
+      const act = btn.dataset.action;
+      if (act === 'edit') window.openEditYogiModal(uid);
+      else if (act === 'checkout') window.checkoutYogiPrompt(uid);
+      else if (act === 'reactivate') window.reactivateYogiPrompt(uid);
+      else if (act === 'delete') window.deleteYogiPrompt(uid);
+    });
+  }
+
+  bindYogiCursorSafeEngInput(document.getElementById('yogi-nrc-number'), true);
+  bindYogiCursorSafeEngInput(document.getElementById('yogi-age'), true);
+  bindYogiCursorSafeEngInput(document.getElementById('yogi-phone'), false);
+  bindYogiCursorSafeEngInput(document.getElementById('yogi-home-phone'), false);
 }
 
 function getTodayYogiISO() {
@@ -98,6 +169,9 @@ function isYogiActive(entry) {
 }
 
 window.renderYogiView = async function (isSilent = false) {
+  initYogiViewListeners();
+  purgeLegacyYogiLocalStorage();
+
   const targetTable = resolveYogiTable(window.currentYogiTable || window.currentSheet || 'Permanent Yogi');
   const isTableChanged = (currentYogiTable !== targetTable) || !isSilent;
   const fetchToken = ++activeYogiFetchToken;
@@ -116,22 +190,6 @@ window.renderYogiView = async function (isSilent = false) {
   window.currentYogiTable = currentYogiTable;
   window.currentTable = currentYogiTable;
 
-  const cacheKey = `${YOGI_CACHE_PREFIX}${currentYogiTable}`;
-
-  if (!isSilent && allYogiEntries.length === 0) {
-    try {
-      const cachedStr = localStorage.getItem(cacheKey);
-      if (cachedStr) {
-        const cached = JSON.parse(cachedStr);
-        if (cached && cached.data) {
-          allYogiEntries = cached.data || [];
-          updateYogiKPIs(cached.kpis);
-          applyYogiFilters();
-        }
-      }
-    } catch (_) {}
-  }
-
   const shouldShowOverlay = !isSilent && allYogiEntries.length === 0;
   if (shouldShowOverlay && typeof window.showLoading === 'function') {
     window.showLoading(true);
@@ -144,7 +202,6 @@ window.renderYogiView = async function (isSilent = false) {
 
     if (response && response.success) {
       allYogiEntries = response.data || [];
-      try { localStorage.setItem(cacheKey, JSON.stringify(response)); } catch (_) {}
       updateYogiKPIs(response.kpis);
       applyYogiFilters();
     }
@@ -298,19 +355,19 @@ function renderYogiTable() {
           <td class="py-2.5 px-3 align-middle text-left">${addrHtml}</td>
           <td class="text-center right-0 sticky z-10 px-3 py-2">
             <div class="flex items-center justify-center gap-1.5">
-              <button type="button" onclick="openEditYogiModal('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည်">
+              <button type="button" data-action="edit" data-uid="${safeUidAttr}" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည်">
                 <i class="fa-solid fa-pen-to-square"></i>
               </button>
               ${active ? `
-                <button type="button" onclick="checkoutYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းထွက်ပေးမည်">
+                <button type="button" data-action="checkout" data-uid="${safeUidAttr}" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းထွက်ပေးမည်">
                   <i class="fa-solid fa-arrow-right-from-bracket"></i>
                 </button>
               ` : `
-                <button type="button" onclick="reactivateYogiPrompt('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#6ee7b7\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
+                <button type="button" data-action="reactivate" data-uid="${safeUidAttr}" ${!canEdit ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#6ee7b7\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="စခန်းတွင်း ပြန်လည်ဝင်မည်">
                   <i class="fa-solid fa-arrow-right-to-bracket"></i>
                 </button>
               `}
-              <button type="button" onclick="deleteYogiPrompt('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည်">
+              <button type="button" data-action="delete" data-uid="${safeUidAttr}" ${!canDelete ? 'disabled class="p-1.5 opacity-30 cursor-not-allowed rounded" style="color:#64748b;"' : 'class="p-1.5 hover:bg-slate-800 rounded transition cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည်">
                 <i class="fa-solid fa-trash"></i>
               </button>
             </div>
@@ -362,6 +419,7 @@ window.nextYogiPage = function () {
 };
 
 window.openAddYogiModal = function () {
+  initYogiViewListeners();
   if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
     notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ယောဂီအသစ်ထည့်ခွင့် မရှိပါ။', 'warning');
     return;
@@ -393,6 +451,7 @@ window.openAddYogiModal = function () {
 };
 
 window.openEditYogiModal = function (uid) {
+  initYogiViewListeners();
   if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
     notifyYogi('ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပြင်ဆင်ခွင့် မရှိပါ။', 'warning');
     return;
@@ -479,9 +538,9 @@ window.saveYogiEntryForm = async function (event) {
   }
 
   const startDateEl = document.getElementById('yogi-start-date');
-  const start_date = startDateEl ? startDateEl.value.trim() : '';
-  if (!start_date) {
-    alert('စတင်ရက်စွဲ (Start Date) အား ရွေးချယ်ပေးပါခင်ဗျာ။');
+  const start_date = toEngDigitsYogi(startDateEl ? startDateEl.value.trim() : '');
+  if (!isValidYogiDate(start_date)) {
+    alert('စတင်ရက်စွဲ (Start Date) အား မှန်ကန်စွာ ရွေးချယ်ပေးပါခင်ဗျာ။');
     if (startDateEl) startDateEl.focus();
     return;
   }
@@ -494,12 +553,20 @@ window.saveYogiEntryForm = async function (event) {
     return;
   }
 
-  const unique_id = (document.getElementById('yogi-uniqueId')?.value || '').trim();
+  const dobEl = document.getElementById('yogi-dob');
+  const dob = toEngDigitsYogi(dobEl ? dobEl.value.trim() : '');
+  if (dob && !isValidYogiDate(dob)) {
+    alert('မွေးသက္ကရာဇ် (DOB) ရက်စွဲ မှားယွင်းနေပါသည်။');
+    if (dobEl) dobEl.focus();
+    return;
+  }
+
+  const existingUid = (document.getElementById('yogi-uniqueId')?.value || '').trim();
   const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
-  const isEdit = !!unique_id;
+  const isEdit = !!existingUid;
 
   const existingEntry = isEdit
-    ? allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(unique_id))
+    ? allYogiEntries.find(e => String(e.unique_id || e.uniqueId || e.id) === String(existingUid))
     : null;
   const preservedEndDate = isEdit ? (existingEntry?.end_date || '') : '';
 
@@ -509,7 +576,7 @@ window.saveYogiEntryForm = async function (event) {
   const nrc_state = document.getElementById('yogi-nrc-state')?.value || '12';
   const nrc_township = (document.getElementById('yogi-nrc-township')?.value || '').trim();
   const nrc_type = document.getElementById('yogi-nrc-type')?.value || '(နိုင်)';
-  const nrc_number = toEngDigitsYogi((document.getElementById('yogi-nrc-number')?.value || '').trim());
+  const nrc_number = toEngDigitsYogi((document.getElementById('yogi-nrc-number')?.value || '').trim()).replace(/[^0-9]/g, '');
 
   let full_nrc = '';
   if (nrc_township && nrc_number) {
@@ -518,15 +585,14 @@ window.saveYogiEntryForm = async function (event) {
     full_nrc = nrc_number;
   }
 
-  const dob = document.getElementById('yogi-dob')?.value || '';
-  const rawAge = toEngDigitsYogi(document.getElementById('yogi-age')?.value || '');
+  const rawAge = toEngDigitsYogi(document.getElementById('yogi-age')?.value || '').replace(/[^0-9]/g, '');
   const age = parseInt(rawAge, 10) || calcAgeFromDoB(dob);
   const gender = document.getElementById('yogi-gender')?.value || 'ကျား';
   const phone = toEngDigitsYogi((document.getElementById('yogi-phone')?.value || '').trim());
   const home_phone = toEngDigitsYogi((document.getElementById('yogi-home-phone')?.value || '').trim());
   const address = (document.getElementById('yogi-address')?.value || '').trim();
 
-  const finalUid = unique_id || (typeof crypto !== 'undefined' && crypto.randomUUID
+  const finalUid = existingUid || (typeof crypto !== 'undefined' && crypto.randomUUID
     ? `YOGI-${crypto.randomUUID()}`
     : `YOGI_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
 
@@ -566,7 +632,6 @@ window.saveYogiEntryForm = async function (event) {
   try {
     const response = await window.saveYogiAPI(payload, isEdit);
     if (response && response.success) {
-      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
       lastRenderedYogiHTML = '';
       if (typeof window.closeYogiModal === 'function') window.closeYogiModal();
       notifyYogi(response.message || (isEdit ? 'ယောဂီစာရင်း ပြင်ဆင်ပြီးပါပြီ' : 'ယောဂီစာရင်း သိမ်းဆည်းပြီးပါပြီ'), response.offline ? 'warning' : 'success');
@@ -608,7 +673,6 @@ window.checkoutYogiPrompt = async function (uniqueId) {
     });
 
     if (response && response.success) {
-      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
       lastRenderedYogiHTML = '';
       notifyYogi('စခန်းထွက်စာရင်းသို့ ပြောင်းလဲပြီးပါပြီ', 'success');
       await window.renderYogiView(false);
@@ -643,7 +707,6 @@ window.reactivateYogiPrompt = async function (uniqueId) {
     });
 
     if (response && response.success) {
-      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
       lastRenderedYogiHTML = '';
       notifyYogi('Active စာရင်းသို့ ပြန်လည်ပြောင်းလဲပြီးပါပြီ', 'success');
       await window.renderYogiView(false);
@@ -672,7 +735,6 @@ window.deleteYogiPrompt = async function (uniqueId) {
     const currentTable = resolveYogiTable(window.currentYogiTable || window.currentSheet);
     const response = await window.deleteYogiAPI(uniqueId, currentTable);
     if (response && response.success) {
-      try { localStorage.removeItem(`${YOGI_CACHE_PREFIX}${currentTable}`); } catch (_) {}
       lastRenderedYogiHTML = '';
       notifyYogi(response.message || 'ယောဂီစာရင်း ဖျက်သိမ်းပြီးပါပြီ', response.offline ? 'warning' : 'success');
       await window.renderYogiView(false);
@@ -735,8 +797,6 @@ window.exportYogiCSV = function () {
   let csv = '\uFEFF';
   csv += 'စဉ်,စတင်ရက်စွဲ,စခန်းထွက်ရက်စွဲ,အမျိုးအစား,အမည်,အဘအမည်,မှတ်ပုံတင်,မွေးသက္ကရာဇ်,အသက်,ကျား/မ,ယောဂီဖုန်း,အိမ်ဖုန်း,နေရပ်လိပ်စာ,အခြေအနေ\n';
 
-  const esc = (v) => `"${(v ?? '').toString().replace(/"/g, '""')}"`;
-
   filteredYogiEntries.forEach((row, idx) => {
     const nrcVal = row.nrc || row.full_nrc || '';
     const phoneVal = row.yogi_phone || row.phone || '';
@@ -745,19 +805,19 @@ window.exportYogiCSV = function () {
 
     csv += [
       (idx + 1),
-      esc(row.start_date),
-      esc(row.end_date),
-      esc(catVal),
-      esc(row.name),
-      esc(row.father_name),
-      esc(nrcVal),
-      esc(row.dob),
+      yogiCsvCell(row.start_date),
+      yogiCsvCell(row.end_date),
+      yogiCsvCell(catVal),
+      yogiCsvCell(row.name),
+      yogiCsvCell(row.father_name),
+      yogiCsvCell(nrcVal),
+      yogiCsvCell(row.dob),
       row.age || 0,
-      esc(row.gender),
-      esc(phoneVal),
-      esc(row.home_phone),
-      esc(row.address),
-      esc(statusVal)
+      yogiCsvCell(row.gender),
+      yogiCsvCell(phoneVal),
+      yogiCsvCell(row.home_phone),
+      yogiCsvCell(row.address),
+      yogiCsvCell(statusVal)
     ].join(',') + '\n';
   });
 
