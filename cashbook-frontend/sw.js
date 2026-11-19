@@ -1,10 +1,10 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (v4.2 Calm Eye-Comfort D1)
+// sw.js - Sāsana ERP PWA Service Worker (v4.3 Hardened Pro D1)
 // Features: Auto Old-Cache Purge, Full Offline Navigation,
-// Font/Icon Caching, API Bypass & Safe Background Revalidation
+// CDN Font/Icon Caching, API Bypass & Safe Background Revalidation
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v4.2-calm-d1';
+const CACHE_NAME = 'sasana-erp-v4.3-pro-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
@@ -14,7 +14,6 @@ const STATIC_ASSETS = [
   './favicon.svg',
   './css/style.css',
   './css/tailwind.build.css',
-  './css/fontawesome.min.css',
   './js/config.js',
   './js/api.js',
   './js/auth.js',
@@ -73,7 +72,6 @@ self.addEventListener('fetch', event => {
   const req = event.request;
   const url = new URL(req.url);
 
-  // 🛡️ Non-GET & non-HTTP requests များကို Bypass လုပ်ခြင်း
   if (req.method !== 'GET') return;
   if (!url.protocol.startsWith('http')) return;
 
