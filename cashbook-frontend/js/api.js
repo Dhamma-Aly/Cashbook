@@ -1,7 +1,7 @@
 // ===================================================================
 // js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.1)
 // Features: 1-Row D1 Version Check, Single-Key Bootstrap Cache (50% Smaller),
-// 15-Item Safe Sync Batching, Derived Cache Invalidation & Token Renewal
+// 15-Item Safe Sync Batching, Derived Cache Invalidation & Token Renewal 
 // ===================================================================
 (function () {
   'use strict';
