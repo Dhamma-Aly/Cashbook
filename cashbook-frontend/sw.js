@@ -1,10 +1,10 @@
 // ===================================================================
-// sw.js - Sāsana ERP PWA Service Worker (v4.4 Hardened Pro D1)
+// sw.js - Sāsana ERP PWA Service Worker (v4.5 Hardened Pro D1)
 // Features: Auto Old-Cache Purge, Full Offline Navigation,
 // CDN Font/Icon Caching, API Bypass & Safe Background Revalidation
 // ===================================================================
 
-const CACHE_NAME = 'sasana-erp-v4.4-pro-d1';
+const CACHE_NAME = 'sasana-erp-v4.5-pro-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
