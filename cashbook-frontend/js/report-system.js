@@ -1,7 +1,7 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer (v4.1)
-// Features: Calm Eye-Comfort Palette, Dynamic Future-Proof Years,
-// Anti-Jitter Hash, XSS Safe, Race-Condition Guard & Versioned Sync
+// js/report-system.js - Annual & Summary Expense Report Renderer (v4.2)
+// Features: CSV Formula Injection Guard, Calm Eye-Comfort Palette,
+// Dynamic Future-Proof Years, Anti-Jitter Hash & XSS Safe
 // ===================================================================
 
 const REPORT_CACHE_PREFIX = 'sasana_report_cache_';
@@ -20,6 +20,14 @@ function escapeReportHtml(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function reportCsvCell(val) {
+  let s = (val === null || val === undefined) ? '' : String(val);
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+  return `"${s.replace(/"/g, '""')}"`;
 }
 
 function toEngDigitsReport(str) {
@@ -337,21 +345,19 @@ window.exportReportCSV = function () {
 
   let csv = "\uFEFF";
   const monthHeaders = months.map(m => (currentReportMode === 'Annual') ? `${m}-${shortYear}` : m);
-  csv += ["အမျိုးအစား", "ခေါင်းစဉ်", "ခေါင်းစဉ်ခွဲ", ...monthHeaders, "စုစုပေါင်း"].map(v => `"${v}"`).join(",") + "\n";
-
-  const esc = (v) => `"${(v ?? "").toString().replace(/"/g, '""')}"`;
+  csv += ["အမျိုးအစား", "ခေါင်းစဉ်", "ခေါင်းစဉ်ခွဲ", ...monthHeaders, "စုစုပေါင်း"].map(v => reportCsvCell(v)).join(",") + "\n";
 
   (incomeRows || []).forEach(r => {
-    csv += [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
+    csv += [reportCsvCell(r.type), reportCsvCell(r.category), reportCsvCell(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
   });
-  csv += [esc("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
+  csv += [reportCsvCell("ဝင်ငွေပေါင်း"), "", "", ...(incomeTotals || []).map(v => v || 0), grandIncomeTotal || 0].join(",") + "\n";
 
   (expenseRows || []).forEach(r => {
-    csv += [esc(r.type), esc(r.category), esc(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
+    csv += [reportCsvCell(r.type), reportCsvCell(r.category), reportCsvCell(r.subcategory), ...(r.months || []).map(v => v || 0), r.total || 0].join(",") + "\n";
   });
-  csv += [esc("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
+  csv += [reportCsvCell("ထွက်ငွေပေါင်း"), "", "", ...(expenseTotals || []).map(v => v || 0), grandExpenseTotal || 0].join(",") + "\n";
 
-  csv += [esc("လက်ကျန်ငွေ"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
+  csv += [reportCsvCell("လက်ကျန်ငွေ"), "", "", ...(balanceTotals || []).map(v => v || 0), grandNetBalance || 0].join(",") + "\n";
 
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
