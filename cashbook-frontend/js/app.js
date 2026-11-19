@@ -388,47 +388,10 @@ window.closeEntryModal = function () {
 window.closeAddModal = window.closeEntryModal;
 window.closeBookEntryModal = window.closeEntryModal;
 
-window.openAddYogiModal = function () {
-  const form = document.getElementById('yogi-entry-form');
-  if (form) form.reset();
-
-  const idInput = document.getElementById('yogi-uniqueId');
-  if (idInput) idInput.value = '';
-
-  const modalTitle = document.getElementById('yogi-modal-title');
-  if (modalTitle) modalTitle.textContent = "ယောဂီ အသစ် သွင်းယူရန်";
-
-  const dateInput = document.getElementById('yogi-start-date');
-  if (dateInput) dateInput.value = getTodayLocalISO();
-
-  const modal = document.getElementById('yogi-entry-modal');
-  if (modal) modal.classList.remove('hidden');
-};
-
+// NOTE: openAddYogiModal → js/yogi.js ၊ openAddInvModal / closeInvModal → js/Inventory.js တွင် သတ်မှတ်ထားပြီး
+//       (app.js သည် နောက်ဆုံး load ဖြစ်၍ ဤနေရာတွင် ထပ်သတ်မှတ်ပါက module ဗားရှင်းကို override လုပ်မိသည်)
 window.closeYogiModal = function () {
   const modal = document.getElementById('yogi-entry-modal');
-  if (modal) modal.classList.add('hidden');
-};
-
-window.openAddInvModal = function () {
-  const form = document.getElementById('inv-entry-form');
-  if (form) form.reset();
-
-  const idInput = document.getElementById('inv-id');
-  if (idInput) idInput.value = '';
-
-  const modalTitle = document.getElementById('inv-modal-title');
-  if (modalTitle) modalTitle.textContent = "ပစ္စည်းအသစ် သွင်းယူရန်";
-
-  const dateInput = document.getElementById('inv-date');
-  if (dateInput) dateInput.value = getTodayLocalISO();
-
-  const modal = document.getElementById('inv-entry-modal');
-  if (modal) modal.classList.remove('hidden');
-};
-
-window.closeInvModal = function () {
-  const modal = document.getElementById('inv-entry-modal');
   if (modal) modal.classList.add('hidden');
 };
 
