@@ -1,7 +1,7 @@
 // ===================================================================
-// js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.0)
-// Features: 1-Row D1 Version Check, Smart Delta Bootstrap,
-// Chunked Background Sync, Derived Cache Invalidation & Soft Re-Auth
+// js/api.js - Offline-First API Client & Smart Versioned Sync Engine (v5.1)
+// Features: 1-Row D1 Version Check, Single-Key Bootstrap Cache (50% Smaller),
+// 15-Item Safe Sync Batching, Derived Cache Invalidation & Token Renewal
 // ===================================================================
 (function () {
   'use strict';
@@ -9,7 +9,7 @@
   const API_FALLBACK = 'https://cashbook-api.dhammaaly.workers.dev';
   const REQUEST_TIMEOUT_MS = 12000;
   const MAX_SYNC_ATTEMPTS = 5;
-  const SYNC_BATCH_SIZE = 50;
+  const SYNC_BATCH_SIZE = 15; // Safe against D1 Free 50-subrequest limit
 
   const getApiBaseUrl = () =>
     (window.CONFIG && window.CONFIG.API_BASE_URL) ||
@@ -80,6 +80,7 @@
 
   const idbGet = (store, key) => idbRun(store, 'readonly', s => s.get(key));
   const idbSet = async (store, key, value) => (await idbRun(store, 'readwrite', s => s.put(value, key)), true);
+  const idbDel = (store, key) => idbRun(store, 'readwrite', s => s.delete(key));
   const idbClear = (store) => idbRun(store, 'readwrite', s => s.clear());
   const idbQueuePush = async (item) => {
     const id = await idbRun('sync_queue', 'readwrite', s => s.add({ ...item, attempts: 0, failed: false, timestamp: Date.now() }));
@@ -176,7 +177,6 @@
       if (c) return c;
     }
 
-    // 🌟 Version Check ပါဝင်ပါက Cache ထဲရှိ version ကို Server သို့ ပို့စစ်ဆေးမည်
     let requestEndpoint = endpoint;
     if (isGet && useVersionCheck && cachedEntry && cachedEntry.version && !cachedEntry.hasPending) {
       const sep = endpoint.includes('?') ? '&' : '?';
@@ -193,7 +193,6 @@
       try { body = await res.json(); } catch (_) { /* non-JSON */ }
 
       if (res.ok && body) {
-        // 🌟 Server တွင် မပြောင်းလဲသေးပါက Cache မှ ချက်ချင်းပြန်ပေးမည်
         if (isGet && body.success && body.unchanged && cachedEntry) {
           return { ...cachedEntry, success: true, fromCache: true, verified: true };
         }
@@ -335,7 +334,7 @@
   }
 
   // ===================================================================
-  // 5. BACKGROUND SYNC ENGINE (Chunked 50-item Batches)
+  // 5. BACKGROUND SYNC ENGINE (Chunked 15-item Batches for D1 Free Tier)
   // ===================================================================
   let isSyncing = false;
 
@@ -426,7 +425,7 @@
   setInterval(() => { if (navigator.onLine) window.triggerBackgroundSync(); }, 45000);
 
   // ===================================================================
-  // 6. SMART DELTA BOOTSTRAP PRELOAD (Only downloads changed books!)
+  // 6. SMART DELTA BOOTSTRAP PRELOAD (Single Canonical Key per Book)
   // ===================================================================
   window.fetchVersionsAPI = async function () {
     return safeApiRequest('/api/versions', { noCache: true });
@@ -439,12 +438,12 @@
       await window.triggerBackgroundSync();
       if ((await idbQueueGetAll()).some(q => !q.failed)) return;
 
-      // Gather existing cached versions from IndexedDB so unchanged books aren't re-read
       const clientVersions = {};
       for (const code of ALL_LEDGER_CODES) {
         const tbl = ledgerTableName(code);
         const c = await idbGet('cache', cacheKeyOf(ledgerEndpoint(tbl)));
         if (c && c.version && !c.hasPending) clientVersions[tbl] = c.version;
+        await idbDel('cache', cacheKeyOf(ledgerEndpoint(code)));
       }
       const invC = await idbGet('cache', cacheKeyOf('/api/inventory'));
       if (invC && invC.version && !invC.hasPending) clientVersions['Inventory'] = invC.version;
@@ -459,9 +458,9 @@
       if (!res || !res.success) return;
 
       for (const [code, payload] of Object.entries(res.books || {})) {
+        const canonicalTbl = payload.book || ledgerTableName(code);
         const full = { ...payload, success: true };
-        if (payload.book) await idbSet('cache', cacheKeyOf(ledgerEndpoint(payload.book)), full);
-        await idbSet('cache', cacheKeyOf(ledgerEndpoint(code)), full);
+        await idbSet('cache', cacheKeyOf(ledgerEndpoint(canonicalTbl)), full);
       }
       if (res.inventory) {
         const invV = res.versions?.['Inventory']?.version || 1;
@@ -538,7 +537,7 @@
   window.deleteEntryAPI = window.deleteCashbookEntryAPI;
 
   // -----------------------------------------------------------------
-  // Transfer API (Online Atomic + Invalidates Both Source & Destination Caches)
+  // Transfer API
   // -----------------------------------------------------------------
   const TRANSFER_OFFLINE = { success: false, offline: true, error: 'စာရင်းပြောင်း (Transfer) လုပ်ရန် အင်တာနက် လိုအပ်ပါသည်။ လိုင်းရပြီးမှ ပြန်လုပ်ပါ။' };
 
@@ -554,8 +553,8 @@
     if (res && res.success) {
       invalidateDerivedCaches();
       await invalidateEndpointVersion(ledgerEndpoint(table));
-      if (payload.target) {
-        const destTable = ledgerTableName(payload.target);
+      if (payload.dest_book || payload.target) {
+        const destTable = ledgerTableName(payload.dest_book || payload.target);
         if (destTable && destTable !== table) await invalidateEndpointVersion(ledgerEndpoint(destTable));
       }
       await invalidateEndpointVersion(ledgerEndpoint('1General Book'));
@@ -695,10 +694,18 @@
   };
 
   window.changePasswordAPI = async function (oldPassword, newPassword) {
-    return safeApiRequest('/api/change-password', {
+    const res = await safeApiRequest('/api/change-password', {
       method: 'POST',
       body: JSON.stringify({ old_password: oldPassword, new_password: newPassword }),
     });
+    if (res && res.success && res.token) {
+      const expiresAt = Date.now() + (res.expiresInMs || (30 * 24 * 60 * 60 * 1000));
+      localStorage.setItem('sasana_auth_token', res.token);
+      localStorage.setItem('yogi_auth_token', res.token);
+      localStorage.setItem('sasana_token_expires_at', String(expiresAt));
+      localStorage.setItem('yogi_token_expires_at', String(expiresAt));
+    }
+    return res;
   };
 
   window.fetchAdminBackupAPI = async function () {
@@ -713,3 +720,4 @@
     return safeApiRequest('/api/admin/rebuild-summaries', { method: 'POST', noCache: true });
   };
 })();
+// === END OF api.js ===
