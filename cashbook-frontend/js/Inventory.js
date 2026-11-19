@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller (v4.2)
-// Features: Calm Eye-Comfort FinTech UI, Anti-Jitter DOM, Versioned Sync,
-// Double-Submit Lock, Myanmar Digit Support, Role Guards & XSS Safe
+// js/Inventory.js - Inventory Management Logic & Controller (v4.3)
+// Features: Event-Delegated XSS Safe Actions, Cursor-Safe MM->Eng Qty,
+// Calendar Date Check, CSV Formula Guard, Role Guards & Calm Eye-Comfort UI
 // ===================================================================
 
 const INV_ROWS_PER_PAGE = 30;
@@ -23,11 +23,26 @@ function escapeInvHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function invCsvCell(val) {
+  let s = (val === null || val === undefined) ? '' : String(val);
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 function toEngDigitsInv(str) {
   if (typeof window.toEnglishDigits === 'function') return window.toEnglishDigits(str);
   if (str === null || str === undefined) return '';
   const mm = ['၀', '၁', '၂', '၃', '၄', '၅', '၆', '၇', '၈', '၉'];
   return String(str).replace(/[၀-၉]/g, ch => mm.indexOf(ch));
+}
+
+function isValidInvDate(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && (dt.getUTCMonth() + 1) === m && dt.getUTCDate() === d;
 }
 
 function notifyInv(msg, type = 'info') {
@@ -49,6 +64,52 @@ function setInvSelectSafe(selectEl, val) {
     selectEl.appendChild(opt);
   }
   selectEl.value = v;
+}
+
+function bindInvCursorSafeQtyInput(el) {
+  if (!el || el.dataset.engBound === '1') return;
+  el.dataset.engBound = '1';
+
+  const transform = (strict) => {
+    const pos = el.selectionStart;
+    const raw = el.value;
+    let next = toEngDigitsInv(raw).replace(/,/g, '').replace(/[^0-9.]/g, '');
+    const parts = next.split('.');
+    if (parts.length > 2) next = `${parts[0]}.${parts.slice(1).join('')}`;
+    if (strict && next.endsWith('.')) next = next.slice(0, -1);
+
+    if (next !== raw) {
+      el.value = next;
+      if (typeof pos === 'number' && document.activeElement === el) {
+        const diff = raw.length - next.length;
+        const nextPos = Math.max(0, pos - diff);
+        try { el.setSelectionRange(nextPos, nextPos); } catch (_) {}
+      }
+    }
+  };
+
+  el.addEventListener('input', () => transform(false));
+  el.addEventListener('blur', () => transform(true));
+}
+
+function initInventoryViewListeners() {
+  const tbody = document.getElementById("inv-table-body");
+  if (tbody && tbody.dataset.delegated !== '1') {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action][data-uid]');
+      if (!btn || btn.disabled) return;
+      const uid = btn.dataset.uid;
+      if (!uid) return;
+      if (btn.dataset.action === 'edit') {
+        window.editInvEntry(uid);
+      } else if (btn.dataset.action === 'delete') {
+        window.deleteInvEntry(uid);
+      }
+    });
+  }
+
+  bindInvCursorSafeQtyInput(document.getElementById("inv-qty"));
 }
 
 function getTodayInvISO() {
@@ -79,6 +140,8 @@ function getInventoryCategoryDotColor(category) {
 }
 
 window.renderInventoryView = async function (isSilent = false) {
+  initInventoryViewListeners();
+
   const fetchToken = ++activeInvFetchToken;
   if (!isSilent) {
     currentInvPage = 1;
@@ -230,8 +293,8 @@ function renderInventoryTable() {
           <td class="text-xs whitespace-nowrap px-2" style="color:#64748b;">${escapeInvHtml(entry.book_name || "Inventory")}</td>
           <td class="text-center right-0 sticky px-3 z-10">
             <div class="flex items-center justify-center gap-1.5">
-              <button type="button" onclick="editInvEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button type="button" onclick="deleteInvEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
+              <button type="button" data-action="edit" data-uid="${safeUidAttr}" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button type="button" data-action="delete" data-uid="${safeUidAttr}" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
             </div>
           </td>
         </tr>
@@ -281,6 +344,7 @@ window.prevInvPage = function () {
 };
 
 window.openAddInvModal = function () {
+  initInventoryViewListeners();
   if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
     notifyInv("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပစ္စည်းအသစ်ထည့်ခွင့် မရှိပါ။", "warning");
     return;
@@ -320,9 +384,9 @@ window.saveInventoryForm = async function (event) {
   }
 
   const dateEl = document.getElementById("inv-date");
-  const date = dateEl ? dateEl.value.trim() : "";
-  if (!date) {
-    alert("ရက်စွဲ (Date) အား ရွေးချယ်ပေးပါခင်ဗျာ။");
+  const date = toEngDigitsInv(dateEl ? dateEl.value.trim() : "");
+  if (!isValidInvDate(date)) {
+    alert("ရက်စွဲ (Date) အား မှန်ကန်စွာ ရွေးချယ်ပေးပါခင်ဗျာ။");
     if (dateEl) dateEl.focus();
     return;
   }
@@ -336,23 +400,24 @@ window.saveInventoryForm = async function (event) {
   }
 
   const qtyEl = document.getElementById("inv-qty");
-  const rawQty = toEngDigitsInv(qtyEl ? qtyEl.value : "").replace(/,/g, "").trim();
+  const rawQty = toEngDigitsInv(qtyEl ? qtyEl.value : "").replace(/,/g, "").replace(/[^0-9.]/g, "").trim();
   const qty = parseFloat(rawQty);
+  if (qtyEl) qtyEl.value = (rawQty !== "" && Number.isFinite(qty) && qty >= 0) ? String(qty) : "";
   if (rawQty === "" || !Number.isFinite(qty) || qty < 0) {
     alert("အရေအတွက် (Quantity) ကို ၀ သို့မဟုတ် ၀ ထက်ကြီးသော ဂဏန်း မှန်ကန်စွာ ထည့်သွင်းပေးပါခင်ဗျာ။");
     if (qtyEl) qtyEl.focus();
     return;
   }
 
-  const unique_id = (document.getElementById("inv-id")?.value || "").trim();
+  const existingUid = (document.getElementById("inv-id")?.value || "").trim();
   const location = document.getElementById("inv-location")?.value || "စတို";
   const category = document.getElementById("inv-category")?.value || "အထွေထွေ";
   const unit = document.getElementById("inv-unit")?.value || "ခု";
   const remark = (document.getElementById("inv-remark")?.value || "").trim();
 
   const month_year = formatInvMonthYear(date);
-  const isEdit = !!unique_id;
-  const finalUid = unique_id || (typeof crypto !== 'undefined' && crypto.randomUUID
+  const isEdit = !!existingUid;
+  const finalUid = existingUid || (typeof crypto !== 'undefined' && crypto.randomUUID
     ? `INV-${crypto.randomUUID()}`
     : `INV_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`);
 
@@ -400,6 +465,7 @@ window.saveInventoryForm = async function (event) {
 window.saveInvEntryForm = window.saveInventoryForm;
 
 window.editInvEntry = function (uid) {
+  initInventoryViewListeners();
   if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
     notifyInv("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပြင်ဆင်ခွင့် မရှိပါ။", "warning");
     return;
@@ -464,16 +530,22 @@ window.exportInventoryCSV = function () {
   csv += "စဉ်,ရက်စွဲ,နေရာ,အမျိုးအစား,အကြောင်းအရာ,ရေတွက်ပုံ,အရေအတွက်,မှတ်ချက်,လနှစ်,စာအုပ်အမည်\n";
 
   invFilteredEntries.forEach((e, idx) => {
-    const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
     const desc = e.description || e.item_desc || e.item_name || "";
     const remark = e.remark || e.note || "";
     const dateText = e.date || e.entry_date || "";
     const my = e.month_year || formatInvMonthYear(dateText);
 
     csv += [
-      (idx + 1), esc(dateText), esc(e.location), esc(e.category),
-      esc(desc), esc(e.unit), e.qty || 0, esc(remark),
-      esc(my), esc(e.book_name || "Inventory")
+      (idx + 1),
+      invCsvCell(dateText),
+      invCsvCell(e.location),
+      invCsvCell(e.category),
+      invCsvCell(desc),
+      invCsvCell(e.unit),
+      e.qty || 0,
+      invCsvCell(remark),
+      invCsvCell(my),
+      invCsvCell(e.book_name || "Inventory")
     ].join(",") + "\n";
   });
 
