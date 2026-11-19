@@ -10,12 +10,12 @@
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
   const ROLE_BURMESE_MAP = {
-    'Admin': 'စီမံအုပ်ချုပ်သူ',
-    'Finance': 'ဘဏ္ဍာရေး',
-    'Account': 'ငွေစာရင်းကိုင်',
-    'Staff': 'ရုံးအကူ',
-    'Viewer': 'ကြည့်ရှုသူ'
-  };
+  'Admin': '',
+  'Finance': '',
+  'Account': '',
+  'Staff': '',
+  'Viewer': ''
+};
 
   const getAppVersion = () => {
     return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.2_D1_ENTERPRISE";
