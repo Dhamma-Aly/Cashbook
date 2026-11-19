@@ -1,4 +1,4 @@
-<!-- view/Dashboard.html - Home Dashboard Fragment (Executive Balanced 2-Column Layout) --> 
+<!-- view/Dashboard.html - Home Dashboard Fragment (v4.3 with System Control Center) -->
 
 <div class="h-full flex flex-col space-y-4 sm:space-y-5">
 
@@ -59,11 +59,16 @@
         <i class="fa-solid fa-address-book text-amber-400/70"></i>
         <span>ဆက်သွယ်ရန်</span>
       </button>
+
+      <button id="tab-dash-system" onclick="switchDashboardTab('system')" class="px-3.5 sm:px-4 py-2 rounded-lg text-xs font-bold text-amber-400/60 hover:text-amber-200 transition-all flex items-center gap-2 cursor-pointer shrink-0">
+        <i class="fa-solid fa-sliders text-amber-400/70"></i>
+        <span>စနစ်စီမံမှု</span>
+      </button>
     </div>
-    
+
     <div class="flex items-center gap-2 shrink-0">
-      <button onclick="renderDashboardView()" class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer" title="Refresh Dashboard">
-        <i class="fa-solid fa-rotate text-xs"></i>
+      <button id="btn-dash-smart-refresh" onclick="smartRefreshApp()" class="px-3 py-1.5 rounded-lg bg-[#1e293b] hover:bg-[#334155] border border-amber-500/30 text-amber-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer" title="ဒေတာနှင့် ကုတ်အသစ် (Update) စစ်ဆေး Refresh လုပ်ရန်">
+        <i id="dash-refresh-icon" class="fa-solid fa-rotate text-xs"></i>
         <span class="hidden sm:inline">Refresh</span>
       </button>
 
@@ -75,7 +80,7 @@
 
   <!-- Section 1: Fund Summary Table -->
   <div id="dash-fund-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden">
-    <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
+    <div class="px-4 sm:px-6 py-2.5 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-building-columns text-amber-400"></i> ရိပ်သာ ရန်ပုံငွေစာရင်း အကျဉ်းချုပ် (စာအုပ် ၁၀ အုပ် ပေါင်းချုပ်)
       </h3>
@@ -92,7 +97,7 @@
 
   <!-- Section 2: Book Summary Table -->
   <div id="dash-padetha-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden hidden">
-    <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
+    <div class="px-4 sm:px-6 py-2.5 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-book-bookmark text-amber-400"></i> ပဒေသာပင် စာအုပ်စာရင်း (၄ အုပ်)
       </h3>
@@ -109,7 +114,7 @@
 
   <!-- Section 3: Yogi Summary Table -->
   <div id="dash-yogi-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-hidden hidden">
-    <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
+    <div class="px-4 sm:px-6 py-2.5 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-users text-amber-400"></i> ယောဂီပေါင်းချုပ်စာရင်း (အမြဲနေ + စခန်းဝင်)
       </h3>
@@ -124,10 +129,8 @@
     </div>
   </div>
 
-  <!-- 🌟 Section 4: Contact Hub (Executive Balanced 2-Column Split Design) -->
+  <!-- 🌟 Section 4: Contact Hub -->
   <div id="dash-contact-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto hidden" style="-webkit-overflow-scrolling: touch;">
-    
-    <!-- Top Header -->
     <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-map-location-dot text-amber-400"></i> ဓမ္မအလင်းရောင်တောရရိပ်သာ တည်နေရာနှင့် ဆက်သွယ်ရန်
@@ -137,13 +140,8 @@
       </span>
     </div>
 
-    <!-- 🌟 Balanced 2-Column Grid (ဘယ်/ညာ ၅၀% စီ တိကျစွာ ခွဲထားသည်) -->
     <div class="p-4 sm:p-5" style="display: grid !important; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important; gap: 20px !important;">
-      
-      <!-- 🏛️ ဘယ်ဘက်ခြမ်း - ရိပ်သာ အချက်အလက်နှင့် ဆက်သွယ်ရန် Master Card -->
       <div style="background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; border-radius: 18px !important; padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 16px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;">
-        
-        <!-- ရိပ်သာ Hero Banner -->
         <div style="display: flex !important; align-items: center !important; gap: 14px !important; padding-bottom: 14px !important; border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;">
           <div style="width: 48px !important; height: 48px !important; min-width: 48px !important; border-radius: 14px !important; background-color: #0e172e !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px !important; flex-shrink: 0 !important;">
             <img src="favicon.svg" alt="Logo" style="width: 100% !important; height: 100% !important; object-fit: contain !important;">
@@ -160,7 +158,6 @@
           ဓမ္မအလင်းရောင်တောရရိပ်သာသည် ၂၀၁၀ ခုနှစ်တွင် ဆရာတော် ဦးသောဘနမှ ဦးစီးတည်ထောင်ခဲ့ပြီး ယောဂီများ အချိန်မရွေး လာရောက်တရားအားထုတ်နိုင်ပါသည်။
         </p>
 
-        <!-- လိပ်စာ Block -->
         <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 12px 14px !important; display: flex !important; align-items: flex-start !important; gap: 12px !important;">
           <div style="width: 32px !important; height: 32px !important; min-width: 32px !important; border-radius: 8px !important; background-color: rgba(245, 158, 11, 0.15) !important; color: #fbbf24 !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; margin-top: 2px !important;">
             <i class="fa-solid fa-location-dot" style="font-size: 13px !important;"></i>
@@ -171,7 +168,6 @@
           </div>
         </div>
 
-        <!-- ဖုန်းနံပါတ်များ Block -->
         <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 12px 14px !important; display: flex !important; flex-direction: column !important; gap: 8px !important;">
           <div style="display: flex !important; align-items: center !important; gap: 8px !important;">
             <i class="fa-solid fa-phone-volume" style="color: #34d399 !important; font-size: 12px !important;"></i>
@@ -190,9 +186,7 @@
           </div>
         </div>
 
-        <!-- Email & Facebook Micro-Cards -->
         <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important;">
-          <!-- Email -->
           <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 10px 12px !important; display: flex !important; align-items: center !important; gap: 10px !important; overflow: hidden !important;">
             <i class="fa-solid fa-envelope" style="color: #38bdf8 !important; font-size: 14px !important; flex-shrink: 0 !important;"></i>
             <div style="min-width: 0 !important; flex: 1 !important;">
@@ -203,7 +197,6 @@
             </div>
           </div>
 
-          <!-- Facebook -->
           <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 10px 12px !important; display: flex !important; align-items: center !important; gap: 10px !important; overflow: hidden !important;">
             <i class="fa-brands fa-facebook" style="color: #60a5fa !important; font-size: 16px !important; flex-shrink: 0 !important;"></i>
             <div style="min-width: 0 !important; flex: 1 !important;">
@@ -214,13 +207,9 @@
             </div>
           </div>
         </div>
-
       </div>
 
-      <!-- 🗺️ ညာဘက်ခြမ်း - Google Maps Master Card (ဘယ်ဘက်နှင့် အမြင့်တစ်ညီတည်း ဖြစ်သည်) -->
       <div style="background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; border-radius: 18px !important; padding: 16px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;">
-        
-        <!-- Header & App Button -->
         <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important;">
           <div style="display: flex !important; align-items: center !important; gap: 8px !important;">
             <i class="fa-solid fa-map-location-dot" style="color: #fbbf24 !important; font-size: 14px !important;"></i>
@@ -233,22 +222,285 @@
           </a>
         </div>
 
-        <!-- 🌟 Google Maps Iframe Frame -->
         <div style="flex: 1 !important; min-height: 320px !important; border-radius: 12px !important; overflow: hidden !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; position: relative !important; background-color: #020617 !important;">
-          <iframe 
-            src="https://maps.google.com/maps?q=22.0676051,96.5668084&z=15&output=embed" 
+          <iframe
+            src="https://maps.google.com/maps?q=22.0676051,96.5668084&z=15&output=embed"
             style="width: 100% !important; height: 100% !important; min-height: 320px !important; border: 0 !important; position: absolute !important; inset: 0 !important;"
-            allowfullscreen="" 
-            loading="lazy" 
+            allowfullscreen=""
+            loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
             title="ဓမ္မအလင်းရောင်တောရရိပ်သာ တည်နေရာ မြေပုံ">
           </iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⚙️ Section 5: System Control Center (စနစ်စီမံမှု) -->
+  <div id="dash-system-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-y-auto hidden" style="-webkit-overflow-scrolling: touch;">
+
+    <!-- Top Header -->
+    <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between gap-2">
+      <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-sliders text-amber-400"></i> စနစ်စီမံမှု နှင့် D1 စောင့်ကြည့်ရေး
+      </h3>
+      <div class="flex items-center gap-2 shrink-0">
+        <button type="button" onclick="loadSystemMetrics(true)" class="sys-action-btn sys-btn-slate" style="padding: 5px 10px; font-size: 11.5px;" title="D1 Metrics ပြန်စစ်ရန်">
+          <i class="fa-solid fa-arrows-rotate"></i>
+          <span class="hidden sm:inline">Metrics စစ်ရန်</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Body Content -->
+    <div class="p-4 sm:p-5 space-y-4">
+
+      <!-- D1 Notice Banner (shown only if CF_API_TOKEN missing or error) -->
+      <div id="sys-d1-notice" class="hidden sys-status-box" style="border-color: rgba(245, 158, 11, 0.35); color: #fde68a;"></div>
+
+      <!-- 1. Cloudflare D1 Live Quota & Metrics Cards (4 Boxes) -->
+      <div class="sys-grid-4">
+
+        <!-- Card 1: Daily Rows Read -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-book-open text-sky-400"></i>
+            <span>တစ်နေ့တာ Read (D1)</span>
+          </div>
+          <div id="sys-d1-read-val" class="sys-metric-value" style="color: #7dd3fc;">--</div>
+          <div class="sys-progress-track">
+            <div id="sys-d1-read-bar" class="sys-progress-bar is-sky" style="width: 0%;"></div>
+          </div>
+          <div class="sys-metric-sub">
+            <span>သုံးပြီး: <b id="sys-d1-read-used-pct" style="color:#7dd3fc;">0%</b></span>
+            <span>ကျန်ရှိ: <b id="sys-d1-read-rem-pct" style="color:#6ee7b7;">100%</b></span>
+          </div>
+          <div class="sys-metric-sub" style="font-size: 11px; color: #64748b;">
+            <span id="sys-d1-read-queries">Queries: 0</span>
+            <span>Limit: 5,000,000 / day</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Daily Rows Written -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-pen-nib text-emerald-400"></i>
+            <span>တစ်နေ့တာ Write (D1)</span>
+          </div>
+          <div id="sys-d1-write-val" class="sys-metric-value" style="color: #6ee7b7;">--</div>
+          <div class="sys-progress-track">
+            <div id="sys-d1-write-bar" class="sys-progress-bar" style="width: 0%;"></div>
+          </div>
+          <div class="sys-metric-sub">
+            <span>သုံးပြီး: <b id="sys-d1-write-used-pct" style="color:#fbbf24;">0%</b></span>
+            <span>ကျန်ရှိ: <b id="sys-d1-write-rem-pct" style="color:#6ee7b7;">100%</b></span>
+          </div>
+          <div class="sys-metric-sub" style="font-size: 11px; color: #64748b;">
+            <span id="sys-d1-write-queries">Queries: 0</span>
+            <span>Limit: 100,000 / day</span>
+          </div>
+        </div>
+
+        <!-- Card 3: 30-Day Total Read & Write -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-chart-line text-amber-400"></i>
+            <span>စုစုပေါင်း Read / Write (ရက် ၃၀)</span>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px; margin: 2px 0;">
+            <div class="sys-metric-sub">
+              <span>Total Read:</span>
+              <b id="sys-d1-total-read" class="font-mono" style="color:#7dd3fc; font-size:14px;">--</b>
+            </div>
+            <div class="sys-metric-sub">
+              <span>Total Write:</span>
+              <b id="sys-d1-total-write" class="font-mono" style="color:#6ee7b7; font-size:14px;">--</b>
+            </div>
+            <div class="sys-metric-sub">
+              <span>စာရင်းစုစုပေါင်း Rows:</span>
+              <b id="sys-d1-tracked-rows" class="font-mono" style="color:#fde68a; font-size:14px;">--</b>
+            </div>
+          </div>
+          <div id="sys-d1-window-label" style="font-size: 11px; color: #64748b; margin-top: auto;">
+            UTC Reset: နေ့စဉ် မနက် ၆:၃၀ (MMT)
+          </div>
+        </div>
+
+        <!-- Card 4: D1 Storage -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-hard-drive text-amber-300"></i>
+            <span>Database Storage (500 MB)</span>
+          </div>
+          <div id="sys-d1-storage-val" class="sys-metric-value" style="color: #fde68a;">--</div>
+          <div class="sys-progress-track">
+            <div id="sys-d1-storage-bar" class="sys-progress-bar is-sky" style="width: 0%;"></div>
+          </div>
+          <div class="sys-metric-sub">
+            <span>သုံးပြီး: <b id="sys-d1-storage-used-pct" style="color:#fbbf24;">0%</b></span>
+            <span>ကျန်ရှိ: <b id="sys-d1-storage-rem-pct" style="color:#6ee7b7;">100%</b></span>
+          </div>
+          <div id="sys-d1-last-update" style="font-size: 11px; color: #64748b;">
+            Last Update: --
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 2. Multi-Sheet FY Excel Export, Daily Mail & Google Drive SQL Backup -->
+      <div class="sys-grid-2">
+
+        <!-- Left: FY Multi-Sheet Excel & Daily Mail -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-file-excel text-emerald-400"></i>
+            <span>ဘဏ္ဍာနှစ် (FY) Excel Export နှင့် နေ့စဉ် Mail ပို့ခြင်း</span>
+          </div>
+
+          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
+            စာအုပ်အားလုံး (Bank ၃ ခု + Ledger ၇ ခု + Inventory + ယောဂီ ၂ ခု + Summary) ကို သက်ဆိုင်ရာ Sheet Name အစုံဖြင့် Excel (<code>.xlsx</code>) တစ်ဖိုင်တည်း ထုတ်ယူနိုင်ပါသည်။
+          </p>
+
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:4px;">
+            <label for="sys-fy-select" style="font-size:12px; color:#cbd5e1; font-weight:700;">နှစ်ရွေးရန် (Jan–Dec):</label>
+            <select id="sys-fy-select" class="sys-select" style="min-width: 155px;">
+              <option value="2026" selected>2026 (Jan – Dec)</option>
+              <option value="2025">2025 (Jan – Dec)</option>
+              <option value="2024">2024 (Jan – Dec)</option>
+              <option value="ALL">All (နှစ်အားလုံး)</option>
+            </select>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
+            <button type="button" id="btn-sys-excel" onclick="downloadMultiSheetExcel()" class="sys-action-btn sys-btn-emerald">
+              <i class="fa-solid fa-file-excel"></i>
+              <span>Excel (.xlsx) ဒေါင်းလုပ်ဆွဲရန်</span>
+            </button>
+
+            <button type="button" id="btn-sys-mail" onclick="triggerManualDailyMail()" class="sys-action-btn sys-btn-sky" title="dhammaaly@gmail.com သို့ ယနေ့ Mail ချက်ချင်းပို့ရန်">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Daily Mail ယခုပို့မည်</span>
+            </button>
+          </div>
+
+          <div style="font-size:11.5px; color:#94a3b8; padding-top:6px; border-top:1px solid rgba(148,163,184,0.12); display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-clock text-amber-400"></i>
+            <span>Auto Mail: နေ့စဉ် ည ၁၂:၀၀ → <b style="color:#e2e8f0;">dhammaaly@gmail.com</b> *(စာရင်းအသစ်ရှိမှသာ)*</span>
+          </div>
+        </div>
+
+        <!-- Right: Google Drive SQL ZIP Backup -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-cloud-arrow-up text-amber-400"></i>
+            <span>Google Drive SQL (.zip) Backup စနစ်</span>
+          </div>
+
+          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
+            D1 Database တစ်ခုလုံးကို SQL (<code>.sql</code>) ဖိုင်အဖြစ် ထုတ်ပြီး ZIP ချုံ့၍ Google Drive ထဲသို့ သိမ်းဆည်းပေးပါသည်။ ဒေတာအသစ်ရှိမှသာ Backup အသစ် သိမ်းပေးပါမည်။
+          </p>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
+            <button type="button" id="btn-sys-drive-backup" onclick="triggerManualDriveBackup()" class="sys-action-btn sys-btn-gold">
+              <i class="fa-solid fa-file-zipper"></i>
+              <span>Google Drive သို့ SQL (.zip) သိမ်းမည်</span>
+            </button>
+
+            <button type="button" id="btn-sys-sql-local" onclick="downloadLocalSqlDump()" class="sys-action-btn sys-btn-slate hidden" title="Admin သီးသန့် — SQL ဖိုင် စက်ထဲတိုက်ရိုက်သိမ်းရန်">
+              <i class="fa-solid fa-database"></i>
+              <span>SQL စက်ထဲဒေါင်းရန်</span>
+            </button>
+          </div>
+
+          <div style="font-size:11.5px; color:#94a3b8; padding-top:6px; border-top:1px solid rgba(148,163,184,0.12); display:flex; align-items:center; gap:6px;">
+            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
+            <span>Auto Schedule: အပတ်စဉ် (တနင်္ဂနွေ) + ၃ လတစ်ကြိမ် Archive *(ဒေတာအသစ်ရှိမှသာ)*</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Feedback Box for Mail / Drive / Export -->
+      <div id="sys-automation-status" class="hidden sys-status-box"></div>
+
+      <!-- 3. Cloud Quick Links, Code Download & Force Hard Refresh -->
+      <div class="sys-grid-2">
+
+        <!-- Left: Cloudflare & GitHub Quick Links -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-link text-sky-400"></i>
+            <span>Cloudflare နှင့် GitHub ကုတ်ဖိုင်များ</span>
+          </div>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
+            <a href="https://dash.cloudflare.com/bf411663ab2f1ced269542eaf3369104/workers/services/view/cashbook-api/production/metrics" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-gold">
+              <i class="fa-brands fa-cloudflare"></i>
+              <span>Cloudflare Metrics ဖွင့်ရန်</span>
+            </a>
+
+            <a href="https://github.com/Dhamma-Aly/Cashbook" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-slate">
+              <i class="fa-brands fa-github"></i>
+              <span>GitHub Repo ဖွင့်ရန်</span>
+            </a>
+
+            <a href="https://github.com/Dhamma-Aly/Cashbook/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-emerald">
+              <i class="fa-solid fa-download"></i>
+              <span>ကုတ်အားလုံး Download (ZIP)</span>
+            </a>
+
+            <button type="button" onclick="openGitHubFilesModal()" class="sys-action-btn sys-btn-sky">
+              <i class="fa-solid fa-code"></i>
+              <span>ဖိုင်တစ်ခုချင်းစီ ဒေါင်းရန်</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Force Hard Refresh & Maintenance -->
+        <div class="sys-card">
+          <div class="sys-card-title">
+            <i class="fa-solid fa-bolt text-amber-400"></i>
+            <span>ကုတ်အသစ် ပြန်တင်ခြင်း (Hard Refresh) နှင့် ထိန်းသိမ်းရေး</span>
+          </div>
+
+          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
+            ကုတ်များ ပြင်ဆင်ပြီးသည့်အခါ ကီးဘုတ် <code>Ctrl+Shift+R</code> နှိပ်စရာမလိုဘဲ အောက်ပါခလုတ်ကို နှိပ်လိုက်ရုံဖြင့် Cache အဟောင်းရှင်းပြီး ဗားရှင်းအသစ် ချက်ချင်းတက်လာပါမည်။
+          </p>
+
+          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
+            <button type="button" onclick="forceHardRefreshApp()" class="sys-action-btn sys-btn-rose">
+              <i class="fa-solid fa-arrows-rotate"></i>
+              <span>Cache ရှင်းပြီး Hard Refresh လုပ်မည်</span>
+            </button>
+
+            <button type="button" id="btn-sys-rebuild" onclick="rebuildSystemSummaries()" class="sys-action-btn sys-btn-slate hidden">
+              <i class="fa-solid fa-calculator"></i>
+              <span>Summary ပြန်တွက်ရန် (Admin)</span>
+            </button>
+          </div>
         </div>
 
       </div>
 
     </div>
-
   </div>
 
+</div>
+
+<!-- 📦 GitHub Individual File Explorer & Downloader Modal -->
+<div id="sys-github-files-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 220; background-color: rgba(8, 12, 18, 0.88); backdrop-filter: blur(8px);" onclick="if(event.target === this) closeGitHubFilesModal()">
+  <div style="width:100%; max-width:560px; max-height:82vh; background:#111722; border:1px solid rgba(148,163,184,0.22); border-radius:18px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 24px 60px rgba(0,0,0,0.85);">
+    <div style="padding:14px 18px; background:#080d1a; border-bottom:1px solid rgba(148,163,184,0.16); display:flex; align-items:center; justify-content:space-between;">
+      <div style="display:flex; align-items:center; gap:8px; color:#fde68a; font-weight:800; font-size:13.5px;">
+        <i class="fa-brands fa-github text-amber-400"></i>
+        <span>Dhamma-Aly / Cashbook — ကုတ်ဖိုင်များ</span>
+      </div>
+      <button type="button" onclick="closeGitHubFilesModal()" style="width:30px; height:30px; border-radius:8px; background:#1e293b; color:#94a3b8; border:none; cursor:pointer;">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <div id="sys-github-files-list" style="padding:14px 18px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px; font-size:12.5px;">
+      <div style="text-align:center; padding:24px; color:#94a3b8;">ဖိုင်စာရင်း ဆွဲယူနေပါသည်...</div>
+    </div>
+  </div>
 </div>
