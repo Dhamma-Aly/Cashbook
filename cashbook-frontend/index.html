@@ -13,9 +13,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Sāsana ERP">
-  
+
+  <!-- Desktop, Android & iOS App Icons -->
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <link rel="apple-touch-icon" href="favicon.svg">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -84,6 +86,15 @@
       background-color: rgba(148, 163, 184, 0.22);
       flex-shrink: 0;
     }
+
+    /* 📲 PWA Install Button Styling */
+    .pwa-install-btn {
+      transition: all 0.2s ease;
+    }
+    .pwa-install-btn:hover {
+      background-color: rgba(245, 158, 11, 0.2) !important;
+      border-color: rgba(245, 158, 11, 0.5) !important;
+    }
   </style>
 </head>
 <body class="bg-[#0c1118] font-myanmar flex h-screen overflow-hidden text-slate-100 select-none">
@@ -138,6 +149,12 @@
         <button type="submit" style="width: 100% !important; height: 44px !important; margin-top: 6px !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; color: #0c1118 !important; font-size: 13px !important; font-weight: 900 !important; border: none !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; box-shadow: 0 6px 20px rgba(217, 119, 6, 0.25) !important; outline: none !important;">
           <span>စနစ်သို့ ဝင်ရောက်မည် (Enter System)</span>
           <i class="fa-solid fa-arrow-right-to-bracket" style="font-size: 13px !important;"></i>
+        </button>
+
+        <!-- 📲 One-Click Install App Button (Auto-shown when installable) -->
+        <button type="button" id="login-install-btn" onclick="triggerPwaInstall()" class="hidden pwa-install-btn" style="width: 100% !important; height: 40px !important; background-color: rgba(245, 158, 11, 0.1) !important; color: #fde68a !important; font-size: 12.5px !important; font-weight: 700 !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; border-radius: 12px !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 8px !important; outline: none !important;">
+          <i class="fa-solid fa-download" style="color: #fbbf24 !important;"></i>
+          <span>App ထည့်သွင်းရန် (Install Desktop / Phone App)</span>
         </button>
       </form>
 
@@ -239,6 +256,14 @@
           <i class="fa-solid fa-chart-pie text-amber-400 w-4 text-center shrink-0"></i> <span class="truncate">အသုံးစရိတ် အစီရင်ခံစာ</span>
         </button>
       </nav>
+
+      <!-- 📲 Sidebar Bottom Install App Button (Auto-hides once installed) -->
+      <div id="sidebar-install-wrap" class="hidden shrink-0 p-2.5" style="border-top: 1px solid rgba(148, 163, 184, 0.14);">
+        <button type="button" onclick="triggerPwaInstall()" class="pwa-install-btn w-full px-3 py-2.5 rounded-lg flex items-center justify-center gap-2 text-xs font-bold cursor-pointer" style="background-color: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.32); color: #fde68a;">
+          <i class="fa-solid fa-download text-amber-400"></i>
+          <span>App ထည့်သွင်းရန်</span>
+        </button>
+      </div>
     </aside>
 
     <!-- Main Content Work Area -->
@@ -298,7 +323,7 @@
   </div>
 
   <!-- 🌟 Soft Re-Authentication Modal -->
-  <div id="reauth-modal" class="fixed inset-0 z-[200] flex items-center justify-center p-4 hidden" style="background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);">
+  <div id="reauth-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 200; background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);">
     <div style="width: 100%; max-width: 380px; background-color: #111722; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
       <div style="text-align: center; margin-bottom: 20px;">
         <i class="fa-solid fa-lock text-amber-400 text-3xl mb-3"></i>
@@ -317,6 +342,25 @@
     </div>
   </div>
 
+  <!-- 📲 Safari / Manual Install Guide Modal (iPhone / iPad / Mac Safari) -->
+  <div id="pwa-guide-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 210; background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);" onclick="if(event.target === this) closePwaGuideModal()">
+    <div style="width: 100%; max-width: 390px; background-color: #111722; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <img src="favicon.svg" alt="Icon" style="width: 32px; height: 32px;">
+          <h3 id="pwa-guide-title" style="margin: 0; font-size: 15px; font-weight: 800; color: #fbbf24;">App Icon ထည့်သွင်းနည်း</h3>
+        </div>
+        <button type="button" onclick="closePwaGuideModal()" style="width: 30px; height: 30px; border-radius: 8px; background: #1e293b; color: #94a3b8; border: none; cursor: pointer;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div id="pwa-guide-body" style="font-size: 13px; color: #cbd5e1; line-height: 1.8;"></div>
+      <button type="button" onclick="closePwaGuideModal()" style="width: 100%; margin-top: 18px; padding: 10px; border-radius: 10px; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: #0c1118; font-size: 13px; font-weight: 800; border: none; cursor: pointer;">
+        နားလည်ပါပြီ
+      </button>
+    </div>
+  </div>
+
   <!-- Consolidated Scripts -->
   <script src="js/config.js" defer></script>
   <script src="js/api.js" defer></script>
@@ -328,7 +372,7 @@
   <script src="js/report-system.js" defer></script>
   <script src="js/app.js" defer></script>
 
-  <!-- 🌟 Real-Time Live Clock & Borderless Network Status Scripts -->
+  <!-- 🌟 Real-Time Live Clock, Network Status & Smart PWA Installer -->
   <script>
     function updateNetworkStatus() {
       const badge = document.getElementById('network-status-badge');
@@ -374,6 +418,101 @@
 
     setInterval(updateLiveHeaderClock, 1000);
     updateLiveHeaderClock();
+
+    // ===================================================================
+    // 📲 SMART PWA INSTALLER (Windows / Mac / Android / iPhone / iPad)
+    // ===================================================================
+    let deferredInstallPrompt = null;
+
+    function isAppInstalledStandalone() {
+      return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    }
+
+    function isIosDevice() {
+      return /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    }
+
+    function isMacSafari() {
+      const ua = navigator.userAgent;
+      return /Macintosh/i.test(ua) && /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR/i.test(ua);
+    }
+
+    function setInstallButtonsVisible(show) {
+      const loginBtn = document.getElementById('login-install-btn');
+      const sidebarWrap = document.getElementById('sidebar-install-wrap');
+      if (loginBtn) loginBtn.classList.toggle('hidden', !show);
+      if (sidebarWrap) sidebarWrap.classList.toggle('hidden', !show);
+    }
+
+    // Native Chrome / Edge / Android Install Prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredInstallPrompt = e;
+      if (!isAppInstalledStandalone()) {
+        setInstallButtonsVisible(true);
+      }
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstallPrompt = null;
+      setInstallButtonsVisible(false);
+      if (typeof window.showToast === 'function') {
+        window.showToast('Sāsana ERP App ထည့်သွင်းပြီးပါပြီ', 'success');
+      }
+    });
+
+    // Show button on iOS Safari & Mac Safari when not yet installed
+    window.addEventListener('load', () => {
+      if (isAppInstalledStandalone()) {
+        setInstallButtonsVisible(false);
+      } else if (isIosDevice() || isMacSafari()) {
+        setInstallButtonsVisible(true);
+      }
+    });
+
+    window.triggerPwaInstall = async function () {
+      if (deferredInstallPrompt) {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          deferredInstallPrompt = null;
+          setInstallButtonsVisible(false);
+        }
+        return;
+      }
+
+      // Fallback guide for iPhone/iPad Safari & Mac Safari
+      const modal = document.getElementById('pwa-guide-modal');
+      const body = document.getElementById('pwa-guide-body');
+      if (!modal || !body) return;
+
+      if (isIosDevice()) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>၁။ Safari အောက်ခြေက <b style="color:#fbbf24;">Share <i class="fa-solid fa-arrow-up-from-bracket"></i></b> ခလုတ်ကို နှိပ်ပါ။</div>
+            <div>၂။ အောက်သို့ဆွဲပြီး <b style="color:#fbbf24;">"Add to Home Screen"</b> ကို ရွေးပါ။</div>
+            <div>၃။ ညာဘက်အပေါ် <b style="color:#34d399;">"Add"</b> ကို နှိပ်လိုက်ရင် ဖုန်းမျက်နှာပြင်မှာ App Icon ထွက်လာပါမယ်။</div>
+          </div>`;
+      } else if (isMacSafari()) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>၁။ Safari အပေါ် Menu bar မှ <b style="color:#fbbf24;">File → Add to Dock...</b> ကို နှိပ်ပါ။</div>
+            <div>၂။ <b style="color:#34d399;">"Add"</b> နှိပ်လိုက်ရင် Mac Dock မှာ App Icon အစစ်လို ပေါ်လာပါမယ်။</div>
+          </div>`;
+      } else {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>Chrome / Edge ညာဘက်အပေါ် Menu (⋮) မှ <b style="color:#fbbf24;">"Install Sāsana ERP"</b> သို့မဟုတ် <b style="color:#fbbf24;">"Install page as app"</b> ကို ရွေးချယ်ထည့်သွင်းနိုင်ပါသည်။</div>
+          </div>`;
+      }
+      modal.classList.remove('hidden');
+    };
+
+    window.closePwaGuideModal = function () {
+      const modal = document.getElementById('pwa-guide-modal');
+      if (modal) modal.classList.add('hidden');
+    };
 
     // PWA Service Worker Registration
     if ('serviceWorker' in navigator) {
