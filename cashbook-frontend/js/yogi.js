@@ -1,5 +1,5 @@
 // ===================================================================
-// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.2)
+// js/yogi.js - Yogi Management Controller (Permanent & Camp Yogi) (v4.2) 
 // Features: Event-Delegated XSS Safe Actions, No localStorage PII Cache,
 // Cursor-Safe MM->Eng Digits, Preserves end_date, CSV Formula Guard & Calm UI
 // ===================================================================
