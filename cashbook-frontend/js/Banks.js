@@ -1,7 +1,7 @@
 // ===================================================================
-// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.2)
-// Features: Calm Eye-Comfort FinTech UI, Borderless Receiver, Pastel Numbers,
-// Anti-Jitter DOM, Versioned Sync, Role Guards, XSS Safe & Atomic Transfers
+// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.3)
+// Features: Event-Delegated XSS Safe Actions, Cursor-Safe MM->Eng Digits,
+// 400->404 Entry-ID Fix, Explicit transfer_type, CSV Formula Guard & Calm UI
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
@@ -25,12 +25,27 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function csvCell(val) {
+  let s = (val === null || val === undefined) ? '' : String(val);
+  if (/^[=+\-@\t\r]/.test(s)) {
+    s = `'${s}`;
+  }
+  return `"${s.replace(/"/g, '""')}"`;
+}
+
 function notify(msg, type = 'info') {
   if (typeof window.showToast === 'function') {
     window.showToast(msg, type);
   } else if (type === 'error' || type === 'warning') {
     alert(msg);
   }
+}
+
+function isValidCalendarDate(dateStr) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(dateStr || ''))) return false;
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && (dt.getUTCMonth() + 1) === m && dt.getUTCDate() === d;
 }
 
 function getIsRealEditMode() {
@@ -92,10 +107,66 @@ window.toEnglishDigits = function (str) {
 window.parseAmount = function (val) {
   if (val === null || val === undefined || val === '') return 0;
   const eng = window.toEnglishDigits(val);
-  const clean = String(eng).replace(/[^0-9.-]/g, '');
+  const clean = String(eng).replace(/,/g, '').replace(/[^0-9.-]/g, '');
   const num = parseFloat(clean);
-  return Number.isFinite(num) ? num : 0;
+  return Number.isFinite(num) ? Math.round((num + Number.EPSILON) * 100) / 100 : 0;
 };
+
+// 🌟 Cursor-Safe Real-Time Myanmar -> English Digit Conversion (Voucher & Debit/Credit Amount)
+function bindCursorSafeEngDigitInput(el, numericOnly = false) {
+  if (!el || el.dataset.engBound === '1') return;
+  el.dataset.engBound = '1';
+
+  const transform = (sanitizeStrict) => {
+    const pos = el.selectionStart;
+    const raw = el.value;
+    let next = window.toEnglishDigits(raw);
+
+    if (numericOnly) {
+      next = next.replace(/,/g, '').replace(/[^0-9.]/g, '');
+      const parts = next.split('.');
+      if (parts.length > 2) {
+        next = `${parts[0]}.${parts.slice(1).join('')}`;
+      }
+      if (sanitizeStrict && next.endsWith('.')) {
+        next = next.slice(0, -1);
+      }
+    }
+
+    if (next !== raw) {
+      el.value = next;
+      if (typeof pos === 'number' && document.activeElement === el) {
+        const diff = raw.length - next.length;
+        const nextPos = Math.max(0, pos - diff);
+        try { el.setSelectionRange(nextPos, nextPos); } catch (_) {}
+      }
+    }
+  };
+
+  el.addEventListener('input', () => transform(false));
+  el.addEventListener('blur', () => transform(true));
+}
+
+function initBankViewListeners() {
+  const tbody = document.getElementById("table-body");
+  if (tbody && tbody.dataset.delegated !== '1') {
+    tbody.dataset.delegated = '1';
+    tbody.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-action][data-uid]');
+      if (!btn || btn.disabled) return;
+      const uid = btn.dataset.uid;
+      if (!uid) return;
+      if (btn.dataset.action === 'edit') {
+        window.editEntry(uid);
+      } else if (btn.dataset.action === 'delete') {
+        window.deleteEntry(uid);
+      }
+    });
+  }
+
+  bindCursorSafeEngDigitInput(document.getElementById("entry-voucher"), false);
+  bindCursorSafeEngDigitInput(document.getElementById("entry-amount"), true);
+}
 
 function resolveD1Table(nameOrKey) {
   const k = String(nameOrKey || '').trim();
@@ -150,9 +221,11 @@ function getTreeGroupKey(tableName) {
 }
 
 // ===================================================================
-// 🌟 VIEW RENDERER (Anti-Jitter + Race-Condition Guard)
+// 🌟 VIEW RENDERER
 // ===================================================================
 window.renderBankView = async function (tableIdentifier, isSilent = false) {
+  initBankViewListeners();
+
   const currentTable = resolveD1Table(tableIdentifier || window.currentSheet || window.currentTable || '1CB Bank (General)');
   const fetchToken = ++activeLedgerFetchToken;
 
@@ -233,31 +306,23 @@ function applyLedgerSearchFilter(isSilent = false) {
       const exp = parseFloat(e.expense) || 0;
       const bal = parseFloat(e.balance) || 0;
 
-      const incStr = inc.toString();
-      const incFmt = inc.toLocaleString().toLowerCase();
-      const expStr = exp.toString();
-      const expFmt = exp.toLocaleString().toLowerCase();
-      const balStr = bal.toString();
-      const balFmt = bal.toLocaleString().toLowerCase();
-
       const voucherEng = window.toEnglishDigits(e.voucher_no || '').toLowerCase();
-      const dateText = (e.date || '').toLowerCase();
-      const titleText = (e.title || '').toLowerCase();
-      const subTitleText = (e.sub_title || '').toLowerCase();
-      const descText = (e.description || '').toLowerCase();
-      const receiverText = (e.receiver || '').toLowerCase();
-      const bookText = (e.book_name || '').toLowerCase();
-      const myText = (e.month_year || formatMonthYear(e.date)).toLowerCase();
-
       const textMatches = [
-        dateText, titleText, subTitleText, descText,
-        receiverText, bookText, myText, (e.voucher_no || '').toLowerCase(), voucherEng
-      ].some(t => t.includes(rawQuery) || t.includes(engQuery));
+        e.date, e.title, e.sub_title, e.description,
+        e.receiver, e.book_name, e.month_year || formatMonthYear(e.date),
+        e.voucher_no, voucherEng
+      ].some(v => {
+        const s = (v || '').toLowerCase();
+        return s.includes(rawQuery) || s.includes(engQuery);
+      });
 
       if (textMatches) return true;
 
-      return [incStr, incFmt, expStr, expFmt, balStr, balFmt]
-        .some(n => n.includes(cleanNumQuery) || n.includes(rawQuery) || n.includes(engQuery));
+      return [
+        inc.toString(), inc.toLocaleString().toLowerCase(),
+        exp.toString(), exp.toLocaleString().toLowerCase(),
+        bal.toString(), bal.toLocaleString().toLowerCase()
+      ].some(n => n.includes(cleanNumQuery) || n.includes(rawQuery) || n.includes(engQuery));
     });
   }
 
@@ -265,7 +330,7 @@ function applyLedgerSearchFilter(isSilent = false) {
 }
 
 // ===================================================================
-// 🌟 TABLE RENDERER (60-30-10 Calm Eye-Comfort FinTech Style)
+// 🌟 TABLE RENDERER (XSS-Safe Event Delegation + Calm Eye-Comfort UI)
 // ===================================================================
 function renderLedgerTable(isSilent = false) {
   const tbody = document.getElementById("table-body");
@@ -308,15 +373,10 @@ function renderLedgerTable(isSilent = false) {
       const isBankDeposit = titleText.includes('ဘဏ်အပ်') || (entry.sub_title && entry.sub_title.includes('ဘဏ်အပ်နှံ'));
       const isTransfer = isTransferIn || isTransferOut || titleText === "စာရင်းပြောင်း" || titleText === "ဘဏ်ထုတ်ငွေ" || (entry.sub_title && entry.sub_title.includes("လွှဲပြောင်း"));
 
-      // 🌟 Dot လေးတွင်သာ အရောင်ထားပြီး စာသားကို Calm Off-White (#e2e8f0) ထားခြင်း
-      let dotColor = '#fb7185';    // Soft Rose (ထွက်ငွေ)
-      if (isBankDeposit) {
-        dotColor = '#38bdf8';      // Sky Blue (ဘဏ်အပ်ငွေ)
-      } else if (isTransfer) {
-        dotColor = '#a78bfa';      // Soft Lavender Purple (စာရင်းပြောင်း / ဘဏ်ထုတ်ငွေ)
-      } else if (isIncome) {
-        dotColor = '#34d399';      // Soft Emerald (ဝင်ငွေ)
-      }
+      let dotColor = '#fb7185';
+      if (isBankDeposit) dotColor = '#38bdf8';
+      else if (isTransfer) dotColor = '#a78bfa';
+      else if (isIncome) dotColor = '#34d399';
 
       const pendingBadge = entry.pending
         ? `<span class="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold" style="background:rgba(245,158,11,0.12);color:#fbbf24;border:1px solid rgba(245,158,11,0.28);" title="Offline မှ Server သို့ ပို့ရန် စောင့်ဆိုင်းနေပါသည်">Pending</span>`
@@ -338,7 +398,6 @@ function renderLedgerTable(isSilent = false) {
         : '<span class="font-mono" style="color:#475569;">-</span>';
       const balanceHtml = `<span class="font-mono font-bold" style="color:${balance < 0 ? '#fda4af' : '#f8fafc'};">${balance.toLocaleString()}</span>`;
 
-      // 🌟 လက်ခံသူ (Bank / User 1, 2, 3) ဘောင်ခတ်ထားတာ ဖြုတ်ပြီး Clean Text ပြသခြင်း
       const displayReceiver = entry.receiver || (isBankTable ? "Bank" : "-");
       const safeReceiver = escapeHtml(displayReceiver);
       const receiverHtml = displayReceiver !== "-"
@@ -360,8 +419,8 @@ function renderLedgerTable(isSilent = false) {
         `;
       } else {
         actionButtons = `
-          <button type="button" onclick="editEntry('${safeUidAttr}')" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button type="button" onclick="deleteEntry('${safeUidAttr}')" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
+          <button type="button" data-action="edit" data-uid="${safeUidAttr}" ${!canEdit ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fbbf24\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ပြင်ဆင်မည် (Edit)"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button type="button" data-action="delete" data-uid="${safeUidAttr}" ${!canDelete ? 'disabled class="p-1.5 rounded-lg opacity-30 cursor-not-allowed text-xs" style="color:#64748b;"' : 'class="p-1.5 rounded-lg hover:bg-slate-800 transition-all text-xs cursor-pointer" style="color:#94a3b8;" onmouseenter="this.style.color=\'#fda4af\'" onmouseleave="this.style.color=\'#94a3b8\'"'} title="ဖျက်မည် (Delete)"><i class="fa-solid fa-trash"></i></button>
         `;
       }
 
@@ -550,6 +609,7 @@ window.onEntrySubcategoryChange = function () {
 // Entry Type Change & Dynamic Labeling
 // ===================================================================
 window.onEntryTypeChange = function (selectedType) {
+  initBankViewListeners();
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const isBankTable = currentTable.includes('Bank');
   const cleanType = normalizeEntryType(selectedType);
@@ -656,7 +716,7 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// 🌟 SAVE & SUBMIT LOGIC
+// 🌟 SAVE & SUBMIT LOGIC (Does NOT mutate #entry-id before save succeeds!)
 // -------------------------------------------------------------------
 window.saveEntryForm = async function (event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -668,9 +728,9 @@ window.saveEntryForm = async function (event) {
   }
 
   const dateEl = document.getElementById("entry-date");
-  const date = dateEl ? dateEl.value.trim() : "";
-  if (!date) {
-    alert("ရက်စွဲ (Date) အား မဖြစ်မနေ ရွေးချယ်ပေးပါခင်ဗျာ။");
+  const date = window.toEnglishDigits(dateEl ? dateEl.value.trim() : "");
+  if (!isValidCalendarDate(date)) {
+    alert("ရက်စွဲ (Date) အား မှန်ကန်စွာ ရွေးချယ်ပေးပါခင်ဗျာ။");
     if (dateEl) dateEl.focus();
     return;
   }
@@ -678,6 +738,7 @@ window.saveEntryForm = async function (event) {
   const amountEl = document.getElementById("entry-amount");
   const rawAmount = amountEl ? amountEl.value.trim() : "";
   const amount = window.parseAmount(rawAmount);
+  if (amountEl) amountEl.value = amount > 0 ? String(amount) : "";
   if (!Number.isFinite(amount) || amount <= 0) {
     alert("ငွေပမာဏ (Amount) ကို ၀ ထက်ကြီးသော ဂဏန်း မှန်ကန်စွာ ထည့်သွင်းပေးပါခင်ဗျာ။");
     if (amountEl) amountEl.focus();
@@ -693,15 +754,18 @@ window.saveEntryForm = async function (event) {
   }
 
   const entryIdEl = document.getElementById("entry-id");
-  let unique_id = entryIdEl ? entryIdEl.value.trim() : "";
+  const existingUid = entryIdEl ? entryIdEl.value.trim() : "";
+  const isEdit = !!existingUid;
+
   const rawType = document.getElementById("entry-type")?.value || "ဝင်ငွေ";
   const cleanType = normalizeEntryType(rawType);
   const title = document.getElementById("entry-category")?.value || cleanType;
   const subcatEl = document.getElementById("entry-subcategory");
   const sub_title = subcatEl ? subcatEl.value : "";
 
-  const rawVoucher = (document.getElementById("entry-voucher")?.value || "").trim();
-  const voucher_no = window.toEnglishDigits(rawVoucher);
+  const voucherEl = document.getElementById("entry-voucher");
+  const voucher_no = window.toEnglishDigits((voucherEl?.value || "").trim());
+  if (voucherEl) voucherEl.value = voucher_no;
 
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const isBankTable = currentTable.includes('Bank');
@@ -709,7 +773,6 @@ window.saveEntryForm = async function (event) {
   const rawReceiver = document.getElementById("entry-receiver")?.value || "User 1";
   const receiver = (isBankTable && cleanType === 'ဝင်ငွေ') ? "Bank" : rawReceiver;
   const month_year = formatMonthYear(date);
-  const isEdit = !!unique_id;
 
   const income = cleanType === 'ဝင်ငွေ' ? amount : 0;
   const expense = cleanType === 'ထွက်ငွေ' ? amount : 0;
@@ -731,16 +794,14 @@ window.saveEntryForm = async function (event) {
     if (isBankWithdrawal) {
       const destUser = receiver !== 'Bank' ? receiver : 'User 1';
       const groupId = isEdit
-        ? String(unique_id).replace(/_(OUT|IN)$/, '')
+        ? String(existingUid).replace(/_(OUT|IN)$/, '')
         : `TRF_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-
-      if (!isEdit && entryIdEl) {
-        entryIdEl.value = `${groupId}_OUT`;
-      }
 
       const payload = {
         group_id: groupId,
         unique_id: isEdit ? `${groupId}_OUT` : undefined,
+        transfer_type: 'BANK_WITHDRAWAL',
+        dest_book: '1General Book',
         book_name: currentTable,
         sheet_name: currentTable,
         date,
@@ -771,21 +832,24 @@ window.saveEntryForm = async function (event) {
       }
 
       const groupId = isEdit
-        ? String(unique_id).replace(/_(OUT|IN)$/, '')
+        ? String(existingUid).replace(/_(OUT|IN)$/, '')
         : `TRF_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-      if (!isEdit && entryIdEl) {
-        entryIdEl.value = `${groupId}_OUT`;
-      }
+      const isTargetBank = target.includes('Bank');
+      const transfer_type = isBankTable
+        ? (isTargetBank ? 'BANK_TO_BANK' : 'BANK_WITHDRAWAL')
+        : (isTargetBank ? 'USER_TO_BANK' : 'USER_TO_USER');
 
       const payload = {
         group_id: groupId,
         unique_id: isEdit ? `${groupId}_OUT` : undefined,
+        transfer_type,
+        dest_book: isTargetBank ? target : currentTable,
         book_name: currentTable,
         sheet_name: currentTable,
         date,
         amount,
-        target: target,
+        target,
         receiver,
         voucher_no,
         description
@@ -803,17 +867,15 @@ window.saveEntryForm = async function (event) {
       return;
     }
 
-    if (!unique_id) {
-      unique_id = (typeof crypto !== 'undefined' && crypto.randomUUID)
-        ? crypto.randomUUID()
-        : `CB_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-      if (entryIdEl) entryIdEl.value = unique_id;
-    }
+    const finalUid = existingUid || (typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `CB_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
 
     const payload = {
-      unique_id,
+      unique_id: finalUid,
       book_name: currentTable,
       date,
+      type: cleanType,
       title: title || cleanType,
       sub_title: sub_title || '-',
       voucher_no,
@@ -849,6 +911,8 @@ window.saveEntryForm = async function (event) {
 // EDIT ENTRY
 // ===================================================================
 window.editEntry = function (uid) {
+  initBankViewListeners();
+
   if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
     notify("ကြည့်ရှုသူ (Viewer) အဆင့်ဖြစ်၍ ပြင်ဆင်ခွင့် မရှိပါ။", "warning");
     return;
@@ -1017,15 +1081,22 @@ window.exportCSV = function () {
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
 
   bankFilteredEntries.forEach((e, idx) => {
-    const esc = (v) => `"${(v || "").toString().replace(/"/g, '""')}"`;
     const my = e.month_year || formatMonthYear(e.date);
     const receiverText = isBankTable ? (e.receiver || "Bank") : (e.receiver || "");
 
     csv += [
-      (idx + 1), esc(e.date), esc(e.title),
-      esc(e.description), e.income || 0, e.expense || 0, e.balance || 0,
-      esc(e.sub_title),
-      esc(window.toEnglishDigits(e.voucher_no)), esc(receiverText), esc(my), esc(e.book_name || currentTable)
+      (idx + 1),
+      csvCell(e.date),
+      csvCell(e.title),
+      csvCell(e.description),
+      e.income || 0,
+      e.expense || 0,
+      e.balance || 0,
+      csvCell(e.sub_title),
+      csvCell(window.toEnglishDigits(e.voucher_no)),
+      csvCell(receiverText),
+      csvCell(my),
+      csvCell(e.book_name || currentTable)
     ].join(",") + "\n";
   });
 
