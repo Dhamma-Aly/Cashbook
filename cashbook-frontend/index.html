@@ -420,7 +420,7 @@
     updateLiveHeaderClock();
 
     // ===================================================================
-    // 📲 SMART PWA INSTALLER (Windows / Mac / Android / iPhone / iPad)
+    // 📲 SMART PWA INSTALLER (Chrome / Edge / Safari / Firefox)
     // ===================================================================
     let deferredInstallPrompt = null;
 
@@ -435,7 +435,11 @@
 
     function isMacSafari() {
       const ua = navigator.userAgent;
-      return /Macintosh/i.test(ua) && /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR/i.test(ua);
+      return /Macintosh/i.test(ua) && /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/i.test(ua);
+    }
+
+    function isFirefoxBrowser() {
+      return /Firefox/i.test(navigator.userAgent);
     }
 
     function setInstallButtonsVisible(show) {
@@ -462,11 +466,11 @@
       }
     });
 
-    // Show button on iOS Safari & Mac Safari when not yet installed
+    // Show button on iOS Safari, Mac Safari & Firefox when not yet installed
     window.addEventListener('load', () => {
       if (isAppInstalledStandalone()) {
         setInstallButtonsVisible(false);
-      } else if (isIosDevice() || isMacSafari()) {
+      } else if (isIosDevice() || isMacSafari() || isFirefoxBrowser()) {
         setInstallButtonsVisible(true);
       }
     });
@@ -482,17 +486,39 @@
         return;
       }
 
-      // Fallback guide for iPhone/iPad Safari & Mac Safari
+      // Guide Modal for Safari & Firefox
       const modal = document.getElementById('pwa-guide-modal');
       const body = document.getElementById('pwa-guide-body');
       if (!modal || !body) return;
+
+      const ua = navigator.userAgent;
 
       if (isIosDevice()) {
         body.innerHTML = `
           <div style="display:flex;flex-direction:column;gap:10px;">
             <div>၁။ Safari အောက်ခြေက <b style="color:#fbbf24;">Share <i class="fa-solid fa-arrow-up-from-bracket"></i></b> ခလုတ်ကို နှိပ်ပါ။</div>
             <div>၂။ အောက်သို့ဆွဲပြီး <b style="color:#fbbf24;">"Add to Home Screen"</b> ကို ရွေးပါ။</div>
-            <div>၃။ ညာဘက်အပေါ် <b style="color:#34d399;">"Add"</b> ကို နှိပ်လိုက်ရင် ဖုန်းမျက်နှာပြင်မှာ App Icon ထွက်လာပါမယ်။</div>
+            <div>၃။ ညာဘက်အပေါ် <b style="color:#34d399;">"Add"</b> ကို နှိပ်လိုက်ရင် App Icon ထွက်လာပါမယ်။</div>
+          </div>`;
+      } else if (isFirefoxBrowser() && /Android/i.test(ua)) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>၁။ Firefox ညာဘက်ထောင့်က <b style="color:#fbbf24;">Menu (⋮)</b> ကို နှိပ်ပါ။</div>
+            <div>၂။ <b style="color:#fbbf24;">"Install"</b> ကို ရွေးပြီး <b style="color:#34d399;">"Add"</b> နှိပ်လိုက်ရင် ဖုန်း Home Screen မှာ App Icon ထွက်လာပါမယ်။</div>
+          </div>`;
+      } else if (isFirefoxBrowser() && /Windows/i.test(ua)) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>၁။ Firefox အပေါ် Address bar ညာဘက်ထောင့်က <b style="color:#fbbf24;">"Add tab to taskbar"</b> (Web App) ခလုတ်ကို နှိပ်ပါ။</div>
+            <div>၂။ Windows Taskbar နဲ့ Start Menu မှာ App Icon အစစ်လို တန်းထွက်လာပါမယ်။</div>
+            <div style="font-size:11.5px;color:#94a3b8;">*(ခလုတ်မတွေ့ပါက Firefox ကို နောက်ဆုံး Version သို့ Update လုပ်ပါ)*</div>
+          </div>`;
+      } else if (isFirefoxBrowser()) {
+        body.innerHTML = `
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div>Mac / Linux Firefox မှာ Built-in Web App Install မပါသေးပါ။</div>
+            <div>• <b style="color:#fbbf24;">Safari</b> (File → Add to Dock) သို့မဟုတ် <b style="color:#fbbf24;">Chrome / Edge</b> နဲ့ တစ်ခါ Install လုပ်ထားရင် Desktop / Dock မှာ App Icon အစစ်လို သုံးနိုင်ပါတယ်။</div>
+            <div>• Firefox နဲ့ပဲ သုံးချင်ရင် <b style="color:#34d399;">PWAsForFirefox</b> extension ထည့်သုံးနိုင်ပါတယ်။</div>
           </div>`;
       } else if (isMacSafari()) {
         body.innerHTML = `
