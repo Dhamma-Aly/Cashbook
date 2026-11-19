@@ -1,13 +1,13 @@
 // ===================================================================
-// js/auth.js - Sāsana ERP Persistent Auth & Role Controller (v4.0)
-// Features: Persistent Login (1-Year Session), Role Permission Matrix,
-// Soft Re-Authentication & Pending-Queue Safe Logout
+// js/auth.js - Sāsana ERP Persistent Auth & Role Controller (v4.1)
+// Features: Revocable Session (30-Day + token_version), Role Matrix,
+// Soft Re-Authentication, IndexedDB Cleanup on Silent Logout & Lockout UX
 // ===================================================================
 
 (function () {
   "use strict";
 
-  const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
   const ROLE_BURMESE_MAP = {
     'Admin': 'စီမံအုပ်ချုပ်သူ',
@@ -46,7 +46,7 @@
     return ROLE_BURMESE_MAP[role] || role;
   };
 
-  // 🌟 Role Permission Matrix (Matched 100% with worker.js)
+  // 🌟 Role Permission Matrix (Matched 100% with worker.js v7.0)
   window.canUserEdit = function () {
     return window.getCurrentUserRole().toLowerCase() !== "viewer";
   };
@@ -70,13 +70,7 @@
 
     const liveUserEl = document.getElementById("current-user-display") || document.getElementById("live-user-name");
     if (liveUserEl) {
-      const today = new Date();
-      const yyyy = today.getFullYear();
-      const mm = String(today.getMonth() + 1).padStart(2, '0');
-      const dd = String(today.getDate()).padStart(2, '0');
-      const username = window.getCurrentUser() || "User";
-      const displayName = window.getCurrentUserDisplayName();
-      liveUserEl.textContent = `${yyyy}-${mm}-${dd} | ${username} (${displayName})`;
+      liveUserEl.textContent = window.getCurrentUser() || "User";
     }
   };
 
@@ -140,7 +134,7 @@
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
       if (res.ok && json.success && json.token) {
-        const expiresInMs = json.expiresInMs || ONE_YEAR_MS;
+        const expiresInMs = json.expiresInMs || THIRTY_DAYS_MS;
         const expiresAt = Date.now() + expiresInMs;
         const userObj = json.user || { username, role: username, name: username };
 
@@ -216,7 +210,7 @@
     const password = passwordInput ? passwordInput.value.trim() : "";
 
     if (!username) {
-      window.handleLogoutSilent();
+      await window.handleLogoutSilent();
       return;
     }
     if (!password) return;
@@ -238,7 +232,7 @@
       const json = await res.json().catch(() => ({}));
 
       if (res.ok && json.success && json.token) {
-        const expiresInMs = json.expiresInMs || ONE_YEAR_MS;
+        const expiresInMs = json.expiresInMs || THIRTY_DAYS_MS;
         const expiresAt = Date.now() + expiresInMs;
 
         localStorage.setItem("sasana_auth_token", json.token);
@@ -275,10 +269,10 @@
     }
   };
 
-  window.cancelReAuth = function () {
+  window.cancelReAuth = async function () {
     const modal = document.getElementById("reauth-modal");
     if (modal) modal.classList.add("hidden");
-    window.handleLogoutSilent();
+    await window.handleLogoutSilent();
   };
 
   window.handleLogout = async function () {
@@ -304,8 +298,12 @@
     }
   };
 
-  window.handleLogoutSilent = function () {
+  // 🌟 Security Fix: Clear BOTH localStorage AND IndexedDB Cache on Silent Logout
+  window.handleLogoutSilent = async function () {
     if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
+    if (typeof window.clearOfflineCache === "function") {
+      await window.clearOfflineCache();
+    }
     const ver = localStorage.getItem("sasana_app_version");
     localStorage.clear();
     if (ver) localStorage.setItem("sasana_app_version", ver);
@@ -316,3 +314,4 @@
     window.checkExistingSession();
   });
 })();
+// === END OF auth.js ===
