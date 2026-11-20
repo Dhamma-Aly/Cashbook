@@ -1,7 +1,7 @@
 /* ===================================================================
-   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.2)
+   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.3)
    Eye-Comfort Edition: 60-30-10 Neutral Charcoal Slate + Soft Gold Accent
-   Compact Dashboard Fit, System Control Center Cards & Mobile Safe
+   Pixel-Aligned System Control Center, Compact Dashboard Fit & Mobile Safe
    =================================================================== */
 
 :root {
@@ -307,7 +307,7 @@ table tbody tr:hover {
   background-color: rgba(148, 163, 184, 0.06) !important;
 }
 
-/* 🌟 Dashboard Tables: Crisp Executive Font + Compact Row Fit (All 8 Rows + Total Visible) */
+/* 🌟 Dashboard Tables: Crisp Executive Font + Compact Row Fit */
 #home-bank-table table thead th,
 #home-padetha-table table thead th,
 #home-yogi-table table thead th {
@@ -391,12 +391,13 @@ button.dash-pill-cash:hover {
 }
 
 /* ===================================================================
-   ⚙️ SYSTEM CONTROL CENTER (စနစ်စီမံမှု Tab) — D1 Gauges & Tool Cards
+   ⚙️ SYSTEM CONTROL CENTER (စနစ်စီမံမှု Tab) — Symmetrical Executive Grid
    =================================================================== */
 .sys-grid-4 {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 14px;
+  align-items: stretch;
 }
 
 @media (min-width: 640px) {
@@ -414,46 +415,139 @@ button.dash-pill-cash:hover {
 .sys-grid-2 {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 16px;
+  gap: 14px;
+  align-items: stretch;
 }
 
-@media (min-width: 900px) {
+@media (min-width: 860px) {
   .sys-grid-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.sys-card {
-  background: linear-gradient(145deg, #101724 0%, #0b1019 100%);
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  border-radius: 16px;
-  padding: 16px 18px;
-  box-shadow: 0 10px 26px -10px rgba(0, 0, 0, 0.65);
-  display: flex;
-  flex-direction: column;
+.sys-btn-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 10px;
 }
 
+@media (min-width: 480px) {
+  .sys-btn-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.sys-card {
+  background: linear-gradient(160deg, #121a28 0%, #0c121c 100%);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 16px;
+  padding: 16px 18px;
+  box-shadow: 0 8px 22px -10px rgba(0, 0, 0, 0.65);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.2s ease;
+}
+
 .sys-card:hover {
-  border-color: rgba(245, 158, 11, 0.28);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+.sys-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 34px;
 }
 
 .sys-card-title {
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 800;
-  color: #fde68a;
+  color: #f1f5f9;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   margin: 0;
+  line-height: 1.35;
+}
+
+.sys-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.sys-icon-sky {
+  background-color: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+}
+
+.sys-icon-emerald {
+  background-color: rgba(16, 185, 129, 0.12);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.sys-icon-gold {
+  background-color: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.24);
+}
+
+.sys-icon-rose {
+  background-color: rgba(244, 63, 94, 0.12);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.22);
+}
+
+.sys-card-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.65;
+}
+
+.sys-card-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.1);
+  font-size: 11.5px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sys-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-weight: 700;
+  background-color: rgba(148, 163, 184, 0.1);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  white-space: nowrap;
 }
 
 .sys-metric-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 800;
   color: #f8fafc;
-  line-height: 1.25;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
 }
 
 .sys-metric-sub {
@@ -465,9 +559,23 @@ button.dash-pill-cash:hover {
   gap: 8px;
 }
 
+.sys-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+  color: #94a3b8;
+  border-bottom: 1px dashed rgba(148, 163, 184, 0.1);
+}
+
+.sys-stat-row:last-child {
+  border-bottom: none;
+}
+
 .sys-progress-track {
   width: 100%;
-  height: 8px;
+  height: 7px;
   background-color: rgba(148, 163, 184, 0.14);
   border-radius: 9999px;
   overflow: hidden;
@@ -494,20 +602,20 @@ button.dash-pill-cash:hover {
 }
 
 .sys-select {
-  height: 38px;
+  height: 34px;
   padding: 0 12px;
   background-color: #080d16;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  border-radius: 10px;
-  color: #f8fafc;
-  font-size: 13px;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 9px;
+  color: #fde68a;
+  font-size: 12px;
   font-weight: 700;
   outline: none;
   cursor: pointer;
 }
 
 .sys-select:focus {
-  border-color: #f59e0b;
+  border-color: #fbbf24;
 }
 
 .sys-action-btn {
@@ -515,7 +623,8 @@ button.dash-pill-cash:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 9px 14px;
+  height: 40px;
+  padding: 0 14px;
   border-radius: 10px;
   font-size: 12.5px;
   font-weight: 700;
@@ -524,10 +633,12 @@ button.dash-pill-cash:hover {
   border: 1px solid transparent;
   transition: all 0.18s ease;
   white-space: nowrap;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .sys-action-btn:disabled {
-  opacity: 0.48;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
@@ -542,30 +653,30 @@ button.dash-pill-cash:hover {
 }
 
 .sys-btn-sky {
-  background-color: rgba(56, 189, 248, 0.12);
-  border-color: rgba(56, 189, 248, 0.32);
+  background-color: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.28);
   color: #7dd3fc;
 }
 
 .sys-btn-sky:hover:not(:disabled) {
-  background-color: rgba(56, 189, 248, 0.22);
+  background-color: rgba(56, 189, 248, 0.2);
   color: #e0f2fe;
 }
 
 .sys-btn-emerald {
-  background-color: rgba(16, 185, 129, 0.12);
-  border-color: rgba(16, 185, 129, 0.32);
+  background-color: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.28);
   color: #6ee7b7;
 }
 
 .sys-btn-emerald:hover:not(:disabled) {
-  background-color: rgba(16, 185, 129, 0.22);
+  background-color: rgba(16, 185, 129, 0.2);
   color: #d1fae5;
 }
 
 .sys-btn-slate {
   background-color: #161e2c;
-  border-color: rgba(148, 163, 184, 0.24);
+  border-color: rgba(148, 163, 184, 0.22);
   color: #e2e8f0;
 }
 
@@ -576,20 +687,20 @@ button.dash-pill-cash:hover {
 }
 
 .sys-btn-rose {
-  background-color: rgba(244, 63, 94, 0.12);
-  border-color: rgba(244, 63, 94, 0.32);
+  background-color: rgba(244, 63, 94, 0.1);
+  border-color: rgba(244, 63, 94, 0.28);
   color: #fda4af;
 }
 
 .sys-btn-rose:hover:not(:disabled) {
-  background-color: rgba(244, 63, 94, 0.22);
+  background-color: rgba(244, 63, 94, 0.2);
   color: #ffe4e6;
 }
 
 .sys-status-box {
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 12px;
+  padding: 11px 14px;
+  border-radius: 12px;
+  font-size: 12.5px;
   line-height: 1.6;
   background-color: rgba(15, 23, 42, 0.85);
   border: 1px solid rgba(148, 163, 184, 0.18);
