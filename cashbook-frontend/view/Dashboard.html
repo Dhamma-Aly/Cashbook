@@ -1,9 +1,9 @@
-<!-- view/Dashboard.html - Home Dashboard Fragment (v4.4 Symmetrical Executive System Control) -->
+<!-- view/Dashboard.html - Home Dashboard Fragment (v4.5 Mobile-Perfect Contact & System Control) -->
 
 <div class="h-full flex flex-col space-y-4 sm:space-y-5">
 
   <!-- 🌟 Top 4 KPI Cards -->
-  <div class="shrink-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+  <div class="dashboard-kpi-grid shrink-0 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
     <div class="stats-card">
       <div class="p-3.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0"><i class="fa-solid fa-vault text-xl"></i></div>
       <div class="min-w-0 flex-1">
@@ -129,7 +129,7 @@
     </div>
   </div>
 
-  <!-- 🌟 Section 4: Contact Hub -->
+  <!-- 🌟 Section 4: Contact Hub (Mobile-Safe Responsive Grid — Zero Inline !important Grid) -->
   <div id="dash-contact-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl sm:rounded-2xl shadow-2xl overflow-y-auto hidden" style="-webkit-overflow-scrolling: touch;">
     <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
@@ -140,92 +140,92 @@
       </span>
     </div>
 
-    <div class="p-4 sm:p-5" style="display: grid !important; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)) !important; gap: 20px !important;">
-      <div style="background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; border-radius: 18px !important; padding: 20px !important; display: flex !important; flex-direction: column !important; gap: 16px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;">
-        <div style="display: flex !important; align-items: center !important; gap: 14px !important; padding-bottom: 14px !important; border-bottom: 1px solid rgba(51, 65, 85, 0.6) !important;">
-          <div style="width: 48px !important; height: 48px !important; min-width: 48px !important; border-radius: 14px !important; background-color: #0e172e !important; border: 1px solid rgba(245, 158, 11, 0.3) !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 6px !important; flex-shrink: 0 !important;">
-            <img src="favicon.svg" alt="Logo" style="width: 100% !important; height: 100% !important; object-fit: contain !important;">
+    <div class="contact-hub-grid p-3 sm:p-5">
+      <div style="background-color: #080d1a; border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-width: 0;">
+        <div style="display: flex; align-items: center; gap: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(51, 65, 85, 0.6);">
+          <div style="width: 48px; height: 48px; min-width: 48px; border-radius: 14px; background-color: #0e172e; border: 1px solid rgba(245, 158, 11, 0.3); display: flex; align-items: center; justify-content: center; padding: 6px; flex-shrink: 0;">
+            <img src="favicon.svg" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
           </div>
-          <div>
-            <h4 style="margin: 0 !important; font-size: 15px !important; font-weight: 900 !important; color: #fbbf24 !important;">ဓမ္မအလင်းရောင်တောရရိပ်သာ</h4>
-            <p style="margin: 3px 0 0 0 !important; font-size: 11px !important; color: #94a3b8 !important; font-weight: 700 !important;">
+          <div style="min-width: 0;">
+            <h4 style="margin: 0; font-size: 15px; font-weight: 900; color: #fbbf24;">ဓမ္မအလင်းရောင်တောရရိပ်သာ</h4>
+            <p style="margin: 3px 0 0 0; font-size: 11px; color: #94a3b8; font-weight: 700;">
               ပြင်ဦးလွင်မြို့ (လယ်တီမူ အနာဂါမ်ဆရာသက်ကြီးနည်း)
             </p>
           </div>
         </div>
 
-        <p style="margin: 0 !important; font-size: 11.5px !important; color: #cbd5e1 !important; line-height: 1.6 !important;">
+        <p style="margin: 0; font-size: 12px; color: #cbd5e1; line-height: 1.65;">
           ဓမ္မအလင်းရောင်တောရရိပ်သာသည် ၂၀၁၀ ခုနှစ်တွင် ဆရာတော် ဦးသောဘနမှ ဦးစီးတည်ထောင်ခဲ့ပြီး ယောဂီများ အချိန်မရွေး လာရောက်တရားအားထုတ်နိုင်ပါသည်။
         </p>
 
-        <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 12px 14px !important; display: flex !important; align-items: flex-start !important; gap: 12px !important;">
-          <div style="width: 32px !important; height: 32px !important; min-width: 32px !important; border-radius: 8px !important; background-color: rgba(245, 158, 11, 0.15) !important; color: #fbbf24 !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; margin-top: 2px !important;">
-            <i class="fa-solid fa-location-dot" style="font-size: 13px !important;"></i>
+        <div style="background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 12px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 12px;">
+          <div style="width: 32px; height: 32px; min-width: 32px; border-radius: 8px; background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px;">
+            <i class="fa-solid fa-location-dot" style="font-size: 13px;"></i>
           </div>
-          <div style="font-size: 11.5px !important; line-height: 1.6 !important;">
-            <span style="font-weight: 800 !important; color: #fef08a !important; display: block !important; margin-bottom: 2px !important;">ရိပ်သာလိပ်စာ -</span>
-            <span style="color: #f1f5f9 !important;">ဓမ္မအလင်းရောင်တောရရိပ်သာ၊ ထုံးကုန်း၊ (၈)မိုင်ကျော်၊ မန္တလေး-လားရှိုး ကားလမ်းမကြီး၊ ပြင်ဦးလွင်မြို့။</span>
-          </div>
-        </div>
-
-        <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 12px 14px !important; display: flex !important; flex-direction: column !important; gap: 8px !important;">
-          <div style="display: flex !important; align-items: center !important; gap: 8px !important;">
-            <i class="fa-solid fa-phone-volume" style="color: #34d399 !important; font-size: 12px !important;"></i>
-            <span style="font-size: 11px !important; font-weight: 800 !important; text-transform: uppercase !important; color: #34d399 !important;">ဆက်သွယ်ရန် ဖုန်းများ (Click to Call)</span>
-          </div>
-          <div style="display: flex !important; flex-wrap: wrap !important; gap: 8px !important;">
-            <a href="tel:09402627759" style="text-decoration: none !important; font-family: monospace !important; font-weight: 700 !important; font-size: 11.5px !important; color: #6ee7b7 !important; background-color: rgba(16, 185, 129, 0.12) !important; border: 1px solid rgba(16, 185, 129, 0.3) !important; padding: 6px 12px !important; border-radius: 8px !important; display: inline-flex !important; align-items: center !important; gap: 6px !important;">
-              <i class="fa-solid fa-phone" style="font-size: 9px !important;"></i> 09-402627759
-            </a>
-            <a href="tel:09777656388" style="text-decoration: none !important; font-family: monospace !important; font-weight: 700 !important; font-size: 11.5px !important; color: #6ee7b7 !important; background-color: rgba(16, 185, 129, 0.12) !important; border: 1px solid rgba(16, 185, 129, 0.3) !important; padding: 6px 12px !important; border-radius: 8px !important; display: inline-flex !important; align-items: center !important; gap: 6px !important;">
-              <i class="fa-solid fa-phone" style="font-size: 9px !important;"></i> 09-777656388
-            </a>
-            <a href="tel:09402730481" style="text-decoration: none !important; font-family: monospace !important; font-weight: 700 !important; font-size: 11.5px !important; color: #6ee7b7 !important; background-color: rgba(16, 185, 129, 0.12) !important; border: 1px solid rgba(16, 185, 129, 0.3) !important; padding: 6px 12px !important; border-radius: 8px !important; display: inline-flex !important; align-items: center !important; gap: 6px !important;">
-              <i class="fa-solid fa-phone" style="font-size: 9px !important;"></i> 09-402730481
-            </a>
+          <div style="font-size: 12px; line-height: 1.65; min-width: 0;">
+            <span style="font-weight: 800; color: #fef08a; display: block; margin-bottom: 2px;">ရိပ်သာလိပ်စာ -</span>
+            <span style="color: #f1f5f9;">ဓမ္မအလင်းရောင်တောရရိပ်သာ၊ ထုံးကုန်း၊ (၈)မိုင်ကျော်၊ မန္တလေး-လားရှိုး ကားလမ်းမကြီး၊ ပြင်ဦးလွင်မြို့။</span>
           </div>
         </div>
 
-        <div style="display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 10px !important;">
-          <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 10px 12px !important; display: flex !important; align-items: center !important; gap: 10px !important; overflow: hidden !important;">
-            <i class="fa-solid fa-envelope" style="color: #38bdf8 !important; font-size: 14px !important; flex-shrink: 0 !important;"></i>
-            <div style="min-width: 0 !important; flex: 1 !important;">
-              <span style="font-size: 10px !important; font-weight: 700 !important; color: #94a3b8 !important; display: block !important;">အီးမေးလ်</span>
-              <a href="mailto:dhammaaly@gmail.com" style="color: #e2e8f0 !important; font-size: 11px !important; font-family: monospace !important; font-weight: 700 !important; text-decoration: none !important; display: block !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important;">
+        <div style="background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-phone-volume" style="color: #34d399; font-size: 12px;"></i>
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #34d399;">ဆက်သွယ်ရန် ဖုန်းများ (Click to Call)</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <a href="tel:09402627759" style="text-decoration: none; font-family: monospace; font-weight: 700; font-size: 12px; color: #6ee7b7; background-color: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-phone" style="font-size: 9px;"></i> 09-402627759
+            </a>
+            <a href="tel:09777656388" style="text-decoration: none; font-family: monospace; font-weight: 700; font-size: 12px; color: #6ee7b7; background-color: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-phone" style="font-size: 9px;"></i> 09-777656388
+            </a>
+            <a href="tel:09402730481" style="text-decoration: none; font-family: monospace; font-weight: 700; font-size: 12px; color: #6ee7b7; background-color: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.3); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-phone" style="font-size: 9px;"></i> 09-402730481
+            </a>
+          </div>
+        </div>
+
+        <div class="contact-info-grid">
+          <div style="background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0;">
+            <i class="fa-solid fa-envelope" style="color: #38bdf8; font-size: 14px; flex-shrink: 0;"></i>
+            <div style="min-width: 0; flex: 1;">
+              <span style="font-size: 10px; font-weight: 700; color: #94a3b8; display: block;">အီးမေးလ်</span>
+              <a href="mailto:dhammaaly@gmail.com" style="color: #e2e8f0; font-size: 11.5px; font-family: monospace; font-weight: 700; text-decoration: none; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                 dhammaaly@gmail.com
               </a>
             </div>
           </div>
 
-          <div style="background-color: #0f172a !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; border-radius: 12px !important; padding: 10px 12px !important; display: flex !important; align-items: center !important; gap: 10px !important; overflow: hidden !important;">
-            <i class="fa-brands fa-facebook" style="color: #60a5fa !important; font-size: 16px !important; flex-shrink: 0 !important;"></i>
-            <div style="min-width: 0 !important; flex: 1 !important;">
-              <span style="font-size: 10px !important; font-weight: 700 !important; color: #94a3b8 !important; display: block !important;">Facebook Page</span>
-              <a href="https://www.facebook.com/share/p/19mtBjuhq9/?mibextid=WC7FNe" target="_blank" rel="noopener noreferrer" style="color: #fbbf24 !important; font-size: 11px !important; font-weight: 800 !important; text-decoration: none !important; display: inline-flex !important; align-items: center !important; gap: 4px !important;">
-                <span>Page သို့</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px !important;"></i>
+          <div style="background-color: #0f172a; border: 1px solid rgba(51, 65, 85, 0.8); border-radius: 12px; padding: 10px 12px; display: flex; align-items: center; gap: 10px; overflow: hidden; min-width: 0;">
+            <i class="fa-brands fa-facebook" style="color: #60a5fa; font-size: 16px; flex-shrink: 0;"></i>
+            <div style="min-width: 0; flex: 1;">
+              <span style="font-size: 10px; font-weight: 700; color: #94a3b8; display: block;">Facebook Page</span>
+              <a href="https://www.facebook.com/share/p/19mtBjuhq9/?mibextid=WC7FNe" target="_blank" rel="noopener noreferrer" style="color: #fbbf24; font-size: 11.5px; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                <span>Page သို့</span> <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px;"></i>
               </a>
             </div>
           </div>
         </div>
       </div>
 
-      <div style="background-color: #080d1a !important; border: 1px solid rgba(245, 158, 11, 0.25) !important; border-radius: 18px !important; padding: 16px !important; display: flex !important; flex-direction: column !important; gap: 12px !important; box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;">
-        <div style="display: flex !important; align-items: center !important; justify-content: space-between !important; gap: 10px !important;">
-          <div style="display: flex !important; align-items: center !important; gap: 8px !important;">
-            <i class="fa-solid fa-map-location-dot" style="color: #fbbf24 !important; font-size: 14px !important;"></i>
-            <span style="font-size: 12px !important; font-weight: 800 !important; color: #fef08a !important;">Google Maps တည်နေရာ</span>
+      <div style="background-color: #080d1a; border: 1px solid rgba(245, 158, 11, 0.25); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); min-width: 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-map-location-dot" style="color: #fbbf24; font-size: 14px;"></i>
+            <span style="font-size: 12px; font-weight: 800; color: #fef08a;">Google Maps တည်နေရာ</span>
           </div>
 
-          <a href="https://maps.google.com/?q=22.0676051,96.5668084" target="_blank" rel="noopener noreferrer" style="text-decoration: none !important; font-size: 11px !important; font-weight: 800 !important; color: #020617 !important; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important; padding: 5px 12px !important; border-radius: 8px !important; display: inline-flex !important; align-items: center !important; gap: 6px !important; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3) !important;">
+          <a href="https://maps.google.com/?q=22.0676051,96.5668084" target="_blank" rel="noopener noreferrer" style="text-decoration: none; font-size: 11px; font-weight: 800; color: #020617; background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 6px 12px; border-radius: 8px; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);">
             <span>Maps ဖြင့် လမ်းကြောင်းဖွင့်မည်</span>
-            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px !important;"></i>
+            <i class="fa-solid fa-arrow-up-right-from-square" style="font-size: 9px;"></i>
           </a>
         </div>
 
-        <div style="flex: 1 !important; min-height: 320px !important; border-radius: 12px !important; overflow: hidden !important; border: 1px solid rgba(51, 65, 85, 0.8) !important; position: relative !important; background-color: #020617 !important;">
+        <div style="flex: 1; min-height: 300px; border-radius: 12px; overflow: hidden; border: 1px solid rgba(51, 65, 85, 0.8); position: relative; background-color: #020617;">
           <iframe
             src="https://maps.google.com/maps?q=22.0676051,96.5668084&z=15&output=embed"
-            style="width: 100% !important; height: 100% !important; min-height: 320px !important; border: 0 !important; position: absolute !important; inset: 0 !important;"
+            style="width: 100%; height: 100%; min-height: 300px; border: 0; position: absolute; inset: 0;"
             allowfullscreen=""
             loading="lazy"
             referrerpolicy="no-referrer-when-downgrade"
@@ -244,7 +244,7 @@
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-sliders text-amber-400"></i> စနစ်စီမံမှု နှင့် D1 စောင့်ကြည့်ရေး
       </h3>
-      <button type="button" onclick="loadSystemMetrics(true)" class="sys-action-btn sys-btn-slate" style="width: auto; height: 30px; padding: 0 12px; font-size: 11.5px;" title="D1 Metrics ပြန်စစ်ရန်">
+      <button type="button" onclick="loadSystemMetrics(true)" class="sys-action-btn sys-btn-slate" style="width: auto; min-height: 30px; height: 30px; padding: 0 12px; font-size: 11.5px;" title="D1 Metrics ပြန်စစ်ရန်">
         <i class="fa-solid fa-arrows-rotate"></i>
         <span class="hidden sm:inline">Metrics စစ်ရန်</span>
       </button>
@@ -435,7 +435,7 @@
       <!-- ROW 3: Symmetrical 2x2 Quick Links & Hard Refresh -->
       <div class="sys-grid-2">
 
-        <!-- Left: Cloudflare & GitHub Quick Links (Symmetrical 2x2 Equal Buttons) -->
+        <!-- Left: Cloudflare & GitHub Quick Links -->
         <div class="sys-card">
           <div class="sys-card-header">
             <h4 class="sys-card-title">
@@ -503,7 +503,7 @@
 </div>
 
 <style>
-  #sys-github-files-list .sys-action-btn { width: auto; height: 30px; padding: 0 10px; font-size: 11px; }
+  #sys-github-files-list .sys-action-btn { width: auto; min-height: 30px; height: 30px; padding: 0 10px; font-size: 11px; }
 </style>
 
 <!-- 📦 GitHub Individual File Explorer & Downloader Modal -->
