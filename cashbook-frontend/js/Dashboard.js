@@ -1,8 +1,9 @@
 // ===================================================================
-// js/Dashboard.js - Home Dashboard & System Control Center (v4.5)
-// Features: 8-Row Fund Matrix with Direct User 1/2/3 Deep-Filter Jump,
+// js/Dashboard.js - Home Dashboard & System Control Center (v4.6)
+// Features: Minimalist 8-Row Fund Matrix (Icons, Negative Rose Pill,
+// Zero-Row Hierarchy, Bank/Cash % KPI Badges, Direct User 1/2/3 Jump),
 // System Tab (D1 Live Quota %, FY Excel, Daily Mail, SQL ZIP Backup,
-// GitHub File Downloader, Smart Refresh & One-Click Force Hard Refresh)
+// GitHub File Downloader, Safe Smart Refresh & One-Click Hard Refresh)
 // ===================================================================
 
 const DASH_CACHE_KEY = 'sasana_dashboard_cache';
@@ -91,6 +92,21 @@ function injectAdminBackupButton() {
   btn.className = 'px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer';
   btn.innerHTML = '<i class="fa-solid fa-download text-xs"></i><span class="hidden sm:inline">Backup</span>';
   parent.insertBefore(btn, badge);
+}
+
+function setKpiShareBadge(kpiHeadingId, badgeId, pctText, variantClass) {
+  const heading = document.getElementById(kpiHeadingId);
+  const labelP = heading ? heading.previousElementSibling : null;
+  if (!labelP) return;
+
+  let badge = document.getElementById(badgeId);
+  if (!badge) {
+    badge = document.createElement('span');
+    badge.id = badgeId;
+    badge.className = `dash-kpi-pct ${variantClass}`;
+    labelP.appendChild(badge);
+  }
+  badge.textContent = pctText;
 }
 
 window.downloadFullSystemBackup = async function () {
@@ -188,7 +204,7 @@ window.switchDashboardTab = function (tabName) {
 };
 
 // ===================================================================
-// 2. SMART REFRESH & ONE-CLICK FORCE HARD REFRESH (No Ctrl+Shift+R Needed)
+// 2. SMART REFRESH & ONE-CLICK FORCE HARD REFRESH
 // ===================================================================
 window.smartRefreshApp = async function () {
   const icon = document.getElementById('dash-refresh-icon');
@@ -200,12 +216,28 @@ window.smartRefreshApp = async function () {
         const reg = await navigator.serviceWorker.getRegistration();
         if (reg) {
           await reg.update();
-          const newWorker = reg.waiting || reg.installing;
-          if (newWorker) {
+
+          const triggerSwReload = (worker) => {
             notifyDash('ကုတ်ဗားရှင်းအသစ် တွေ့ရှိသဖြင့် အလိုအလျောက် ပြန်တင်နေပါသည်...', 'info', 2500);
-            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-            setTimeout(() => window.location.reload(), 700);
+            let reloaded = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+              if (!reloaded) { reloaded = true; window.location.reload(); }
+            });
+            worker.postMessage({ type: 'SKIP_WAITING' });
+            setTimeout(() => { if (!reloaded) { reloaded = true; window.location.reload(); } }, 1200);
+          };
+
+          if (reg.waiting) {
+            triggerSwReload(reg.waiting);
             return;
+          }
+          if (reg.installing) {
+            const installing = reg.installing;
+            installing.addEventListener('statechange', () => {
+              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                triggerSwReload(installing);
+              }
+            });
           }
         }
       } catch (e) {
@@ -235,15 +267,14 @@ window.forceHardRefreshApp = async function () {
   try {
     if ('caches' in window) {
       const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
+      const appKeys = keys.filter(k => k.startsWith('sasana-erp-'));
+      await Promise.all((appKeys.length ? appKeys : keys).map(k => caches.delete(k)));
     }
     if ('serviceWorker' in navigator) {
       const regs = await navigator.serviceWorker.getRegistrations();
       await Promise.all(regs.map(r => r.unregister()));
     }
-    try {
-      localStorage.removeItem('sasana_dashboard_cache');
-    } catch (_) {}
+    try { localStorage.removeItem('sasana_dashboard_cache'); } catch (_) {}
   } catch (err) {
     console.warn('Force Hard Refresh warning:', err);
   }
@@ -373,7 +404,7 @@ function populateFyDropdown(years) {
   if (!sel || !Array.isArray(years) || !years.length) return;
   const currentVal = sel.value || years[0];
   sel.innerHTML =
-    years.map(y => `<option value="${escapeDashHtml(y)}">${escapeDashHtml(y)} (Jan – Dec)</option>`).join('') +
+    years.map(y => `<option value="${escapeDashHtml(y)}">${escapeDashHtml(y)} (Jan–Dec)</option>`).join('') +
     `<option value="ALL">All (နှစ်အားလုံး)</option>`;
   if ([...sel.options].some(o => o.value === currentVal)) {
     sel.value = currentVal;
@@ -679,7 +710,7 @@ window.downloadSingleGitHubFile = async function (filePath) {
 };
 
 // ===================================================================
-// 7. MAIN DASHBOARD RENDERER (Fund 8-Row Matrix, Padetha & Yogi)
+// 7. MAIN DASHBOARD RENDERER (Clean 8-Row Fund Matrix, Padetha & Yogi)
 // ===================================================================
 window.renderDashboardView = async function (isSilent = false) {
   const fetchToken = ++activeDashFetchToken;
@@ -701,13 +732,15 @@ window.renderDashboardView = async function (isSilent = false) {
   applySystemTabPermissions();
   window.switchDashboardTab(activeDashTab);
 
+  // 🌟 Clean 8-Row Consolidated Fund Matrix (No Redundant Bank/Cash Pills)
   const FUND_GROUP_SPECS = [
     {
       title: 'အထွေထွေ ရန်ပုံငွေ',
+      icon: 'fa-building-columns',
       bankKey: '1CB',
       cashKey: '4GB',
       bankLabel: 'အထွေထွေ ရန်ပုံငွေ (Bank) ဖွင့်ရန်',
-      cashLabel: 'ကျောင်းရန်ပုံငွေ စာအုပ် (Cash) ဖွင့်ရန်',
+      cashLabel: 'ကျောင်းရန်ပုံငွေ စာအုပ် ဖွင့်ရန်',
       sources: [
         { key: '1CB', tableName: '1CB Bank (General)' },
         { key: '4GB', tableName: '1General Book' }
@@ -715,10 +748,11 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'ဆွမ်းပဒေသာပင်',
+      icon: 'fa-bowl-rice',
       bankKey: '2CB',
       cashKey: '5FB',
       bankLabel: 'ဆွမ်းပဒေသာပင် (Bank) ဖွင့်ရန်',
-      cashLabel: 'ဆွမ်းပဒေသာပင် စာအုပ် (Cash) ဖွင့်ရန်',
+      cashLabel: 'ဆွမ်းပဒေသာပင် စာအုပ် ဖွင့်ရန်',
       sources: [
         { key: '2CB', tableName: '2CB Bank (Meal)' },
         { key: '5FB', tableName: '2Meal Book' }
@@ -726,6 +760,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'တစ်ဦးတည်းစာရင်း',
+      icon: 'fa-user-lock',
       bankKey: '3CB',
       cashKey: null,
       bankLabel: 'တစ်ဦးတည်းစာရင်း (Bank) ဖွင့်ရန်',
@@ -734,6 +769,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'ဓမ္မာရုံငွေစာရင်း',
+      icon: 'fa-place-of-worship',
       bankKey: null,
       cashKey: '6HB',
       bankLabel: '',
@@ -742,6 +778,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'စေတီငွေစာရင်း',
+      icon: 'fa-gopuram',
       bankKey: null,
       cashKey: '7PB',
       bankLabel: '',
@@ -750,6 +787,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'လျှပ်စစ်ပဒေသာပင်',
+      icon: 'fa-bolt',
       bankKey: null,
       cashKey: '8EB',
       bankLabel: '',
@@ -758,6 +796,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'ဆေးပဒေသာပင်',
+      icon: 'fa-notes-medical',
       bankKey: null,
       cashKey: '9MB',
       bankLabel: '',
@@ -766,6 +805,7 @@ window.renderDashboardView = async function (isSilent = false) {
     },
     {
       title: 'အထွေထွေရန်ပုံငွေ',
+      icon: 'fa-wallet',
       bankKey: null,
       cashKey: '10GB',
       bankLabel: '',
@@ -775,18 +815,18 @@ window.renderDashboardView = async function (isSilent = false) {
   ];
 
   const PADETHA_SPECS = [
-    { key: '5FB', tableName: '2Meal Book', title: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
-    { key: '8EB', tableName: '5Electronic Book', title: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
-    { key: '9MB', tableName: '6Medical Book', title: 'ဆေးပဒေသာပင် စာအုပ်' },
-    { key: '10GB', tableName: '7Other Book', title: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
+    { key: '5FB', icon: 'fa-utensils', tableName: '2Meal Book', title: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
+    { key: '8EB', icon: 'fa-bolt', tableName: '5Electronic Book', title: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
+    { key: '9MB', icon: 'fa-notes-medical', tableName: '6Medical Book', title: 'ဆေးပဒေသာပင် စာအုပ်' },
+    { key: '10GB', icon: 'fa-wallet', tableName: '7Other Book', title: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
   ];
 
   const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
 
   const formatMoney = (val, colorHex = '#cbd5e1', weight = 'font-medium') => {
     const num = Number(val || 0);
-    if (num === 0) return `<span class="font-mono" style="color:#475569;">-</span>`;
-    if (num < 0) return `<span class="font-mono font-bold" style="color:#fda4af;">${num.toLocaleString()}</span>`;
+    if (num === 0) return `<span class="font-mono dash-zero-dash" style="color:#475569;">-</span>`;
+    if (num < 0) return `<span class="font-mono dash-neg-pill">${num.toLocaleString()}</span>`;
     return `<span class="font-mono ${weight}" style="color:${colorHex};">${num.toLocaleString()}</span>`;
   };
 
@@ -801,6 +841,10 @@ window.renderDashboardView = async function (isSilent = false) {
     const padethaSummary = data.padethaSummary || [];
     const yogiSummary = data.yogiSummary || {};
 
+    const totalFundNum = Number(kpis.totalFund || 0);
+    const totalBankNum = Number(kpis.totalBank || 0);
+    const totalCashNum = Number(kpis.totalCash || 0);
+
     const setKpi = (id, val, colorHex) => {
       const el = document.getElementById(id);
       if (!el) return;
@@ -809,9 +853,15 @@ window.renderDashboardView = async function (isSilent = false) {
       el.className = 'text-base font-extrabold mt-1 truncate font-mono';
       el.style.color = num < 0 ? '#fda4af' : colorHex;
     };
-    setKpi('kpi-home-fund', kpis.totalFund, '#fbbf24');
-    setKpi('kpi-home-bank', kpis.totalBank, '#7dd3fc');
-    setKpi('kpi-home-cash', kpis.totalCash, '#6ee7b7');
+    setKpi('kpi-home-fund', totalFundNum, '#fbbf24');
+    setKpi('kpi-home-bank', totalBankNum, '#7dd3fc');
+    setKpi('kpi-home-cash', totalCashNum, '#6ee7b7');
+
+    // 🌟 Executive % Share Pills on Bank & Cash KPI Cards
+    const bankPct = totalFundNum > 0 ? `${((totalBankNum / totalFundNum) * 100).toFixed(1)}%` : '0%';
+    const cashPct = totalFundNum > 0 ? `${((totalCashNum / totalFundNum) * 100).toFixed(1)}%` : '0%';
+    setKpiShareBadge('kpi-home-bank', 'kpi-bank-pct', bankPct, 'dash-kpi-pct-sky');
+    setKpiShareBadge('kpi-home-cash', 'kpi-cash-pct', cashPct, 'dash-kpi-pct-emerald');
 
     const countEl = document.getElementById('kpi-home-count');
     if (countEl) {
@@ -826,7 +876,7 @@ window.renderDashboardView = async function (isSilent = false) {
           <thead>
             <tr>
               <th class="w-14 text-center px-3">စဉ်</th>
-              <th class="px-4" style="min-width: 240px;">စာအုပ်အမည်</th>
+              <th class="px-4" style="min-width: 220px;">စာအုပ်အမည်</th>
               <th class="text-right w-40 px-4">ဘဏ်လက်ကျန်</th>
               <th class="text-right w-36 px-3">USER 1 လက်ကျန်</th>
               <th class="text-right w-36 px-3">USER 2 လက်ကျန်</th>
@@ -856,49 +906,37 @@ window.renderDashboardView = async function (isSilent = false) {
 
         sumBank += bb; sumU1 += u1; sumU2 += u2; sumU3 += u3; sumTotal += tot;
 
-        const isMerged = Boolean(group.bankKey && group.cashKey);
+        const isZeroRow = (bb === 0 && u1 === 0 && u2 === 0 && u3 === 0 && tot === 0);
         const defaultKey = group.cashKey || group.bankKey;
         const safeBankKey = group.bankKey ? escapeDashHtml(group.bankKey) : '';
         const safeCashKey = group.cashKey ? escapeDashHtml(group.cashKey) : '';
         const safeDefaultKey = escapeDashHtml(defaultKey);
 
-        let pillsHtml = '';
-        if (isMerged) {
-          pillsHtml = `
-            <span class="dash-pill-group">
-              <button type="button" onclick="event.stopPropagation(); openLedgerWithUserFilter('${safeBankKey}', null)" class="dash-pill dash-pill-bank" title="${escapeDashHtml(group.bankLabel)}">Bank</button>
-              <button type="button" onclick="event.stopPropagation(); openLedgerWithUserFilter('${safeCashKey}', null)" class="dash-pill dash-pill-cash" title="${escapeDashHtml(group.cashLabel)}">Cash</button>
-            </span>`;
-        } else if (group.bankKey) {
-          pillsHtml = `<span class="dash-pill-group"><span class="dash-pill dash-pill-bank">Bank</span></span>`;
-        }
-
         const totalCellHtml = tot < 0
-          ? `<span class="font-mono font-bold" style="color:#fda4af;">${tot.toLocaleString()}</span>`
+          ? `<span class="font-mono dash-neg-pill">${tot.toLocaleString()}</span>`
           : (tot === 0
-            ? `<span class="font-mono" style="color:#475569;">-</span>`
+            ? `<span class="font-mono dash-zero-dash" style="color:#475569;">-</span>`
             : `<span class="font-mono font-bold" style="color:#f8fafc;">${tot.toLocaleString()}</span>`);
 
-        const bankCellAttr = isMerged
+        const bankCellAttr = safeBankKey
           ? `onclick="event.stopPropagation(); openLedgerWithUserFilter('${safeBankKey}', null)" class="text-right px-4 dash-cell-link" title="${escapeDashHtml(group.bankLabel)}"`
           : `class="text-right px-4"`;
 
-        // 🌟 Clicking USER 1 / 2 / 3 jumps directly into that Ledger book pre-filtered to that User!
         const makeUserCellAttr = (userName) => safeCashKey
           ? `onclick="event.stopPropagation(); openLedgerWithUserFilter('${safeCashKey}', '${userName}')" class="text-right px-3 dash-cell-link" title="${escapeDashHtml(group.title)} — ${userName} စာရင်းသီးသန့်ကြည့်ရန်"`
           : `class="text-right px-3"`;
 
-        const rowTitle = isMerged
+        const rowTitle = (safeBankKey && safeCashKey)
           ? `${group.bankLabel} / ${group.cashLabel}`
           : (group.cashLabel || group.bankLabel);
 
         fundHtml += `
-        <tr onclick="openLedgerWithUserFilter('${safeDefaultKey}', null)" class="transition cursor-pointer" title="${escapeDashHtml(rowTitle)}">
+        <tr onclick="openLedgerWithUserFilter('${safeDefaultKey}', null)" class="transition cursor-pointer ${isZeroRow ? 'dash-row-zero' : ''}" title="${escapeDashHtml(rowTitle)}">
           <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
-          <td class="font-medium px-4" style="color:#e2e8f0;">
+          <td class="font-medium px-4">
             <div class="dash-name-wrap">
-              <span>${escapeDashHtml(group.title)}</span>
-              ${pillsHtml}
+              <span class="dash-book-icon"><i class="fa-solid ${escapeDashHtml(group.icon)}"></i></span>
+              <span class="dash-book-title" style="color:#e2e8f0;">${escapeDashHtml(group.title)}</span>
             </div>
           </td>
           <td ${bankCellAttr}>${formatMoney(bb, '#7dd3fc', 'font-semibold')}</td>
@@ -956,15 +994,21 @@ window.renderDashboardView = async function (isSilent = false) {
         const inc = Number(row.income || 0);
         const exp = Number(row.expense || 0);
         const bal = Number(row.balance !== undefined ? row.balance : (inc - exp));
+        const isZeroRow = (inc === 0 && exp === 0 && bal === 0);
 
         totalPadethaIncome += inc;
         totalPadethaExpense += exp;
         totalPadethaBalance += bal;
 
         padethaHtml += `
-        <tr onclick="openLedgerWithUserFilter('${escapeDashHtml(spec.key)}', null)" class="transition cursor-pointer">
+        <tr onclick="openLedgerWithUserFilter('${escapeDashHtml(spec.key)}', null)" class="transition cursor-pointer ${isZeroRow ? 'dash-row-zero' : ''}">
           <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
-          <td class="font-medium px-4" style="color:#e2e8f0;">${escapeDashHtml(spec.title)}</td>
+          <td class="font-medium px-4">
+            <div class="dash-name-wrap">
+              <span class="dash-book-icon"><i class="fa-solid ${escapeDashHtml(spec.icon)}"></i></span>
+              <span class="dash-book-title" style="color:#e2e8f0;">${escapeDashHtml(spec.title)}</span>
+            </div>
+          </td>
           <td class="text-right px-4">${formatMoney(inc, '#6ee7b7', 'font-semibold')}</td>
           <td class="text-right px-4">${formatMoney(exp, '#fda4af', 'font-semibold')}</td>
           <td class="text-right px-4 font-mono font-bold" style="color:${bal < 0 ? '#fda4af' : '#f8fafc'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${bal.toLocaleString()}</td>
@@ -1100,18 +1144,20 @@ window.renderDashboardView = async function (isSilent = false) {
     document.getElementById('home-bank-table')?.querySelector('table')
   );
 
-  if (!hasContentOnScreen) {
-    try {
-      const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
-      if (cachedStr) {
+  let hasDashboardCache = false;
+  try {
+    const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
+    if (cachedStr) {
+      hasDashboardCache = true;
+      if (!hasContentOnScreen) {
         const cachedData = JSON.parse(cachedStr);
         lastRenderedDashboardHash = JSON.stringify(cachedData.data || cachedData);
         renderHomeData(cachedData);
       }
-    } catch (_) {}
-  }
+    }
+  } catch (_) {}
 
-  const shouldShowOverlay = !isSilent && !hasContentOnScreen && !localStorage.getItem(DASH_CACHE_KEY);
+  const shouldShowOverlay = !isSilent && !hasContentOnScreen && !hasDashboardCache;
   if (typeof window.showLoading === 'function' && shouldShowOverlay) {
     window.showLoading(true);
   }
