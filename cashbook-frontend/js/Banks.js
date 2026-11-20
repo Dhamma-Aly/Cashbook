@@ -1,11 +1,14 @@
 // ===================================================================
-// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.3)
-// Features: Event-Delegated XSS Safe Actions, Cursor-Safe MM->Eng Digits,
-// 400->404 Entry-ID Fix, Explicit transfer_type, CSV Formula Guard & Calm UI
+// js/Banks.js - Bank & Ledger Table Renderer & Cascading Controller (v5.4)
+// Features: User 1/2/3 Filter (7 Ledger Books) with Exact Per-User KPIs &
+// Running Balance, Dashboard Deep-Filter Jump, Auto Receiver Pre-Select,
+// Event-Delegated XSS Safe Actions, Cursor-Safe MM->Eng Digits & CSV Guard
 // ===================================================================
 
 const LEDGER_ROWS_PER_PAGE = 20;
 let ledgerCurrentPage = 1;
+let ledgerSelectedUser = 'ALL';
+let bankServerKpis = null;
 let bankAllEntries = [];
 let bankFilteredEntries = [];
 let isEditingMode = false;
@@ -14,6 +17,10 @@ let isFormSubmitting = false;
 let lastRenderedTableHTML = '';
 let lastRenderedTableId = '';
 let activeLedgerFetchToken = 0;
+
+function roundMoneyLocal(n) {
+  return Math.round(((Number(n) || 0) + Number.EPSILON) * 100) / 100;
+}
 
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
@@ -52,6 +59,35 @@ function getIsRealEditMode() {
   const entryIdEl = document.getElementById("entry-id");
   const hasId = !!(entryIdEl && String(entryIdEl.value || '').trim());
   return isEditingMode && hasId;
+}
+
+// 🌟 Matches worker.js handleHomeSummary exact User 1 / 2 / 3 bucketing rule
+function resolveLedgerUserBucket(entry) {
+  const r = String(entry?.receiver || '').trim();
+  if (r.includes('User 2') || r.includes('User2')) return 'User 2';
+  if (r.includes('User 3') || r.includes('User3')) return 'User 3';
+  return 'User 1';
+}
+
+function syncUserFilterUI(currentTable) {
+  const isBankTable = String(currentTable || '').includes('Bank');
+  const wrap = document.getElementById('user-filter-wrap');
+  const select = document.getElementById('user-filter-select');
+
+  if (isBankTable) {
+    ledgerSelectedUser = 'ALL';
+    if (wrap) wrap.classList.add('hidden');
+    if (select) select.value = 'ALL';
+    return;
+  }
+
+  if (wrap) wrap.classList.remove('hidden');
+  if (select) {
+    select.value = ledgerSelectedUser || 'ALL';
+    const isFiltered = ledgerSelectedUser && ledgerSelectedUser !== 'ALL';
+    select.style.borderColor = isFiltered ? 'rgba(245, 158, 11, 0.7)' : 'rgba(56, 189, 248, 0.35)';
+    select.style.color = isFiltered ? '#fde68a' : '#f8fafc';
+  }
 }
 
 function setSelectValueSafe(selectEl, value) {
@@ -112,7 +148,7 @@ window.parseAmount = function (val) {
   return Number.isFinite(num) ? Math.round((num + Number.EPSILON) * 100) / 100 : 0;
 };
 
-// 🌟 Cursor-Safe Real-Time Myanmar -> English Digit Conversion (Voucher & Debit/Credit Amount)
+// 🌟 Cursor-Safe Real-Time Myanmar -> English Digit Conversion
 function bindCursorSafeEngDigitInput(el, numericOnly = false) {
   if (!el || el.dataset.engBound === '1') return;
   el.dataset.engBound = '1';
@@ -228,16 +264,25 @@ window.renderBankView = async function (tableIdentifier, isSilent = false) {
 
   const currentTable = resolveD1Table(tableIdentifier || window.currentSheet || window.currentTable || '1CB Bank (General)');
   const fetchToken = ++activeLedgerFetchToken;
+  const isBankTable = currentTable.includes('Bank');
 
-  const isTableChanged = (window.currentTable !== currentTable);
+  const isTableChanged = (lastRenderedTableId !== currentTable);
   window.currentTable = currentTable;
   window.currentSheet = currentTable;
 
-  if (isTableChanged) {
+  // Consume deep-link User filter from Dashboard if present
+  if (!isBankTable && window.pendingLedgerUserFilter) {
+    ledgerSelectedUser = window.pendingLedgerUserFilter;
+    window.pendingLedgerUserFilter = null;
     ledgerCurrentPage = 1;
     lastRenderedTableHTML = '';
-    lastRenderedTableId = currentTable;
+  } else if (isTableChanged) {
+    ledgerCurrentPage = 1;
+    ledgerSelectedUser = 'ALL';
+    lastRenderedTableHTML = '';
   }
+
+  syncUserFilterUI(currentTable);
 
   if (!isSilent && isTableChanged) {
     const tbody = document.getElementById("table-body");
@@ -252,16 +297,17 @@ window.renderBankView = async function (tableIdentifier, isSilent = false) {
 
     if (res && res.success) {
       bankAllEntries = (res.data || []).slice().reverse();
-      updateLedgerKPIs(res.kpis);
+      bankServerKpis = res.kpis || null;
     } else if (!isSilent) {
       bankAllEntries = [];
-      updateLedgerKPIs(null);
+      bankServerKpis = null;
     }
   } catch (error) {
     if (fetchToken !== activeLedgerFetchToken) return;
     console.error("Error fetching D1 ledger data:", error);
     if (!isSilent) {
       bankAllEntries = [];
+      bankServerKpis = null;
       updateLedgerKPIs(null);
       const tbody = document.getElementById("table-body");
       if (tbody) {
@@ -289,19 +335,54 @@ function updateLedgerKPIs(kpis) {
   setText("kpi-expense", `${(k.totalExpense || 0).toLocaleString()} MMK`);
   setText("kpi-balance", `${(k.balance || 0).toLocaleString()} MMK`);
   setText("kpi-count", (k.count || 0).toLocaleString());
+
+  const balEl = document.getElementById("kpi-balance");
+  if (balEl) {
+    balEl.style.color = (k.balance || 0) < 0 ? '#fda4af' : '#fbbf24';
+  }
 }
 
+// 🌟 User 1/2/3 Filter + Per-User Running Balance & KPIs + Search Box
 function applyLedgerSearchFilter(isSilent = false) {
+  const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
+  const isBankTable = currentTable.includes('Bank');
+  syncUserFilterUI(currentTable);
+
+  let baseEntries = bankAllEntries;
+
+  if (!isBankTable && ledgerSelectedUser && ledgerSelectedUser !== 'ALL') {
+    // Recompute Running Balance & KPIs strictly in chronological ASC order for this User
+    const asc = bankAllEntries.slice().reverse();
+    let running = 0, totalIncome = 0, totalExpense = 0;
+    const userAsc = [];
+
+    for (let i = 0; i < asc.length; i++) {
+      const e = asc[i];
+      if (resolveLedgerUserBucket(e) !== ledgerSelectedUser) continue;
+      const inc = parseFloat(e.income) || 0;
+      const exp = parseFloat(e.expense) || 0;
+      totalIncome = roundMoneyLocal(totalIncome + inc);
+      totalExpense = roundMoneyLocal(totalExpense + exp);
+      running = roundMoneyLocal(running + inc - exp);
+      userAsc.push({ ...e, balance: running });
+    }
+
+    baseEntries = userAsc.reverse();
+    updateLedgerKPIs({ totalIncome, totalExpense, balance: running, count: userAsc.length });
+  } else {
+    updateLedgerKPIs(bankServerKpis);
+  }
+
   const searchInput = document.getElementById("search-input");
   const rawQuery = searchInput ? searchInput.value.trim().toLowerCase() : "";
 
   if (!rawQuery) {
-    bankFilteredEntries = bankAllEntries;
+    bankFilteredEntries = baseEntries;
   } else {
     const engQuery = window.toEnglishDigits(rawQuery);
     const cleanNumQuery = engQuery.replace(/,/g, '');
 
-    bankFilteredEntries = bankAllEntries.filter(e => {
+    bankFilteredEntries = baseEntries.filter(e => {
       const inc = parseFloat(e.income) || 0;
       const exp = parseFloat(e.expense) || 0;
       const bal = parseFloat(e.balance) || 0;
@@ -329,6 +410,13 @@ function applyLedgerSearchFilter(isSilent = false) {
   renderLedgerTable(isSilent);
 }
 
+window.onLedgerUserFilterChange = function (selectedUser) {
+  ledgerSelectedUser = selectedUser || 'ALL';
+  ledgerCurrentPage = 1;
+  lastRenderedTableHTML = '';
+  applyLedgerSearchFilter(false);
+};
+
 // ===================================================================
 // 🌟 TABLE RENDERER (XSS-Safe Event Delegation + Calm Eye-Comfort UI)
 // ===================================================================
@@ -354,7 +442,10 @@ function renderLedgerTable(isSilent = false) {
   let tableHTML = "";
 
   if (total === 0) {
-    tableHTML = `<tr><td colspan="13" class="text-center py-8 font-bold" style="color:#64748b;"><i class="fa-solid fa-folder-open mr-2"></i> စာရင်း မရှိသေးပါ။</td></tr>`;
+    const emptyMsg = (!isBankTable && ledgerSelectedUser !== 'ALL')
+      ? `${escapeHtml(ledgerSelectedUser)} အတွက် စာရင်း မရှိသေးပါ။`
+      : 'စာရင်း မရှိသေးပါ။';
+    tableHTML = `<tr><td colspan="13" class="text-center py-8 font-bold" style="color:#64748b;"><i class="fa-solid fa-folder-open mr-2"></i> ${emptyMsg}</td></tr>`;
   } else {
     pageRows.forEach((entry, idx) => {
       const uid = String(entry.unique_id || entry.uniqueId || "");
@@ -606,7 +697,7 @@ window.onEntrySubcategoryChange = function () {
 };
 
 // ===================================================================
-// Entry Type Change & Dynamic Labeling
+// Entry Type Change & Dynamic Labeling (Auto Pre-Selects Filtered User!)
 // ===================================================================
 window.onEntryTypeChange = function (selectedType) {
   initBankViewListeners();
@@ -626,11 +717,17 @@ window.onEntryTypeChange = function (selectedType) {
   const recSelect = document.getElementById("entry-receiver");
   const recLabel = document.getElementById("label-entry-receiver");
   const descInput = document.getElementById("entry-description");
+  const amtInput = document.getElementById("entry-amount");
+
+  const isFreshAddModal = !getIsRealEditMode() && !(descInput?.value?.trim()) && !(amtInput?.value?.trim());
 
   if (cleanType === 'စာရင်းပြောင်း') {
     if (catSelect) catSelect.innerHTML = `<option value="စာရင်းပြောင်း">စာရင်းပြောင်း</option>`;
     if (recLabel) recLabel.textContent = "လွှဲပို့သူ (Sender)";
     setReceiverDropdownState(recSelect, 'USERS');
+    if (!isBankTable && isFreshAddModal && ledgerSelectedUser !== 'ALL') {
+      setSelectValueSafe(recSelect, ledgerSelectedUser);
+    }
     updateTransferTargets();
     return;
   }
@@ -662,6 +759,9 @@ window.onEntryTypeChange = function (selectedType) {
     setReceiverDropdownState(recSelect, 'BANK_LOCKED');
   } else {
     setReceiverDropdownState(recSelect, 'USERS');
+    if (!isBankTable && isFreshAddModal && ledgerSelectedUser !== 'ALL') {
+      setSelectValueSafe(recSelect, ledgerSelectedUser);
+    }
   }
 
   if (subLabel) subLabel.textContent = "ခေါင်းစဉ်ခွဲ (Sub-Category)";
@@ -716,7 +816,7 @@ window.onBankCategoryChange = window.onEntryCategoryChange;
 window.onBookTypeChange = window.onEntryTypeChange;
 
 // -------------------------------------------------------------------
-// 🌟 SAVE & SUBMIT LOGIC (Does NOT mutate #entry-id before save succeeds!)
+// 🌟 SAVE & SUBMIT LOGIC
 // -------------------------------------------------------------------
 window.saveEntryForm = async function (event) {
   if (event && event.preventDefault) event.preventDefault();
@@ -1076,6 +1176,7 @@ window.exportCSV = function () {
 
   const currentTable = resolveD1Table(window.currentTable || window.currentSheet);
   const isBankTable = currentTable.includes('Bank');
+  const userTag = (!isBankTable && ledgerSelectedUser !== 'ALL') ? `_${ledgerSelectedUser}` : '';
 
   let csv = "\uFEFF";
   csv += "စဉ်,ရက်စွဲ,ခေါင်းစဉ်,အကြောင်းအရာ,ဝင်ငွေ,ထွက်ငွေ,လက်ကျန်,ခေါင်းစဉ်ခွဲ,ဘောင်ချာ,လက်ခံသူ,လနှစ်,စာအုပ်အမည်\n";
@@ -1103,7 +1204,7 @@ window.exportCSV = function () {
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
   const link = document.createElement("a");
   link.href = URL.createObjectURL(blob);
-  link.download = `${currentTable}_export_${new Date().toISOString().split('T')[0]}.csv`;
+  link.download = `${currentTable}${userTag}_export_${new Date().toISOString().split('T')[0]}.csv`;
   link.click();
 };
 // === END OF Banks.js ===
