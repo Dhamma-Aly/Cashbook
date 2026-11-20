@@ -1,6 +1,6 @@
 // ===================================================================
-// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v7.1 (Modular 3-File)
-// Core Utilities -> ./core.js | System/Metrics/Export/Backup -> ./system.js
+// SĀSANA ERP - CLOUDFLARE WORKER API (worker.js) — v7.2 (Zero-GAS Native)
+// Core Utilities -> ./core.js | System/Metrics/Excel/ZIP/Resend -> ./system.js
 // ===================================================================
 
 import {
@@ -8,15 +8,16 @@ import {
   TABLE_MAP, LEDGER_TABLES, BANK_TABLES, ALL_SHEETS, BANK_SHEETS, USERS, YOGI_CATS,
   HttpError, str, toEngDigits, roundMoney, num, todayMM, isValidDateStr, assertValidUid,
   formatMonthYear, ledgerTable, resolveYogiTable, readJson, parseKey, keyWhere, changes,
-  hashPassword, verifyPassword, signToken, verifyToken, verifyGasSecret,
+  hashPassword, verifyPassword, signToken, verifyToken,
   isAdmin, isViewer, canDeleteRole, corsHeaders,
   normLedger, normInventory, normYogi, NORM, maskNrc, maskPhone,
   upsertStmt, updateStmt, ledgerSummaryDeltaStmt, cleanupEmptySummaryStmt,
-  bumpVersionStmt, rebuildTableSummaryStmts, rebuildAllSummaries,
+  bumpVersionStmt, rebuildTableSummaryStmts,
   auditStmt, getTableVersion, getAllVersionsMap, runBatches,
 } from './core.js';
 
 import {
+  runScheduledAutomation,
   handleSystemD1Metrics,
   handleSystemExportExcel,
   handleSystemDailyChanges,
@@ -1038,24 +1039,6 @@ async function route(c) {
 
   if (path === '/api/login' && method === 'POST') return handleLogin(c);
 
-  // GAS Automation Endpoints (Accepts X-GAS-Secret OR Bearer User Token)
-  if (
-    method === 'GET' &&
-    (path === '/api/system/daily-changes' ||
-     path === '/api/system/export-excel' ||
-     path === '/api/system/sql-dump')
-  ) {
-    if (verifyGasSecret(env, c.request)) {
-      c.user = { uid: 0, u: 'gas-automation', r: 'Admin', tv: 1 };
-    } else {
-      c.user = await verifyToken(env, c.request);
-      if (!c.user) throw new HttpError(401, 'Unauthorized: Login ပြန်လည်ဝင်ရောက်ပေးပါခင်ဗျာ။');
-    }
-    if (path === '/api/system/daily-changes') return handleSystemDailyChanges(c);
-    if (path === '/api/system/export-excel') return handleSystemExportExcel(c);
-    if (path === '/api/system/sql-dump') return handleSystemSqlDump(c);
-  }
-
   c.user = await verifyToken(env, c.request);
   if (!c.user) throw new HttpError(401, 'Unauthorized: Login ပြန်လည်ဝင်ရောက်ပေးပါခင်ဗျာ။');
 
@@ -1073,8 +1056,11 @@ async function route(c) {
   if (path.startsWith('/api/yogi')) return handleYogi(c);
   if (path === '/api/report' && method === 'GET') return handleReport(c);
 
-  // System Control Center Endpoints
+  // System Control Center Endpoints (Pure Cloudflare Worker + Resend API)
   if (path === '/api/system/d1-metrics' && method === 'GET') return handleSystemD1Metrics(c);
+  if (path === '/api/system/export-excel' && method === 'GET') return handleSystemExportExcel(c);
+  if (path === '/api/system/daily-changes' && method === 'GET') return handleSystemDailyChanges(c);
+  if (path === '/api/system/sql-dump' && method === 'GET') return handleSystemSqlDump(c);
   if (path === '/api/system/trigger-mail' && method === 'POST') return handleSystemTriggerMail(c);
   if (path === '/api/system/trigger-drive-backup' && method === 'POST') return handleSystemTriggerDriveBackup(c);
 
@@ -1087,7 +1073,7 @@ async function route(c) {
 }
 
 // ===================================================================
-// 🌟 EXPORT DEFAULT ENTRY POINT (HTTP + Scheduled Cron Audit)
+// 🌟 EXPORT DEFAULT ENTRY POINT (HTTP + 12:00 AM MMT Auto Cron)
 // ===================================================================
 export default {
   async fetch(request, env) {
@@ -1108,14 +1094,7 @@ export default {
   },
 
   async scheduled(_event, env, ctx) {
-    ctx.waitUntil((async () => {
-      try {
-        await rebuildAllSummaries(env, { u: 'cron', r: 'System' });
-        await env.DB.prepare(`DELETE FROM "login_attempts" WHERE locked_until > 0 AND locked_until < ?`).bind(Date.now()).run();
-      } catch (e) {
-        console.error('[Scheduled Audit Error]', e);
-      }
-    })());
+    ctx.waitUntil(runScheduledAutomation(env));
   },
 };
 // === END OF worker.js ===
