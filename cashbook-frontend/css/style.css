@@ -1,8 +1,8 @@
 /* ===================================================================
-   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.4)
+   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.5)
    Eye-Comfort Edition: 60-30-10 Neutral Charcoal Slate + Soft Gold Accent
-   iOS/Android Mobile Standard (Safe-Area, 2x2 KPIs, Zero Clipping) &
-   Pixel-Aligned Executive System Control Center
+   iOS/Android Mobile Standard (Zero Auto-Zoom, Safe-Area, 2x2 KPIs,
+   Contact Grid, Overscroll Guard & Symmetrical System Control Center)
    =================================================================== */
 
 :root {
@@ -79,7 +79,7 @@ button, a, select, input, textarea {
   touch-action: manipulation;
 }
 
-/* 📜 Subtle Matte Scrollbar */
+/* 📜 Subtle Matte Scrollbar & iOS Swipe-Back Guard on Tables */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -95,7 +95,12 @@ button, a, select, input, textarea {
   background: #364763;
 }
 
-.overflow-x-auto, .overflow-y-auto, main {
+.overflow-x-auto {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.overflow-y-auto, main {
   -webkit-overflow-scrolling: touch;
 }
 
@@ -141,6 +146,10 @@ button, a, select, input, textarea {
 /* ===================================================================
    📊 CALM EXECUTIVE KPI CARDS
    =================================================================== */
+.grid > * {
+  min-width: 0;
+}
+
 .stats-card {
   background: linear-gradient(135deg, #121923 0%, #0f151f 100%) !important;
   border: 1px solid var(--border-subtle) !important;
@@ -188,7 +197,7 @@ button, a, select, input, textarea {
 }
 
 /* ===================================================================
-   🎯 YOGI KPI 4-COLUMN GRID
+   🎯 YOGI KPI & CONTACT HUB RESPONSIVE GRIDS
    =================================================================== */
 .yogi-kpi-grid {
   display: grid !important;
@@ -200,6 +209,32 @@ button, a, select, input, textarea {
   .yogi-kpi-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
     gap: 1rem !important;
+  }
+}
+
+.contact-hub-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .contact-hub-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+.contact-info-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+@media (min-width: 460px) {
+  .contact-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -239,6 +274,7 @@ button, a, select, input, textarea {
   #inv-entry-modal input, #inv-entry-modal select, #inv-entry-modal textarea,
   #yogi-entry-modal input, #yogi-entry-modal select, #yogi-entry-modal textarea,
   #login-form input, #login-form select,
+  #reauth-form input,
   input, select, textarea {
     font-size: 16px !important;
   }
@@ -444,6 +480,12 @@ button.dash-pill-cash:hover {
   }
 }
 
+.sys-grid-4 > *,
+.sys-grid-2 > *,
+.sys-btn-grid-2 > * {
+  min-width: 0;
+}
+
 .sys-card {
   background: linear-gradient(160deg, #121a28 0%, #0c121c 100%);
   border: 1px solid rgba(148, 163, 184, 0.15);
@@ -454,6 +496,8 @@ button.dash-pill-cash:hover {
   flex-direction: column;
   gap: 12px;
   height: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   box-sizing: border-box;
   transition: border-color 0.2s ease;
 }
@@ -535,6 +579,7 @@ button.dash-pill-cash:hover {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 6px;
+  min-width: 0;
 }
 
 .sys-tag {
@@ -565,7 +610,8 @@ button.dash-pill-cash:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .sys-stat-row {
@@ -632,16 +678,20 @@ button.dash-pill-cash:hover {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 40px;
-  padding: 0 14px;
+  min-width: 0;
+  min-height: 40px;
+  height: auto;
+  padding: 8px 12px;
   border-radius: 10px;
   font-size: 12.5px;
   font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
   text-decoration: none;
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.18s ease;
-  white-space: nowrap;
+  white-space: normal;
   box-sizing: border-box;
   width: 100%;
 }
@@ -787,6 +837,7 @@ table thead th.sticky, table thead th.right-0 {
   }
 
   /* 🌟 Compact 2x2 Mobile KPI Grid across Dashboard, Banks, Inventory & Yogi */
+  .dashboard-kpi-grid,
   #view-container > div > .grid:first-child {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 8px !important;
@@ -818,7 +869,7 @@ table thead th.sticky, table thead th.right-0 {
     margin-top: 2px !important;
   }
 
-  /* 🌟 Natural Full-Page Vertical Scroll on Mobile (No Crushed Inner Cards) */
+  /* 🌟 Natural Full-Page Vertical Scroll on Mobile */
   #view-container > .h-full {
     height: auto !important;
     min-height: 100% !important;
@@ -833,7 +884,7 @@ table thead th.sticky, table thead th.right-0 {
     overflow: visible !important;
   }
 
-  /* Wrap Section Headers Cleanly (Zero Right-Edge Badge Clipping!) */
+  /* Wrap Section Headers Cleanly */
   #dash-fund-section > div:first-child,
   #dash-padetha-section > div:first-child,
   #dash-yogi-section > div:first-child,
@@ -842,13 +893,6 @@ table thead th.sticky, table thead th.right-0 {
     flex-wrap: wrap !important;
     gap: 6px !important;
     padding: 10px 12px !important;
-  }
-
-  /* Contact Hub 1-Column Fit on Narrow Phones */
-  #dash-contact-section > div:nth-child(2) {
-    grid-template-columns: 1fr !important;
-    padding: 12px !important;
-    gap: 14px !important;
   }
 
   /* Compact System Cards on Phone */
@@ -919,6 +963,17 @@ table thead th.sticky, table thead th.right-0 {
   #inv-entry-modal > div,
   #yogi-entry-modal > div {
     max-height: 92dvh !important;
+  }
+}
+
+/* ♿ Respect Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
