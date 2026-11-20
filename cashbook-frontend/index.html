@@ -140,7 +140,7 @@
             အသုံးပြုသူ အမည် (USERNAME / ROLE)
           </label>
           <div style="position: relative !important; width: 100% !important;">
-            <select id="login-username" required style="width: 100% !important; height: 44px !important; padding: 0 36px 0 14px !important; background-color: #0a0f17 !important; border: 1px solid #2b374b !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; font-weight: 600 !important; outline: none !important; appearance: none !important; -webkit-appearance: none !important; cursor: pointer !important; box-sizing: border-box !important;">
+            <select id="login-username" required style="width: 100%; height: 44px; padding: 0 36px 0 14px; background-color: #0a0f17; border: 1px solid #2b374b; border-radius: 12px; color: #f8fafc; font-size: 13px; font-weight: 600; outline: none; appearance: none; -webkit-appearance: none; cursor: pointer; box-sizing: border-box;">
               <option value="" disabled selected>-- Select Username / Role --</option>
               <option value="Admin">Admin</option>
               <option value="Finance">Finance</option>
@@ -158,9 +158,9 @@
           <label style="font-size: 11px !important; font-weight: 700 !important; text-transform: uppercase !important; letter-spacing: 0.8px !important; color: #cbd5e1 !important; margin: 0 !important;">
             လျှို့ဝှက်နံပါတ် (PASSWORD)
           </label>
-          <!-- 👁️ Password Input with Show / Hide Toggle Button -->
+          <!-- 👁️ Password Input (16px on Mobile -> Zero iPhone Auto-Zoom!) -->
           <div style="position: relative !important; width: 100% !important;">
-            <input type="password" id="login-password" required autocomplete="current-password" placeholder="Type password..." style="width: 100% !important; height: 44px !important; padding: 0 44px 0 14px !important; background-color: #0a0f17 !important; border: 1px solid #2b374b !important; border-radius: 12px !important; color: #f8fafc !important; font-size: 13px !important; outline: none !important; box-sizing: border-box !important;">
+            <input type="password" id="login-password" required autocomplete="current-password" placeholder="Type password..." style="width: 100%; height: 44px; padding: 0 44px 0 14px; background-color: #0a0f17; border: 1px solid #2b374b; border-radius: 12px; color: #f8fafc; font-size: 13px; outline: none; box-sizing: border-box;">
             <button type="button" class="pwd-eye-btn" onclick="togglePasswordVisibility('login-password', this)" title="လျှို့ဝှက်နံပါတ် ကြည့်ရန်" aria-label="Show password" style="position: absolute !important; right: 4px !important; top: 50% !important; transform: translateY(-50%) !important; width: 38px !important; height: 38px !important; border-radius: 9px !important; background: transparent !important; border: none !important; color: #94a3b8 !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; font-size: 14px !important; transition: all 0.15s ease !important;">
               <i class="fa-solid fa-eye"></i>
             </button>
@@ -289,7 +289,7 @@
       </div>
     </aside>
 
-    <!-- Main Content Work Area (min-width: 0 prevents iPhone/Android right-edge clipping!) -->
+    <!-- Main Content Work Area -->
     <div id="main-column" class="flex-1 flex flex-col overflow-hidden w-full" style="min-width: 0; max-width: 100%;">
       <header id="main-header" class="px-3 sm:px-6 flex justify-between items-center z-10 shrink-0 gap-2 sm:gap-4" style="background-color:#111722;border-bottom:1px solid rgba(148,163,184,0.14); padding-top: env(safe-area-inset-top); min-height: calc(58px + env(safe-area-inset-top));">
         
@@ -347,7 +347,7 @@
 
   <!-- 🌟 Soft Re-Authentication Modal -->
   <div id="reauth-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 200; background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);">
-    <div style="width: 100%; max-width: 380px; background-color: #111722; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
+    <div style="width: 100%; max-width: 380px; max-height: 90dvh; overflow-y: auto; background-color: #111722; border: 1px solid rgba(148, 163, 184, 0.22); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
       <div style="text-align: center; margin-bottom: 20px;">
         <i class="fa-solid fa-lock text-amber-400 text-3xl mb-3"></i>
         <h2 style="font-size: 16px; font-weight: 800; color: #f8fafc; margin: 0;">Session သက်တမ်းကုန်သွားပါပြီ</h2>
@@ -373,7 +373,7 @@
 
   <!-- 📲 Safari / Firefox / Manual Install Guide Modal -->
   <div id="pwa-guide-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 210; background-color: rgba(12, 17, 24, 0.92); backdrop-filter: blur(8px);" onclick="if(event.target === this) closePwaGuideModal()">
-    <div style="width: 100%; max-width: 390px; background-color: #111722; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
+    <div style="width: 100%; max-width: 390px; max-height: 90dvh; overflow-y: auto; background-color: #111722; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 24px; box-shadow: 0 25px 60px -12px rgba(0, 0, 0, 0.85);">
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
         <div style="display: flex; align-items: center; gap: 10px;">
           <img src="favicon.svg" alt="Icon" style="width: 32px; height: 32px;">
@@ -403,7 +403,6 @@
 
   <!-- 🌟 Live Clock, Network Status, Font Awesome Self-Heal & Smart PWA Installer -->
   <script>
-    // Verify Font Awesome actually loaded on mobile; fallback automatically if blocked
     window.addEventListener('load', function () {
       setTimeout(function () {
         try {
