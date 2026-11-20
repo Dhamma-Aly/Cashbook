@@ -1,8 +1,8 @@
 /* ===================================================================
-   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.6)
+   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.7)
    Eye-Comfort Edition: 60-30-10 Neutral Charcoal Slate + Soft Gold Accent
-   Complete iOS/Android Mobile Standard across ALL Views (Dashboard,
-   Banks/Ledgers, Inventory, Yogi & Annual Report)
+   Executive Dashboard Visual Polish (KPI %, Negative Pill, Book Icons,
+   Hover Cue & Clean Desktop Sidebar) + Complete iOS/Android Standard
    =================================================================== */
 
 :root {
@@ -181,6 +181,32 @@ button, a, select, input, textarea {
   letter-spacing: -0.01em;
 }
 
+/* 🌟 Executive KPI Share % Pill (Bank % & Cash %) */
+.stats-card span.dash-kpi-pct {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1.35 !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  vertical-align: middle;
+}
+
+.stats-card span.dash-kpi-pct-sky {
+  background-color: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc !important;
+  border: 1px solid rgba(56, 189, 248, 0.28);
+}
+
+.stats-card span.dash-kpi-pct-emerald {
+  background-color: rgba(16, 185, 129, 0.14);
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(16, 185, 129, 0.28);
+}
+
 /* Soften Action Bars & Pagination Bars */
 #ledger-pagination-bar,
 #inv-pagination-bar,
@@ -238,7 +264,7 @@ button, a, select, input, textarea {
   }
 }
 
-/* 🔍 Shared Responsive Search & User Filter Group (Banks, Inventory, Yogi) */
+/* 🔍 Shared Responsive Search & User Filter Group */
 .erp-search-group {
   display: flex;
   flex-direction: column;
@@ -276,7 +302,7 @@ button, a, select, input, textarea {
   }
 }
 
-/* 🔘 Shared Responsive Action Buttons (Mobile: 2-Col Refresh/Export + Full-Width Add) */
+/* 🔘 Shared Responsive Action Buttons */
 .erp-action-bar-btns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -347,7 +373,7 @@ button, a, select, input, textarea {
   }
 }
 
-/* 📊 Report System Responsive Toolbar (No 760px Forced Scroll on Phones!) */
+/* 📊 Report System Responsive Toolbar */
 .erp-report-toolbar {
   display: flex;
   flex-direction: column;
@@ -377,7 +403,7 @@ button, a, select, input, textarea {
   }
 }
 
-/* 📝 Responsive Modal Form Grids (1-Col on Mobile, 2-Col / 4-Col on Desktop) */
+/* 📝 Responsive Modal Form Grids */
 .erp-modal-grid-2 {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -515,7 +541,7 @@ form label {
 }
 
 /* ===================================================================
-   📋 CALM EYE-COMFORT TABLE TYPOGRAPHY (Upgraded Readability)
+   📋 CALM EYE-COMFORT TABLE TYPOGRAPHY & DASHBOARD VISUAL POLISH
    =================================================================== */
 table {
   background-color: var(--bg-surface) !important;
@@ -584,52 +610,40 @@ table tbody tr:hover {
 .dash-name-wrap {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: nowrap;
 }
 
-.dash-pill-group {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  flex-shrink: 0;
-}
-
-.dash-pill {
+.dash-book-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background-color: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 2px 8px;
+  font-size: 11.5px;
+  flex-shrink: 0;
+}
+
+.dash-row-zero .dash-book-icon {
+  background-color: rgba(148, 163, 184, 0.07);
+  color: #64748b;
+}
+
+.dash-row-zero .dash-book-title {
+  color: #7c8ca3 !important;
+}
+
+.dash-neg-pill {
+  display: inline-block;
+  padding: 1px 8px;
   border-radius: 6px;
-  font-size: 11px !important;
-  font-weight: 700 !important;
-  line-height: 1.3 !important;
-  letter-spacing: 0.02em;
-  transition: all 0.15s ease;
-}
-
-.dash-pill-bank {
-  background-color: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  color: #7dd3fc;
-}
-
-button.dash-pill-bank:hover {
-  background-color: rgba(56, 189, 248, 0.25);
-  border-color: rgba(56, 189, 248, 0.55);
-  color: #e0f2fe;
-}
-
-.dash-pill-cash {
-  background-color: rgba(16, 185, 129, 0.12);
-  border: 1px solid rgba(16, 185, 129, 0.3);
-  color: #6ee7b7;
-}
-
-button.dash-pill-cash:hover {
-  background-color: rgba(16, 185, 129, 0.25);
-  border-color: rgba(16, 185, 129, 0.55);
-  color: #d1fae5;
+  background-color: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.28);
+  color: #fda4af;
+  font-weight: 700;
 }
 
 .dash-cell-link {
@@ -637,7 +651,13 @@ button.dash-pill-cash:hover {
 }
 
 .dash-cell-link:hover {
-  background-color: rgba(245, 158, 11, 0.08) !important;
+  background-color: rgba(245, 158, 11, 0.09) !important;
+}
+
+.dash-cell-link:hover span:not(.dash-zero-dash) {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  filter: brightness(1.14);
 }
 
 /* ===================================================================
@@ -1000,7 +1020,7 @@ table thead th.sticky, table thead th.right-0 {
 }
 
 /* ===================================================================
-   💻 DESKTOP SIDEBAR LOGIC (>= 768px)
+   💻 DESKTOP SIDEBAR LOGIC (>= 768px) — Hides Stray Mobile Close X
    =================================================================== */
 @media (min-width: 768px) {
   #main-sidebar {
@@ -1013,7 +1033,9 @@ table thead th.sticky, table thead th.right-0 {
     background-color: var(--bg-surface) !important;
     border-right: 1px solid var(--border-subtle) !important;
   }
-  #mobile-menu-btn, #sidebar-overlay {
+  #mobile-menu-btn,
+  #sidebar-overlay,
+  #main-sidebar button[onclick="closeMobileSidebar()"] {
     display: none !important;
   }
 }
@@ -1074,6 +1096,12 @@ table thead th.sticky, table thead th.right-0 {
     font-size: 13px !important;
     line-height: 1.25 !important;
     margin-top: 2px !important;
+  }
+
+  .stats-card span.dash-kpi-pct {
+    margin-left: 4px;
+    padding: 0 5px;
+    font-size: 9px !important;
   }
 
   /* 🌟 Natural Full-Page Vertical Scroll on Mobile */
@@ -1153,6 +1181,13 @@ table thead th.sticky, table thead th.right-0 {
   #home-yogi-table table tbody td {
     padding: 9px 10px !important;
     font-size: 13.5px !important;
+  }
+
+  .dash-book-icon {
+    width: 20px;
+    height: 20px;
+    font-size: 10px;
+    border-radius: 6px;
   }
 
   .dash-total-badge {
