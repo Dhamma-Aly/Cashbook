@@ -1,404 +1,1139 @@
 // ===================================================================
-// Sasana_Auto_Mail_Backup.gs — Sāsana ERP Automation Engine (v1.0)
-// 1. Daily 12:00 AM (MMT) Auto Mail -> dhammaaly@gmail.com (Only if new entries)
-// 2. Weekly (Sunday) + Quarterly (Jan/Apr/Jul/Oct 1) Google Drive SQL .zip Backup
-//    (Only if new data exists via 13-row D1 version fingerprint check)
-// 3. Web App Webhook (doPost) for Dashboard Manual Mail & Drive Backup Buttons
+// js/Dashboard.js - Home Dashboard & System Control Center (v4.4)
+// Features: 8-Row Fund Matrix, System Tab (D1 Live Quota %, FY Excel,
+// Daily Mail, SQL ZIP Backup, GitHub File Downloader,
+// Smart Refresh & One-Click Force Hard Refresh without Keyboard)
 // ===================================================================
 
-const CONFIG = {
-  API_BASE: 'https://cashbook-api.dhammaaly.workers.dev',
-  // ⚠️ အောက်ပါ Secret ကို စာလုံး ၃၂ လုံးအထက် ပြောင်းထည့်ပြီး Cloudflare Worker Secret (GAS_SECRET) မှာပါ အတူတူ ထည့်ပေးပါ
-  GAS_SECRET: 'CHANGE_ME_TO_A_32_PLUS_CHAR_SECRET_KEY_2026',
-  MAIL_TO: 'dhammaaly@gmail.com',
-  DRIVE_ROOT_FOLDER: 'Sasana_ERP_Backups',
-  TIMEZONE: 'Asia/Yangon',
-  WEEKLY_KEEP_COUNT: 8, // Weekly folder မှာ နောက်ဆုံး ၈ ပတ်စာပဲ ထားပြီး အဟောင်းရှင်းမည်
+const DASH_CACHE_KEY = 'sasana_dashboard_cache';
+const GITHUB_REPO = 'Dhamma-Aly/Cashbook';
+const GITHUB_BRANCH = 'main';
+
+let lastRenderedDashboardHash = '';
+let activeDashTab = 'fund';
+let activeDashFetchToken = 0;
+let lastSystemMetricsLoadedAt = 0;
+let sheetJsPromise = null;
+
+function escapeDashHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function notifyDash(msg, type = 'info', duration = 3200) {
+  if (typeof window.showToast === 'function') {
+    window.showToast(msg, type, duration);
+  } else if (type === 'error' || type === 'warning') {
+    alert(msg);
+  }
+}
+
+function showSystemStatus(html, tone = 'info') {
+  const box = document.getElementById('sys-automation-status');
+  if (!box) return;
+  const tones = {
+    success: 'border-color:rgba(16,185,129,0.4); color:#d1fae5; background:rgba(6,78,59,0.35);',
+    error: 'border-color:rgba(244,63,94,0.4); color:#ffe4e6; background:rgba(76,5,25,0.38);',
+    warning: 'border-color:rgba(245,158,11,0.4); color:#fef3c7; background:rgba(69,26,3,0.35);',
+    info: 'border-color:rgba(56,189,248,0.35); color:#e0f2fe; background:rgba(12,74,110,0.28);',
+  };
+  box.style.cssText = tones[tone] || tones.info;
+  box.innerHTML = html;
+  box.classList.remove('hidden');
+}
+
+function applySystemTabPermissions() {
+  const isAdmin = typeof window.isAdminUser === 'function' && window.isAdminUser();
+  const canEdit = typeof window.canUserEdit === 'function' ? window.canUserEdit() : true;
+
+  const mailBtn = document.getElementById('btn-sys-mail');
+  const driveBtn = document.getElementById('btn-sys-drive-backup');
+  const sqlLocalBtn = document.getElementById('btn-sys-sql-local');
+  const rebuildBtn = document.getElementById('btn-sys-rebuild');
+
+  if (mailBtn) {
+    mailBtn.disabled = !canEdit;
+    if (!canEdit) mailBtn.title = 'Viewer အဆင့်ဖြစ်၍ Mail ပို့ခွင့် မရှိပါ';
+  }
+  if (driveBtn) {
+    driveBtn.disabled = !canEdit;
+    if (!canEdit) driveBtn.title = 'Viewer အဆင့်ဖြစ်၍ Backup သိမ်းခွင့် မရှိပါ';
+  }
+  if (sqlLocalBtn) sqlLocalBtn.classList.toggle('hidden', !isAdmin);
+  if (rebuildBtn) rebuildBtn.classList.toggle('hidden', !isAdmin);
+}
+
+function injectAdminBackupButton() {
+  const isAdmin = typeof window.isAdminUser === 'function' && window.isAdminUser();
+  if (!isAdmin) return;
+
+  const badge = document.getElementById('dash-tab-badge');
+  const parent = badge ? badge.parentElement : null;
+  if (!parent || document.getElementById('btn-dash-backup')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'btn-dash-backup';
+  btn.type = 'button';
+  btn.onclick = window.downloadFullSystemBackup;
+  btn.title = 'D1 Database တစ်ခုလုံး JSON Backup သိမ်းဆည်းရန် (Admin)';
+  btn.className = 'px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer';
+  btn.innerHTML = '<i class="fa-solid fa-download text-xs"></i><span class="hidden sm:inline">Backup</span>';
+  parent.insertBefore(btn, badge);
+}
+
+window.downloadFullSystemBackup = async function () {
+  if (typeof window.isAdminUser === 'function' && !window.isAdminUser()) {
+    notifyDash('Admin တစ်ဦးတည်းသာ Full Backup ထုတ်ယူခွင့် ရှိပါသည်။', 'warning');
+    return;
+  }
+  if (!navigator.onLine) {
+    notifyDash('Full Backup ထုတ်ယူရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+  if (typeof window.fetchAdminBackupAPI !== 'function') {
+    notifyDash('Backup API မတွေ့ပါ။', 'error');
+    return;
+  }
+
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+  try {
+    const res = await window.fetchAdminBackupAPI();
+    if (res && res.success && res.tables) {
+      const jsonStr = JSON.stringify(res, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `Sasana_ERP_Full_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      notifyDash('Database Full Backup ဖိုင် ထုတ်ယူပြီးပါပြီ', 'success');
+    } else if (!res || res.status !== 401) {
+      notifyDash('Backup ထုတ်ယူခြင်း မအောင်မြင်ပါ: ' + (res?.error || ''), 'error');
+    }
+  } catch (err) {
+    console.error('Backup error:', err);
+    notifyDash('Backup ထုတ်ယူခြင်း မအောင်မြင်ပါ။', 'error');
+  } finally {
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
 };
 
 // ===================================================================
-// 1. ONE-CLICK AUTO TRIGGER SETUP (ပထမဆုံး တစ်ကြိမ်သာ Run ရန်)
+// 1. TAB CONTROLLER (5 Sub-Tabs: Fund, Padetha, Yogi, Contact, System)
 // ===================================================================
-function setupAutoTriggers() {
-  // Remove old triggers of these handlers to avoid duplicates
-  const managed = ['runAutoDailyMail', 'runWeeklyDriveBackup', 'runQuarterlyDriveBackup'];
-  ScriptApp.getProjectTriggers().forEach(t => {
-    if (managed.indexOf(t.getHandlerFunction()) !== -1) {
-      ScriptApp.deleteTrigger(t);
+window.switchDashboardTab = function (tabName) {
+  activeDashTab = tabName || 'fund';
+
+  const sections = {
+    fund: document.getElementById('dash-fund-section'),
+    padetha: document.getElementById('dash-padetha-section'),
+    yogi: document.getElementById('dash-yogi-section'),
+    contact: document.getElementById('dash-contact-section'),
+    system: document.getElementById('dash-system-section'),
+  };
+
+  const buttons = {
+    fund: document.getElementById('tab-dash-fund'),
+    padetha: document.getElementById('tab-dash-padetha'),
+    yogi: document.getElementById('tab-dash-yogi'),
+    contact: document.getElementById('tab-dash-contact'),
+    system: document.getElementById('tab-dash-system'),
+  };
+
+  const tabBadge = document.getElementById('dash-tab-badge');
+  const activeClasses = ['text-amber-300', 'bg-[#1e293b]', 'border-amber-500/30', 'font-black', 'shadow-sm'];
+  const inactiveClasses = ['text-amber-400/60', 'font-bold', 'hover:text-amber-200'];
+
+  Object.values(sections).forEach(sec => { if (sec) sec.classList.add('hidden'); });
+  Object.values(buttons).forEach(btn => {
+    if (btn) {
+      btn.classList.remove(...activeClasses);
+      btn.classList.add(...inactiveClasses);
     }
   });
 
-  // 1. Daily Mail — နေ့စဉ် ည ၁၂:၀၀ – ၁:၀၀ (Asia/Yangon)
-  ScriptApp.newTrigger('runAutoDailyMail')
-    .timeBased()
-    .everyDays(1)
-    .atHour(0)
-    .inTimezone(CONFIG.TIMEZONE)
-    .create();
+  const targetSec = sections[activeDashTab] || sections.fund;
+  const targetBtn = buttons[activeDashTab] || buttons.fund;
+  if (targetSec) targetSec.classList.remove('hidden');
+  if (targetBtn) {
+    targetBtn.classList.add(...activeClasses);
+    targetBtn.classList.remove(...inactiveClasses);
+  }
 
-  // 2. Weekly Drive Backup — အပတ်စဉ် တနင်္ဂနွေ ည ၁၂:၀၀ – ၁:၀၀ (Asia/Yangon)
-  ScriptApp.newTrigger('runWeeklyDriveBackup')
-    .timeBased()
-    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
-    .atHour(0)
-    .inTimezone(CONFIG.TIMEZONE)
-    .create();
+  const badgeTextMap = {
+    fund: '(ပမာဏ - MMK)',
+    padetha: '(ပဒေသာပင် ၄ အုပ်)',
+    yogi: 'စခန်းတွင်း Active ယောဂီများ',
+    contact: 'ပြင်ဦးလွင်မြို့',
+    system: 'System Control Center',
+  };
+  if (tabBadge) tabBadge.textContent = badgeTextMap[activeDashTab] || '(ပမာဏ - MMK)';
 
-  // 3. Quarterly Archive Backup — လဆန်း ၁ ရက်နေ့တိုင်း စစ်ပြီး Jan/Apr/Jul/Oct မှသာ သိမ်းမည်
-  ScriptApp.newTrigger('runQuarterlyDriveBackup')
-    .timeBased()
-    .onMonthDay(1)
-    .atHour(0)
-    .inTimezone(CONFIG.TIMEZONE)
-    .create();
-
-  Logger.log('✅ Sāsana ERP Auto Triggers (Daily Mail + Weekly & Quarterly Drive Backup) installed!');
-}
+  if (activeDashTab === 'system') {
+    applySystemTabPermissions();
+    const isStale = (Date.now() - lastSystemMetricsLoadedAt) > 60000;
+    if (isStale) window.loadSystemMetrics(false);
+  }
+};
 
 // ===================================================================
-// 2. SCHEDULED HANDLERS (Auto Cron Jobs)
+// 2. SMART REFRESH & ONE-CLICK FORCE HARD REFRESH (No Ctrl+Shift+R Needed)
 // ===================================================================
-function runAutoDailyMail() {
-  // ည ၁၂:၀၀ ကျော်ချိန် run တဲ့အတွက် ပြီးခဲ့တဲ့နေ့ (yesterday MMT) စာရင်းအသစ် ရှိမရှိ စစ်မည်
-  const res = sendDailyMailCore({ mode: 'yesterday', force: false, triggeredBy: 'Auto 12:00 AM' });
-  Logger.log('[Auto Daily Mail] ' + JSON.stringify(res));
-}
+window.smartRefreshApp = async function () {
+  const icon = document.getElementById('dash-refresh-icon');
+  if (icon) icon.classList.add('fa-spin');
 
-function runWeeklyDriveBackup() {
-  const res = runDriveSqlBackupCore({ mode: 'weekly', force: false, triggeredBy: 'Auto Weekly' });
-  Logger.log('[Auto Weekly Backup] ' + JSON.stringify(res));
-}
+  try {
+    if ('serviceWorker' in navigator && navigator.onLine) {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg) {
+          await reg.update();
+          const newWorker = reg.waiting || reg.installing;
+          if (newWorker) {
+            notifyDash('ကုတ်ဗားရှင်းအသစ် တွေ့ရှိသဖြင့် အလိုအလျောက် ပြန်တင်နေပါသည်...', 'info', 2500);
+            if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            setTimeout(() => window.location.reload(), 700);
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('SW update check skipped:', e);
+      }
+    }
 
-function runQuarterlyDriveBackup() {
-  const month = Number(Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'M'));
-  // Run only on Quarter starts: Jan (1), Apr (4), Jul (7), Oct (10)
-  if ([1, 4, 7, 10].indexOf(month) === -1) {
-    Logger.log('[Quarterly Archive] Skipped (Month ' + month + ' is not quarter start)');
+    await window.renderDashboardView(false);
+    if (activeDashTab === 'system') {
+      await window.loadSystemMetrics(true);
+    }
+    notifyDash('အချက်အလက်များ အသစ်ပြန်လည် ရယူပြီးပါပြီ', 'success', 2000);
+  } finally {
+    if (icon) icon.classList.remove('fa-spin');
+  }
+};
+
+window.forceHardRefreshApp = async function () {
+  if (!navigator.onLine) {
+    notifyDash('Cache ရှင်းပြီး ဗားရှင်းအသစ်တင်ရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
     return;
   }
-  const res = runDriveSqlBackupCore({ mode: 'archive', force: false, triggeredBy: 'Auto Quarterly Archive' });
-  Logger.log('[Auto Quarterly Archive] ' + JSON.stringify(res));
-}
 
-// ===================================================================
-// 3. WEBHOOK RECEIVER FOR DASHBOARD MANUAL BUTTONS (doPost)
-// ===================================================================
-function doPost(e) {
+  notifyDash('Cache အဟောင်းများ ရှင်းလင်းပြီး ကုတ်အသစ် ပြန်တင်နေပါသည်...', 'info', 3000);
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+
   try {
-    const raw = (e && e.postData && e.postData.contents) ? e.postData.contents : '{}';
-    const body = JSON.parse(raw);
-
-    if (!body || body.secret !== CONFIG.GAS_SECRET) {
-      return jsonOut({ success: false, error: 'Unauthorized GAS secret' });
+    if ('caches' in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
     }
-
-    if (body.action === 'send_daily_mail') {
-      return jsonOut(sendDailyMailCore({
-        fy: body.fy || '',
-        date: body.date || '',
-        force: body.force !== false,
-        triggeredBy: body.triggeredBy || 'Manual Dashboard',
-      }));
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
     }
-
-    if (body.action === 'drive_sql_backup') {
-      return jsonOut(runDriveSqlBackupCore({
-        mode: body.mode || 'manual',
-        force: body.force === true,
-        triggeredBy: body.triggeredBy || 'Manual Dashboard',
-      }));
-    }
-
-    return jsonOut({ success: false, error: 'Unknown action: ' + String(body.action || '') });
+    try {
+      localStorage.removeItem('sasana_dashboard_cache');
+    } catch (_) {}
   } catch (err) {
-    return jsonOut({ success: false, error: err.message || String(err) });
+    console.warn('Force Hard Refresh warning:', err);
   }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set('_r', String(Date.now()));
+  window.location.replace(url.toString());
+};
+
+// ===================================================================
+// 3. CLOUDFLARE D1 METRICS & QUOTA CARDS
+// ===================================================================
+function setBarStyle(barEl, usedPct, defaultClass = '') {
+  if (!barEl) return;
+  const clamped = Math.max(0, Math.min(100, Number(usedPct || 0)));
+  barEl.style.width = `${clamped > 0 && clamped < 1 ? 1 : clamped}%`;
+  barEl.classList.remove('is-sky', 'is-warn', 'is-danger');
+  if (clamped >= 90) barEl.classList.add('is-danger');
+  else if (clamped >= 70) barEl.classList.add('is-warn');
+  else if (defaultClass) barEl.classList.add(defaultClass);
 }
 
-function jsonOut(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
+window.loadSystemMetrics = async function (showToastOnDone = false) {
+  if (typeof window.fetchD1MetricsAPI !== 'function') return;
+  const noticeEl = document.getElementById('sys-d1-notice');
 
-// ===================================================================
-// 4. API HELPER (Calls Cloudflare Worker using X-GAS-Secret)
-// ===================================================================
-function callWorkerGet(path) {
-  const res = UrlFetchApp.fetch(CONFIG.API_BASE + path, {
-    method: 'get',
-    headers: { 'X-GAS-Secret': CONFIG.GAS_SECRET },
-    muteHttpExceptions: true,
-  });
-  const code = res.getResponseCode();
-  const text = res.getContentText();
-  let data = null;
-  try { data = JSON.parse(text); } catch (_) {}
-  if (code < 200 || code >= 300 || !data || !data.success) {
-    throw new Error((data && data.error) || ('Worker HTTP ' + code + ': ' + text.slice(0, 160)));
-  }
-  return data;
-}
+  try {
+    const res = await window.fetchD1MetricsAPI();
+    if (!res || !res.success) {
+      if (noticeEl) {
+        noticeEl.textContent = `D1 Metrics ဆွဲယူ၍ မရပါ: ${res?.error || 'Network error'}`;
+        noticeEl.classList.remove('hidden');
+      }
+      return;
+    }
 
-// ===================================================================
-// 5. DAILY MAIL ENGINE (Multi-Sheet .xlsx Attachment + Change Summary)
-// ===================================================================
-function sendDailyMailCore(opts) {
-  const mode = opts.mode || '';
-  const dateParam = opts.date || '';
-  const force = opts.force === true;
-  const triggeredBy = opts.triggeredBy || 'System';
+    lastSystemMetricsLoadedAt = Date.now();
+    const t = res.today || {};
+    const tot = res.total30d || {};
+    const st = res.storage || {};
 
-  const qs = dateParam
-    ? ('?date=' + encodeURIComponent(dateParam))
-    : (mode ? ('?mode=' + encodeURIComponent(mode)) : '');
-
-  const changes = callWorkerGet('/api/system/daily-changes' + qs);
-  const reportDate = changes.date || Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyyy-MM-dd');
-
-  // Auto mode: စာရင်းအသစ် မရှိရင် Mail မပို့ဘဲ ရပ်မည်
-  if (!force && !changes.hasChanges) {
-    return {
-      success: true,
-      sent: false,
-      skipped: true,
-      date: reportDate,
-      message: reportDate + ' ရက်နေ့အတွက် စာရင်းအသစ် မရှိသဖြင့် Mail မပို့ပါ။',
+    const setText = (id, text) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
     };
+
+    setText('sys-d1-read-val', Number(t.rowsRead || 0).toLocaleString());
+    setText('sys-d1-read-used-pct', `${Number(t.rowsReadPct || 0).toFixed(2)}%`);
+    setText('sys-d1-read-rem-pct', `${Number(t.rowsReadRemainingPct ?? 100).toFixed(2)}%`);
+    setText('sys-d1-read-queries', `Queries: ${Number(t.readQueries || 0).toLocaleString()}`);
+    setBarStyle(document.getElementById('sys-d1-read-bar'), t.rowsReadPct, 'is-sky');
+
+    setText('sys-d1-write-val', Number(t.rowsWritten || 0).toLocaleString());
+    setText('sys-d1-write-used-pct', `${Number(t.rowsWrittenPct || 0).toFixed(2)}%`);
+    setText('sys-d1-write-rem-pct', `${Number(t.rowsWrittenRemainingPct ?? 100).toFixed(2)}%`);
+    setText('sys-d1-write-queries', `Queries: ${Number(t.writeQueries || 0).toLocaleString()}`);
+    setBarStyle(document.getElementById('sys-d1-write-bar'), t.rowsWrittenPct, '');
+
+    setText('sys-d1-total-read', Number(tot.rowsRead || 0).toLocaleString());
+    setText('sys-d1-total-write', Number(tot.rowsWritten || 0).toLocaleString());
+    setText('sys-d1-tracked-rows', Number(res.totalTrackedRows || 0).toLocaleString());
+    setText('sys-d1-window-label', `ကာလ: ${res.windowStartUtc || ''} ~ ${res.todayUtc || ''} (UTC)`);
+
+    setText('sys-d1-storage-val', `${Number(st.usedMB || 0).toFixed(2)} MB`);
+    setText('sys-d1-storage-used-pct', `${Number(st.usedPct || 0).toFixed(2)}%`);
+    setText('sys-d1-storage-rem-pct', `${Number(st.remainingPct ?? 100).toFixed(2)}%`);
+    setText('sys-d1-last-update', `Last Data: ${(res.lastDataUpdate || '-').slice(0, 16)}`);
+    setBarStyle(document.getElementById('sys-d1-storage-bar'), st.usedPct, 'is-sky');
+
+    if (noticeEl) {
+      if (!res.analyticsConfigured) {
+        noticeEl.innerHTML = `<i class="fa-solid fa-circle-info mr-1"></i> D1 Storage နှင့် Row Count များကို တိုက်ရိုက်ပြသထားပါသည်။ တစ်နေ့တာ Read/Write % အတိအကျ ပြရန် Cloudflare Worker Secrets တွင် <code>CF_API_TOKEN</code> (Account Analytics: Read) ထည့်သွင်းပေးပါ။`;
+        noticeEl.classList.remove('hidden');
+      } else if (res.analyticsError) {
+        noticeEl.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> Cloudflare Analytics Warning: ${escapeDashHtml(res.analyticsError)}`;
+        noticeEl.classList.remove('hidden');
+      } else {
+        noticeEl.classList.add('hidden');
+      }
+    }
+
+    if (showToastOnDone) notifyDash('D1 Metrics အသစ်ရယူပြီးပါပြီ', 'success', 2000);
+  } catch (err) {
+    console.warn('D1 Metrics error:', err);
   }
+};
 
-  const fy = opts.fy || reportDate.slice(0, 4);
-  const xlsxBlob = buildMultiSheetXlsxBlob(fy, reportDate);
+// ===================================================================
+// 4. MULTI-SHEET FY EXCEL (.xlsx) GENERATOR (Lazy-Loads SheetJS CDN)
+// ===================================================================
+function loadSheetJsLibrary() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (sheetJsPromise) return sheetJsPromise;
 
-  const subject = `[Sāsana ERP] နေ့စဉ်ငွေစာရင်း အစီရင်ခံစာ (${reportDate}) — FY ${fy}`;
-  const htmlBody = buildDailyMailHtml(changes, fy, triggeredBy);
-  const plainBody = `ဓမ္မအလင်းရောင်တောရရိပ်သာ - Sāsana ERP\nရက်စွဲ: ${reportDate}\nစာရင်းအသစ်/ပြင်ဆင်မှု: ${changes.totalChanged || 0} ကြောင်း\nExcel ဖိုင်အား Attachment တွင် ပူးတွဲပေးပို့ထားပါသည်။`;
+  const cdns = [
+    'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js',
+    'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',
+  ];
 
-  GmailApp.sendEmail(CONFIG.MAIL_TO, subject, plainBody, {
-    htmlBody: htmlBody,
-    attachments: [xlsxBlob],
-    name: 'Sāsana ERP Auto Mail',
+  sheetJsPromise = new Promise((resolve, reject) => {
+    const tryLoad = (idx) => {
+      if (idx >= cdns.length) {
+        sheetJsPromise = null;
+        reject(new Error('Excel Library (SheetJS) ဆွဲယူ၍ မရပါ'));
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = cdns[idx];
+      s.onload = () => (window.XLSX ? resolve(window.XLSX) : tryLoad(idx + 1));
+      s.onerror = () => tryLoad(idx + 1);
+      document.head.appendChild(s);
+    };
+    tryLoad(0);
   });
-
-  return {
-    success: true,
-    sent: true,
-    date: reportDate,
-    fy: fy,
-    totalChanged: changes.totalChanged || 0,
-    message: `${CONFIG.MAIL_TO} သို့ ${reportDate} (FY: ${fy}) Excel တွဲ၍ Mail ပေးပို့ပြီးပါပြီ (စာရင်းအသစ် ${changes.totalChanged || 0} ကြောင်း)။`,
-  };
+  return sheetJsPromise;
 }
 
-function buildDailyMailHtml(changes, fy, triggeredBy) {
-  const byTable = changes.byTable || {};
-  const tables = Object.keys(byTable);
-  let rowsHtml = '';
+function safeExcelSheetName(name) {
+  return String(name || 'Sheet')
+    .replace(/[\\/?*[\]:]/g, ' ')
+    .trim()
+    .slice(0, 31) || 'Sheet';
+}
 
-  if (tables.length === 0) {
-    rowsHtml = `<p style="color:#64748b;">(${escapeHtml(changes.date)} ရက်နေ့အတွက် စာရင်းအသစ် ထည့်သွင်းမှု မရှိသေးပါ — Manual တောင်းဆိုမှုအရ FY ${escapeHtml(fy)} Excel ဖိုင်အား ပူးတွဲပေးပို့အပ်ပါသည်။)</p>`;
-  } else {
-    tables.forEach(tbl => {
-      const list = byTable[tbl] || [];
-      rowsHtml += `<h4 style="margin:16px 0 6px 0; color:#b45309;">📘 ${escapeHtml(tbl)} (${list.length} ကြောင်း)</h4>`;
-      rowsHtml += `<table style="width:100%; border-collapse:collapse; font-size:12.5px; margin-bottom:10px;">
-        <thead>
-          <tr style="background:#f1f5f9; text-align:left;">
-            <th style="padding:6px 8px; border:1px solid #cbd5e1;">ရက်စွဲ</th>
-            <th style="padding:6px 8px; border:1px solid #cbd5e1;">ခေါင်းစဉ် / အမည်</th>
-            <th style="padding:6px 8px; border:1px solid #cbd5e1;">အကြောင်းအရာ</th>
-            <th style="padding:6px 8px; border:1px solid #cbd5e1; text-align:right;">ဝင်ငွေ</th>
-            <th style="padding:6px 8px; border:1px solid #cbd5e1; text-align:right;">ထွက်ငွေ</th>
-          </tr>
-        </thead><tbody>`;
+function populateFyDropdown(years) {
+  const sel = document.getElementById('sys-fy-select');
+  if (!sel || !Array.isArray(years) || !years.length) return;
+  const currentVal = sel.value || years[0];
+  sel.innerHTML =
+    years.map(y => `<option value="${escapeDashHtml(y)}">${escapeDashHtml(y)} (Jan – Dec)</option>`).join('') +
+    `<option value="ALL">All (နှစ်အားလုံး)</option>`;
+  if ([...sel.options].some(o => o.value === currentVal)) {
+    sel.value = currentVal;
+  }
+}
 
-      list.slice(0, 30).forEach(r => {
-        const dt = r.date || r.start_date || '';
-        const title = r.title || r.category || r.yogi_type || '-';
-        const desc = r.description || r.name || '-';
-        const inc = r.income ? Number(r.income).toLocaleString() : '-';
-        const exp = r.expense ? Number(r.expense).toLocaleString() : (r.qty !== undefined ? ('Qty: ' + r.qty) : '-');
-        rowsHtml += `<tr>
-          <td style="padding:5px 8px; border:1px solid #e2e8f0; white-space:nowrap;">${escapeHtml(dt)}</td>
-          <td style="padding:5px 8px; border:1px solid #e2e8f0;">${escapeHtml(title)}</td>
-          <td style="padding:5px 8px; border:1px solid #e2e8f0;">${escapeHtml(desc)}</td>
-          <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:right; color:#059669; font-weight:bold;">${escapeHtml(inc)}</td>
-          <td style="padding:5px 8px; border:1px solid #e2e8f0; text-align:right; color:#e11d48; font-weight:bold;">${escapeHtml(exp)}</td>
+window.downloadMultiSheetExcel = async function () {
+  if (!navigator.onLine) {
+    notifyDash('Excel ထုတ်ယူရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+  const fySel = document.getElementById('sys-fy-select');
+  const fy = fySel ? fySel.value : 'ALL';
+  const btn = document.getElementById('btn-sys-excel');
+  if (btn) btn.disabled = true;
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+
+  try {
+    const [XLSX, res] = await Promise.all([
+      loadSheetJsLibrary(),
+      window.fetchSystemExportExcelAPI(fy),
+    ]);
+
+    if (!res || !res.success || !res.sheets) {
+      throw new Error(res?.error || 'Export data ဆွဲယူခြင်း မအောင်မြင်ပါ');
+    }
+
+    if (res.availableYears) populateFyDropdown(res.availableYears);
+
+    const wb = XLSX.utils.book_new();
+
+    const summaryRows = (res.summary || []).map((s, idx) => ({
+      'စဉ်': idx + 1,
+      'စာအုပ်အမည် (Book)': s.book_name,
+      'စာရင်းဖွင့်လက်ကျန် (Opening)': s.opening_balance,
+      'စုစုပေါင်းဝင်ငွေ (Income)': s.total_income,
+      'စုစုပေါင်းထွက်ငွေ (Expense)': s.total_expense,
+      'လက်ကျန်ငွေ (Closing)': s.closing_balance,
+      'စာကြောင်းရေ': s.row_count,
+    }));
+    const totOpen = (res.summary || []).reduce((a, b) => a + Number(b.opening_balance || 0), 0);
+    const totInc = (res.summary || []).reduce((a, b) => a + Number(b.total_income || 0), 0);
+    const totExp = (res.summary || []).reduce((a, b) => a + Number(b.total_expense || 0), 0);
+    const totClose = (res.summary || []).reduce((a, b) => a + Number(b.closing_balance || 0), 0);
+    const totRows = (res.summary || []).reduce((a, b) => a + Number(b.row_count || 0), 0);
+    summaryRows.push({
+      'စဉ်': '',
+      'စာအုပ်အမည် (Book)': `စုစုပေါင်း (FY: ${res.fy})`,
+      'စာရင်းဖွင့်လက်ကျန် (Opening)': totOpen,
+      'စုစုပေါင်းဝင်ငွေ (Income)': totInc,
+      'စုစုပေါင်းထွက်ငွေ (Expense)': totExp,
+      'လက်ကျန်ငွေ (Closing)': totClose,
+      'စာကြောင်းရေ': totRows,
+    });
+    const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+    wsSummary['!cols'] = [{ wch: 6 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+
+    const ledgerCols = [{ wch: 6 }, { wch: 12 }, { wch: 18 }, { wch: 36 }, { wch: 14 }, { wch: 14 }, { wch: 15 }, { wch: 22 }, { wch: 14 }, { wch: 12 }, { wch: 10 }, { wch: 20 }];
+    const invCols = [{ wch: 6 }, { wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 34 }, { wch: 10 }, { wch: 10 }, { wch: 24 }, { wch: 10 }];
+    const yogiCols = [{ wch: 6 }, { wch: 12 }, { wch: 12 }, { wch: 14 }, { wch: 20 }, { wch: 18 }, { wch: 20 }, { wch: 12 }, { wch: 7 }, { wch: 8 }, { wch: 15 }, { wch: 15 }, { wch: 32 }, { wch: 10 }];
+
+    Object.entries(res.sheets).forEach(([sheetName, rows]) => {
+      let mapped = [];
+      let cols = ledgerCols;
+
+      if (sheetName === 'Inventory') {
+        cols = invCols;
+        mapped = rows.map(r => ({
+          'စဉ်': r.no, 'ရက်စွဲ': r.date, 'တည်နေရာ': r.location, 'အမျိုးအစား': r.category,
+          'အကြောင်းအရာ': r.description, 'ရေတွက်ပုံ': r.unit, 'အရေအတွက်': r.qty,
+          'မှတ်ချက်': r.remark, 'လနှစ်': r.month_year,
+        }));
+      } else if (sheetName === 'Permanent Yogi' || sheetName === 'Camp Yogi') {
+        cols = yogiCols;
+        mapped = rows.map(r => ({
+          'စဉ်': r.no, 'စတင်ရက်': r.start_date, 'ထွက်ရက်': r.end_date, 'အမျိုးအစား': r.yogi_type,
+          'ယောဂီအမည်': r.name, 'အဘအမည်': r.father_name, 'မှတ်ပုံတင်': r.nrc,
+          'မွေးသက္ကရာဇ်': r.dob, 'အသက်': r.age, 'ကျား/မ': r.gender,
+          'ယောဂီဖုန်း': r.yogi_phone, 'အိမ်ဖုန်း': r.home_phone, 'နေရပ်လိပ်စာ': r.address, 'အခြေအနေ': r.status,
+        }));
+      } else {
+        mapped = rows.map(r => ({
+          'စဉ်': r.no, 'ရက်စွဲ': r.date, 'ခေါင်းစဉ်': r.title, 'အကြောင်းအရာ': r.description,
+          'ဝင်ငွေ': r.income, 'ထွက်ငွေ': r.expense, 'လက်ကျန်': r.balance,
+          'ခေါင်းစဉ်ခွဲ': r.sub_title, 'ဘောင်ချာ': r.voucher_no, 'လက်ခံသူ': r.receiver,
+          'လနှစ်': r.month_year, 'စာအုပ်အမည်': r.book_name,
+        }));
+      }
+
+      const ws = mapped.length
+        ? XLSX.utils.json_to_sheet(mapped)
+        : XLSX.utils.aoa_to_sheet([['ဒေတာ မရှိသေးပါ']]);
+      ws['!cols'] = cols;
+      XLSX.utils.book_append_sheet(wb, ws, safeExcelSheetName(sheetName));
+    });
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const fileName = `Sasana_ERP_FY_${res.fy}_${todayStr}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+
+    notifyDash(`Excel (${fileName}) ဒေါင်းလုပ်ဆွဲပြီးပါပြီ`, 'success');
+    showSystemStatus(
+      `<i class="fa-solid fa-circle-check mr-1"></i> <b>${escapeDashHtml(fileName)}</b> (Sheet ၁၄ ခု အပြည့်အစုံ) ထုတ်ယူပြီးပါပြီ။`,
+      'success'
+    );
+  } catch (err) {
+    console.error('Excel export error:', err);
+    notifyDash('Excel ထုတ်ယူခြင်း မအောင်မြင်ပါ: ' + err.message, 'error');
+    showSystemStatus(`<i class="fa-solid fa-circle-exclamation mr-1"></i> ${escapeDashHtml(err.message)}`, 'error');
+  } finally {
+    if (btn) btn.disabled = false;
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+// ===================================================================
+// 5. DAILY MAIL, SQL ZIP BACKUP & ADMIN TOOLS
+// ===================================================================
+window.triggerManualDailyMail = async function () {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyDash('Viewer အဆင့်ဖြစ်၍ Mail ပို့ခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+  if (!navigator.onLine) {
+    notifyDash('Mail ပို့ရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+
+  const fySel = document.getElementById('sys-fy-select');
+  const fy = fySel ? fySel.value : String(new Date().getFullYear());
+  const btn = document.getElementById('btn-sys-mail');
+  if (btn) btn.disabled = true;
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+
+  try {
+    const res = await window.triggerDailyMailAPI({ fy, force: true });
+    if (res && res.success) {
+      const msg = res.message || `dhammaaly@gmail.com သို့ Daily Mail (FY: ${fy}) ပေးပို့ပြီးပါပြီ`;
+      notifyDash(msg, 'success');
+      showSystemStatus(`<i class="fa-solid fa-envelope-circle-check mr-1"></i> ${escapeDashHtml(msg)}`, 'success');
+    } else if (!res || res.status !== 401) {
+      const errMsg = res?.error || 'Mail ပို့ခြင်း မအောင်မြင်ပါ';
+      notifyDash(errMsg, 'error');
+      showSystemStatus(`<i class="fa-solid fa-circle-exclamation mr-1"></i> ${escapeDashHtml(errMsg)}`, 'error');
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+window.triggerManualDriveBackup = async function () {
+  if (typeof window.canUserEdit === 'function' && !window.canUserEdit()) {
+    notifyDash('Viewer အဆင့်ဖြစ်၍ Backup သိမ်းခွင့် မရှိပါ။', 'warning');
+    return;
+  }
+  if (!navigator.onLine) {
+    notifyDash('SQL Backup သိမ်းရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+
+  const btn = document.getElementById('btn-sys-drive-backup');
+  if (btn) btn.disabled = true;
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+
+  try {
+    const res = await window.triggerDriveBackupAPI({ force: false });
+    if (res && res.success) {
+      if (res.skipped) {
+        const msg = res.message || 'နောက်ဆုံး Backup သိမ်းထားချိန်မှစ၍ ဒေတာအသစ် မရှိသေးပါသဖြင့် Backup အပို မသိမ်းပါ။';
+        notifyDash(msg, 'info', 4000);
+        showSystemStatus(`<i class="fa-solid fa-circle-info mr-1"></i> ${escapeDashHtml(msg)}`, 'info');
+      } else {
+        const fileLink = res.fileUrl
+          ? ` — <a href="${escapeDashHtml(res.fileUrl)}" target="_blank" rel="noopener noreferrer" style="color:#fde68a;text-decoration:underline;font-weight:800;">Google Drive တွင်ဖွင့်ကြည့်ရန်</a>`
+          : '';
+        const msg = res.message || `${res.fileName || 'SQL Backup (.zip)'} ပေးပို့သိမ်းဆည်းပြီးပါပြီ`;
+        notifyDash(msg, 'success');
+        showSystemStatus(`<i class="fa-solid fa-cloud-arrow-up mr-1"></i> ${escapeDashHtml(msg)}${fileLink}`, 'success');
+      }
+    } else if (!res || res.status !== 401) {
+      const errMsg = res?.error || 'SQL Backup မအောင်မြင်ပါ';
+      notifyDash(errMsg, 'error');
+      showSystemStatus(`<i class="fa-solid fa-circle-exclamation mr-1"></i> ${escapeDashHtml(errMsg)}`, 'error');
+    }
+  } finally {
+    if (btn) btn.disabled = false;
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+window.downloadLocalSqlDump = async function () {
+  if (typeof window.isAdminUser === 'function' && !window.isAdminUser()) {
+    notifyDash('Admin တစ်ဦးတည်းသာ SQL Dump ထုတ်ယူခွင့် ရှိပါသည်။', 'warning');
+    return;
+  }
+  if (!navigator.onLine) {
+    notifyDash('SQL Dump ထုတ်ယူရန် အင်တာနက် လိုအပ်ပါသည်။', 'warning');
+    return;
+  }
+
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+  try {
+    const res = await window.fetchSqlDumpAPI();
+    if (res && res.success && res.sql) {
+      const blob = new Blob([res.sql], { type: 'application/sql;charset=utf-8;' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = res.filename || `Sasana_ERP_D1_Backup_${new Date().toISOString().slice(0, 10)}.sql`;
+      a.click();
+      notifyDash(`SQL Backup (${res.totalRows || 0} rows) ဒေါင်းလုပ်ဆွဲပြီးပါပြီ`, 'success');
+    } else if (!res || res.status !== 401) {
+      notifyDash('SQL Dump မအောင်မြင်ပါ: ' + (res?.error || ''), 'error');
+    }
+  } finally {
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+window.rebuildSystemSummaries = async function () {
+  if (typeof window.isAdminUser === 'function' && !window.isAdminUser()) {
+    notifyDash('Admin တစ်ဦးတည်းသာ လုပ်ဆောင်ခွင့် ရှိပါသည်။', 'warning');
+    return;
+  }
+  if (!confirm('Summary Cache နှင့် Version များအားလုံးကို Database မှ ပြန်လည်တွက်ချက်မည်လား?')) return;
+
+  if (typeof window.showLoading === 'function') window.showLoading(true);
+  try {
+    const res = await window.rebuildSummariesAPI();
+    if (res && res.success) {
+      notifyDash('Summary Cache အားလုံး ပြန်လည်တွက်ချက်ပြီးပါပြီ', 'success');
+      await window.renderDashboardView(false);
+    } else if (!res || res.status !== 401) {
+      notifyDash('မအောင်မြင်ပါ: ' + (res?.error || ''), 'error');
+    }
+  } finally {
+    if (typeof window.showLoading === 'function') window.showLoading(false);
+  }
+};
+
+// ===================================================================
+// 6. GITHUB INDIVIDUAL FILE EXPLORER & DIRECT DOWNLOADER
+// ===================================================================
+window.openGitHubFilesModal = async function () {
+  const modal = document.getElementById('sys-github-files-modal');
+  const listEl = document.getElementById('sys-github-files-list');
+  if (!modal || !listEl) return;
+
+  modal.classList.remove('hidden');
+  listEl.innerHTML = `<div style="text-align:center; padding:24px; color:#fbbf24;"><i class="fa-solid fa-spinner fa-spin mr-2"></i> GitHub ဖိုင်စာရင်း ဆွဲယူနေပါသည်...</div>`;
+
+  try {
+    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/git/trees/${GITHUB_BRANCH}?recursive=1`);
+    if (!res.ok) throw new Error(`GitHub API HTTP ${res.status}`);
+    const data = await res.json();
+    const files = (data.tree || []).filter(item => item.type === 'blob');
+
+    if (!files.length) {
+      listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#94a3b8;">ဖိုင်မတွေ့ပါ</div>`;
+      return;
+    }
+
+    listEl.innerHTML = files.map(f => {
+      const kb = f.size ? `${(f.size / 1024).toFixed(1)} KB` : '';
+      const safePath = escapeDashHtml(f.path);
+      return `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:8px 12px; background:#0a0f17; border:1px solid rgba(148,163,184,0.14); border-radius:10px;">
+          <div style="min-width:0; flex:1;">
+            <div class="font-mono truncate" style="color:#e2e8f0; font-size:12px;" title="${safePath}">${safePath}</div>
+            <div style="color:#64748b; font-size:10.5px;">${escapeDashHtml(kb)}</div>
+          </div>
+          <button type="button" onclick="downloadSingleGitHubFile('${safePath}')" class="sys-action-btn sys-btn-emerald" style="padding:5px 10px; font-size:11px; flex-shrink:0;">
+            <i class="fa-solid fa-download"></i> <span>Download</span>
+          </button>
+        </div>`;
+    }).join('');
+  } catch (err) {
+    listEl.innerHTML = `<div style="text-align:center; padding:20px; color:#fda4af;">GitHub ဖိုင်စာရင်း ဆွဲယူ၍ မရပါ: ${escapeDashHtml(err.message)}</div>`;
+  }
+};
+
+window.closeGitHubFilesModal = function () {
+  const modal = document.getElementById('sys-github-files-modal');
+  if (modal) modal.classList.add('hidden');
+};
+
+window.downloadSingleGitHubFile = async function (filePath) {
+  try {
+    const rawUrl = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
+    const res = await fetch(rawUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const blob = await res.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filePath.split('/').pop() || 'file';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    notifyDash(`${filePath.split('/').pop()} ဒေါင်းလုပ်ဆွဲပြီးပါပြီ`, 'success', 2000);
+  } catch (err) {
+    notifyDash('ဖိုင်ဒေါင်းလုပ် မအောင်မြင်ပါ: ' + err.message, 'error');
+  }
+};
+
+// ===================================================================
+// 7. MAIN DASHBOARD RENDERER (Fund 8-Row Matrix, Padetha & Yogi)
+// ===================================================================
+window.renderDashboardView = async function (isSilent = false) {
+  const fetchToken = ++activeDashFetchToken;
+  const container = document.getElementById('view-container');
+
+  if (container && !document.getElementById('home-bank-table')) {
+    try {
+      const fetchFn = window.fetchTemplate || (async (p) => {
+        const r = await fetch(p);
+        return await r.text();
+      });
+      container.innerHTML = await fetchFn('view/Dashboard.html');
+    } catch (e) {
+      console.warn('Could not fetch view/Dashboard.html:', e);
+    }
+  }
+
+  injectAdminBackupButton();
+  applySystemTabPermissions();
+  window.switchDashboardTab(activeDashTab);
+
+  const FUND_GROUP_SPECS = [
+    {
+      title: 'အထွေထွေ ရန်ပုံငွေ',
+      bankKey: '1CB',
+      cashKey: '4GB',
+      bankLabel: 'အထွေထွေ ရန်ပုံငွေ (Bank) ဖွင့်ရန်',
+      cashLabel: 'ကျောင်းရန်ပုံငွေ စာအုပ် (Cash) ဖွင့်ရန်',
+      sources: [
+        { key: '1CB', tableName: '1CB Bank (General)' },
+        { key: '4GB', tableName: '1General Book' }
+      ]
+    },
+    {
+      title: 'ဆွမ်းပဒေသာပင်',
+      bankKey: '2CB',
+      cashKey: '5FB',
+      bankLabel: 'ဆွမ်းပဒေသာပင် (Bank) ဖွင့်ရန်',
+      cashLabel: 'ဆွမ်းပဒေသာပင် စာအုပ် (Cash) ဖွင့်ရန်',
+      sources: [
+        { key: '2CB', tableName: '2CB Bank (Meal)' },
+        { key: '5FB', tableName: '2Meal Book' }
+      ]
+    },
+    {
+      title: 'တစ်ဦးတည်းစာရင်း',
+      bankKey: '3CB',
+      cashKey: null,
+      bankLabel: 'တစ်ဦးတည်းစာရင်း (Bank) ဖွင့်ရန်',
+      cashLabel: '',
+      sources: [{ key: '3CB', tableName: '3CB Bank (UZ)' }]
+    },
+    {
+      title: 'ဓမ္မာရုံငွေစာရင်း',
+      bankKey: null,
+      cashKey: '6HB',
+      bankLabel: '',
+      cashLabel: 'ဓမ္မာရုံငွေစာရင်း စာအုပ် ဖွင့်ရန်',
+      sources: [{ key: '6HB', tableName: '3Hall Book' }]
+    },
+    {
+      title: 'စေတီငွေစာရင်း',
+      bankKey: null,
+      cashKey: '7PB',
+      bankLabel: '',
+      cashLabel: 'စေတီငွေစာရင်း စာအုပ် ဖွင့်ရန်',
+      sources: [{ key: '7PB', tableName: '4Pagoda Book' }]
+    },
+    {
+      title: 'လျှပ်စစ်ပဒေသာပင်',
+      bankKey: null,
+      cashKey: '8EB',
+      bankLabel: '',
+      cashLabel: 'လျှပ်စစ်ပဒေသာပင် စာအုပ် ဖွင့်ရန်',
+      sources: [{ key: '8EB', tableName: '5Electronic Book' }]
+    },
+    {
+      title: 'ဆေးပဒေသာပင်',
+      bankKey: null,
+      cashKey: '9MB',
+      bankLabel: '',
+      cashLabel: 'ဆေးပဒေသာပင် စာအုပ် ဖွင့်ရန်',
+      sources: [{ key: '9MB', tableName: '6Medical Book' }]
+    },
+    {
+      title: 'အထွေထွေရန်ပုံငွေ',
+      bankKey: null,
+      cashKey: '10GB',
+      bankLabel: '',
+      cashLabel: 'အထွေထွေရန်ပုံငွေစာအုပ် ဖွင့်ရန်',
+      sources: [{ key: '10GB', tableName: '7Other Book' }]
+    }
+  ];
+
+  const PADETHA_SPECS = [
+    { key: '5FB', tableName: '2Meal Book', title: 'ဆွမ်းပဒေသာပင် စာအုပ်' },
+    { key: '8EB', tableName: '5Electronic Book', title: 'လျှပ်စစ်ပဒေသာပင် စာအုပ်' },
+    { key: '9MB', tableName: '6Medical Book', title: 'ဆေးပဒေသာပင် စာအုပ်' },
+    { key: '10GB', tableName: '7Other Book', title: 'အထွေထွေရန်ပုံငွေစာအုပ်' }
+  ];
+
+  const YOGI_CATS = ['ရဟန်း', 'ကိုရင်', 'သီလရှင်', 'လူပုဂ္ဂိုလ်', 'ဝေယျာဝိစ္စ'];
+
+  const formatMoney = (val, colorHex = '#cbd5e1', weight = 'font-medium') => {
+    const num = Number(val || 0);
+    if (num === 0) return `<span class="font-mono" style="color:#475569;">-</span>`;
+    if (num < 0) return `<span class="font-mono font-bold" style="color:#fda4af;">${num.toLocaleString()}</span>`;
+    return `<span class="font-mono ${weight}" style="color:${colorHex};">${num.toLocaleString()}</span>`;
+  };
+
+  const renderHomeData = (raw) => {
+    const bankTableElem = document.getElementById('home-bank-table');
+    const padethaTableElem = document.getElementById('home-padetha-table');
+    const yogiTableElem = document.getElementById('home-yogi-table');
+
+    const data = (raw && raw.data) ? raw.data : (raw || {});
+    const kpis = data.kpis || { totalFund: 0, totalBank: 0, totalCash: 0, totalCount: 0 };
+    const fundSummary = data.fundSummary || {};
+    const padethaSummary = data.padethaSummary || [];
+    const yogiSummary = data.yogiSummary || {};
+
+    const setKpi = (id, val, colorHex) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const num = Number(val || 0);
+      el.textContent = `${num.toLocaleString()} MMK`;
+      el.className = 'text-base font-extrabold mt-1 truncate font-mono';
+      el.style.color = num < 0 ? '#fda4af' : colorHex;
+    };
+    setKpi('kpi-home-fund', kpis.totalFund, '#fbbf24');
+    setKpi('kpi-home-bank', kpis.totalBank, '#7dd3fc');
+    setKpi('kpi-home-cash', kpis.totalCash, '#6ee7b7');
+
+    const countEl = document.getElementById('kpi-home-count');
+    if (countEl) {
+      countEl.textContent = Number(kpis.totalCount || 0).toLocaleString();
+      countEl.style.color = '#e2e8f0';
+    }
+
+    if (bankTableElem) {
+      let fundHtml = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" style="min-width: 820px;">
+          <thead>
+            <tr>
+              <th class="w-14 text-center px-3">စဉ်</th>
+              <th class="px-4" style="min-width: 240px;">စာအုပ်အမည်</th>
+              <th class="text-right w-40 px-4">ဘဏ်လက်ကျန်</th>
+              <th class="text-right w-36 px-3">USER 1 လက်ကျန်</th>
+              <th class="text-right w-36 px-3">USER 2 လက်ကျန်</th>
+              <th class="text-right w-36 px-3">USER 3 လက်ကျန်</th>
+              <th class="text-right w-44 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">
+                လက်ကျန် ပေါင်း
+              </th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+      let sumBank = 0, sumU1 = 0, sumU2 = 0, sumU3 = 0, sumTotal = 0;
+
+      FUND_GROUP_SPECS.forEach((group, idx) => {
+        let bb = 0, u1 = 0, u2 = 0, u3 = 0, tot = 0;
+
+        group.sources.forEach((src) => {
+          const item = fundSummary[src.tableName] || fundSummary[src.key] || {};
+          const sbb = Number(item.bankBalance || 0);
+          const su1 = Number(item.user1Balance || 0);
+          const su2 = Number(item.user2Balance || 0);
+          const su3 = Number(item.user3Balance || 0);
+          const stot = Number(item.totalBalance !== undefined ? item.totalBalance : (sbb + su1 + su2 + su3));
+
+          bb += sbb; u1 += su1; u2 += su2; u3 += su3; tot += stot;
+        });
+
+        sumBank += bb; sumU1 += u1; sumU2 += u2; sumU3 += u3; sumTotal += tot;
+
+        const isMerged = Boolean(group.bankKey && group.cashKey);
+        const defaultKey = group.cashKey || group.bankKey;
+        const safeBankKey = group.bankKey ? escapeDashHtml(group.bankKey) : '';
+        const safeCashKey = group.cashKey ? escapeDashHtml(group.cashKey) : '';
+        const safeDefaultKey = escapeDashHtml(defaultKey);
+
+        let pillsHtml = '';
+        if (isMerged) {
+          pillsHtml = `
+            <span class="dash-pill-group">
+              <button type="button" onclick="event.stopPropagation(); if(typeof window.switchTab==='function') window.switchTab('${safeBankKey}')" class="dash-pill dash-pill-bank" title="${escapeDashHtml(group.bankLabel)}">Bank</button>
+              <button type="button" onclick="event.stopPropagation(); if(typeof window.switchTab==='function') window.switchTab('${safeCashKey}')" class="dash-pill dash-pill-cash" title="${escapeDashHtml(group.cashLabel)}">Cash</button>
+            </span>`;
+        } else if (group.bankKey) {
+          pillsHtml = `<span class="dash-pill-group"><span class="dash-pill dash-pill-bank">Bank</span></span>`;
+        }
+
+        const totalCellHtml = tot < 0
+          ? `<span class="font-mono font-bold" style="color:#fda4af;">${tot.toLocaleString()}</span>`
+          : (tot === 0
+            ? `<span class="font-mono" style="color:#475569;">-</span>`
+            : `<span class="font-mono font-bold" style="color:#f8fafc;">${tot.toLocaleString()}</span>`);
+
+        const bankCellAttr = isMerged
+          ? `onclick="event.stopPropagation(); if(typeof window.switchTab==='function') window.switchTab('${safeBankKey}')" class="text-right px-4 dash-cell-link" title="${escapeDashHtml(group.bankLabel)}"`
+          : `class="text-right px-4"`;
+
+        const cashCellAttr = isMerged
+          ? `onclick="event.stopPropagation(); if(typeof window.switchTab==='function') window.switchTab('${safeCashKey}')" class="text-right px-3 dash-cell-link" title="${escapeDashHtml(group.cashLabel)}"`
+          : `class="text-right px-3"`;
+
+        const rowTitle = isMerged
+          ? `${group.bankLabel} / ${group.cashLabel}`
+          : (group.cashLabel || group.bankLabel);
+
+        fundHtml += `
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${safeDefaultKey}')" class="transition cursor-pointer" title="${escapeDashHtml(rowTitle)}">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium px-4" style="color:#e2e8f0;">
+            <div class="dash-name-wrap">
+              <span>${escapeDashHtml(group.title)}</span>
+              ${pillsHtml}
+            </div>
+          </td>
+          <td ${bankCellAttr}>${formatMoney(bb, '#7dd3fc', 'font-semibold')}</td>
+          <td ${cashCellAttr}>${formatMoney(u1, '#cbd5e1', 'font-medium')}</td>
+          <td ${cashCellAttr}>${formatMoney(u2, '#cbd5e1', 'font-medium')}</td>
+          <td ${cashCellAttr}>${formatMoney(u3, '#cbd5e1', 'font-medium')}</td>
+          <td class="text-right px-4" style="border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${totalCellHtml}</td>
         </tr>`;
       });
-      rowsHtml += `</tbody></table>`;
-    });
+
+      const grandTotalBadge = sumTotal < 0
+        ? `<span class="dash-total-badge font-mono font-extrabold" style="background:rgba(244,63,94,0.14);border:1px solid rgba(244,63,94,0.3);color:#fda4af;">${sumTotal.toLocaleString()}</span>`
+        : `<span class="dash-total-badge font-mono font-extrabold" style="background:rgba(245,158,11,0.14);border:1px solid rgba(245,158,11,0.35);color:#fde68a;">${sumTotal.toLocaleString()}</span>`;
+
+      fundHtml += `
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.22);">
+          <td class="text-center px-3 font-mono font-bold" style="color:#64748b;">-</td>
+          <td class="px-4">
+            <span class="inline-flex items-center gap-2 font-bold uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-calculator" style="color:#fbbf24;"></i> စုစုပေါင်း
+            </span>
+          </td>
+          <td class="text-right px-4">${formatMoney(sumBank, '#7dd3fc', 'font-bold')}</td>
+          <td class="text-right px-3">${formatMoney(sumU1, '#6ee7b7', 'font-bold')}</td>
+          <td class="text-right px-3">${formatMoney(sumU2, '#6ee7b7', 'font-bold')}</td>
+          <td class="text-right px-3">${formatMoney(sumU3, '#6ee7b7', 'font-bold')}</td>
+          <td class="text-right px-4" style="border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.05);">${grandTotalBadge}</td>
+        </tr>
+      </tbody></table></div>`;
+
+      bankTableElem.innerHTML = fundHtml;
+    }
+
+    if (padethaTableElem) {
+      let padethaHtml = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" style="min-width: 720px;">
+          <thead>
+            <tr>
+              <th class="w-14 text-center px-3">စဉ်</th>
+              <th class="px-4" style="min-width: 220px;">စာအုပ်အမည်</th>
+              <th class="text-right w-40 px-4">ဝင်ငွေ</th>
+              <th class="text-right w-44 px-4">ဘဏ်အပ်နှံ (ထွက်ငွေ)</th>
+              <th class="text-right w-44 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">
+                လက်ကျန်ငွေ
+              </th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+      let totalPadethaIncome = 0, totalPadethaExpense = 0, totalPadethaBalance = 0;
+
+      PADETHA_SPECS.forEach((spec, idx) => {
+        const row = padethaSummary.find(p => p.table_name === spec.tableName) || { income: 0, expense: 0, balance: 0 };
+        const inc = Number(row.income || 0);
+        const exp = Number(row.expense || 0);
+        const bal = Number(row.balance !== undefined ? row.balance : (inc - exp));
+
+        totalPadethaIncome += inc;
+        totalPadethaExpense += exp;
+        totalPadethaBalance += bal;
+
+        padethaHtml += `
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('${escapeDashHtml(spec.key)}')" class="transition cursor-pointer">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium px-4" style="color:#e2e8f0;">${escapeDashHtml(spec.title)}</td>
+          <td class="text-right px-4">${formatMoney(inc, '#6ee7b7', 'font-semibold')}</td>
+          <td class="text-right px-4">${formatMoney(exp, '#fda4af', 'font-semibold')}</td>
+          <td class="text-right px-4 font-mono font-bold" style="color:${bal < 0 ? '#fda4af' : '#f8fafc'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${bal.toLocaleString()}</td>
+        </tr>`;
+      });
+
+      padethaHtml += `
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.22);">
+          <td class="text-center px-3 font-mono font-bold" style="color:#64748b;">-</td>
+          <td class="px-4">
+            <span class="inline-flex items-center gap-2 font-bold uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-calculator" style="color:#fbbf24;"></i> စုစုပေါင်း
+            </span>
+          </td>
+          <td class="text-right px-4 font-mono font-bold" style="color:#6ee7b7;">${totalPadethaIncome.toLocaleString()}</td>
+          <td class="text-right px-4 font-mono font-bold" style="color:#fda4af;">${totalPadethaExpense.toLocaleString()}</td>
+          <td class="text-right px-4 font-mono font-extrabold" style="color:${totalPadethaBalance < 0 ? '#fda4af' : '#fde68a'};border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.05);">${totalPadethaBalance.toLocaleString()}</td>
+        </tr>
+      </tbody></table></div>`;
+
+      padethaTableElem.innerHTML = padethaHtml;
+    }
+
+    if (yogiTableElem) {
+      const residentData = yogiSummary.resident || {};
+      const retreatData = yogiSummary.retreat || {};
+      const fmt = (v) => v !== 0 ? v.toLocaleString() : '-';
+
+      let yogiHtml = `
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse" style="min-width: 660px;">
+          <thead>
+            <tr>
+              <th class="w-14 text-center px-3">စဉ်</th>
+              <th class="px-4" style="min-width: 220px;">အမြဲနေယောဂီစာရင်း</th>
+              <th class="text-center w-28 px-4">ကျား</th>
+              <th class="text-center w-28 px-4">မ</th>
+              <th class="text-center w-36 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">ပေါင်း</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+      let resMale = 0, resFemale = 0, resTotal = 0;
+
+      YOGI_CATS.forEach((cat, idx) => {
+        const item = residentData[cat] || { male: 0, female: 0, total: 0 };
+        const m = Number(item.male || 0);
+        const f = Number(item.female || 0);
+        const t = Number(item.total !== undefined ? item.total : (m + f));
+        resMale += m; resFemale += f; resTotal += t;
+
+        yogiHtml += `
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('12Yogi')" class="transition cursor-pointer">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium px-4" style="color:#e2e8f0;">${escapeDashHtml(cat)}</td>
+          <td class="text-center font-mono font-semibold px-4" style="color:${m ? '#7dd3fc' : '#475569'};">${fmt(m)}</td>
+          <td class="text-center font-mono font-semibold px-4" style="color:${f ? '#fda4af' : '#475569'};">${fmt(f)}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:${t ? '#f8fafc' : '#475569'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${fmt(t)}</td>
+        </tr>`;
+      });
+
+      yogiHtml += `
+        <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.18);">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">-</td>
+          <td class="px-4 font-bold" style="color:#cbd5e1;">ပေါင်း (အမြဲနေ)</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#7dd3fc;">${resMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#fda4af;">${resFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#f8fafc;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.05);">${resTotal.toLocaleString()}</td>
+        </tr>
+          </tbody>
+          <thead>
+            <tr>
+              <th class="w-14 text-center px-3">စဉ်</th>
+              <th class="px-4" style="min-width: 220px;">စခန်းဝင်ယောဂီစာရင်း</th>
+              <th class="text-center w-28 px-4">ကျား</th>
+              <th class="text-center w-28 px-4">မ</th>
+              <th class="text-center w-36 px-4" style="color:#cbd5e1;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.04);">ပေါင်း</th>
+            </tr>
+          </thead>
+          <tbody>`;
+
+      let retMale = 0, retFemale = 0, retTotal = 0;
+
+      YOGI_CATS.forEach((cat, idx) => {
+        const item = retreatData[cat] || { male: 0, female: 0, total: 0 };
+        const m = Number(item.male || 0);
+        const f = Number(item.female || 0);
+        const t = Number(item.total !== undefined ? item.total : (m + f));
+        retMale += m; retFemale += f; retTotal += t;
+
+        yogiHtml += `
+        <tr onclick="if(typeof window.switchTab==='function') window.switchTab('13Yogi')" class="transition cursor-pointer">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">${idx + 1}</td>
+          <td class="font-medium px-4" style="color:#e2e8f0;">${escapeDashHtml(cat)}</td>
+          <td class="text-center font-mono font-semibold px-4" style="color:${m ? '#7dd3fc' : '#475569'};">${fmt(m)}</td>
+          <td class="text-center font-mono font-semibold px-4" style="color:${f ? '#fda4af' : '#475569'};">${fmt(f)}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:${t ? '#f8fafc' : '#475569'};border-left:1px solid rgba(148,163,184,0.12);background:rgba(148,163,184,0.03);">${fmt(t)}</td>
+        </tr>`;
+      });
+
+      yogiHtml += `
+        <tr style="background:#141c28;border-top:1px solid rgba(148,163,184,0.18);">
+          <td class="text-center px-3 font-mono" style="color:#64748b;">-</td>
+          <td class="px-4 font-bold" style="color:#cbd5e1;">ပေါင်း (စခန်းဝင်)</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#7dd3fc;">${retMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#fda4af;">${retFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#f8fafc;border-left:1px solid rgba(148,163,184,0.14);background:rgba(148,163,184,0.05);">${retTotal.toLocaleString()}</td>
+        </tr>`;
+
+      const grandMale = resMale + retMale;
+      const grandFemale = resFemale + retFemale;
+      const grandTotal = resTotal + retTotal;
+
+      yogiHtml += `
+        <tr style="background:#161e2c;border-top:1px solid rgba(148,163,184,0.25);">
+          <td class="text-center px-3 font-mono font-bold" style="color:#64748b;">-</td>
+          <td class="px-4">
+            <span class="inline-flex items-center gap-2 font-bold uppercase tracking-wider" style="color:#f8fafc;">
+              <i class="fa-solid fa-users" style="color:#fbbf24;"></i> စုစုပေါင်း ယောဂီ
+            </span>
+          </td>
+          <td class="text-center font-mono font-bold px-4" style="color:#7dd3fc;">${grandMale.toLocaleString()}</td>
+          <td class="text-center font-mono font-bold px-4" style="color:#fda4af;">${grandFemale.toLocaleString()}</td>
+          <td class="text-center font-mono font-extrabold px-4" style="color:#fde68a;border-left:1px solid rgba(148,163,184,0.18);background:rgba(245,158,11,0.06);">${grandTotal.toLocaleString()}</td>
+        </tr>
+      </tbody></table></div>`;
+
+      yogiTableElem.innerHTML = yogiHtml;
+    }
+  };
+
+  const hasContentOnScreen = Boolean(
+    document.getElementById('home-bank-table')?.querySelector('table')
+  );
+
+  if (!hasContentOnScreen) {
+    try {
+      const cachedStr = localStorage.getItem(DASH_CACHE_KEY);
+      if (cachedStr) {
+        const cachedData = JSON.parse(cachedStr);
+        lastRenderedDashboardHash = JSON.stringify(cachedData.data || cachedData);
+        renderHomeData(cachedData);
+      }
+    } catch (_) {}
   }
 
-  return `
-    <div style="font-family:sans-serif; max-width:740px; margin:auto; color:#1e293b; line-height:1.6;">
-      <div style="background:#0c1118; color:#fbbf24; padding:18px 22px; border-radius:12px 12px 0 0;">
-        <h2 style="margin:0; font-size:18px;">ဓမ္မအလင်းရောင်တောရရိပ်သာ — Sāsana ERP</h2>
-        <div style="color:#94a3b8; font-size:12px; margin-top:4px;">နေ့စဉ်ငွေစာရင်း အစီရင်ခံစာ (${escapeHtml(changes.date)}) · FY ${escapeHtml(fy)}</div>
-      </div>
-      <div style="border:1px solid #cbd5e1; border-top:none; padding:18px 22px; border-radius:0 0 12px 12px;">
-        <p style="margin-top:0;">
-          <b>ရက်စွဲ:</b> ${escapeHtml(changes.date)} &nbsp;|&nbsp;
-          <b>စာရင်းအသစ်/ပြင်ဆင်မှု:</b> ${Number(changes.totalChanged || 0)} ကြောင်း &nbsp;|&nbsp;
-          <b>ပေးပို့သူ:</b> ${escapeHtml(triggeredBy)}
-        </p>
-        ${rowsHtml}
-        <hr style="border:none; border-top:1px solid #e2e8f0; margin:18px 0;">
-        <p style="font-size:12px; color:#64748b; margin-bottom:0;">
-          📎 စာအုပ်အားလုံး (Sheet ၁၄ ခု အပြည့်အစုံ) ပါဝင်သော Excel (<code>.xlsx</code>) ဖိုင်အား Attachment တွင် ပူးတွဲပေးပို့ထားပါသည်။
-        </p>
-      </div>
-    </div>`;
-}
-
-function escapeHtml(v) {
-  return String(v === null || v === undefined ? '' : v)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-// -------------------------------------------------------------------
-// Native Multi-Sheet Excel (.xlsx) Builder via Temporary Google Sheet
-// -------------------------------------------------------------------
-function buildMultiSheetXlsxBlob(fy, dateStr) {
-  const data = callWorkerGet('/api/system/export-excel?fy=' + encodeURIComponent(fy || 'ALL'));
-  const ss = SpreadsheetApp.create('TEMP_Sasana_ERP_' + Date.now());
-  const ssId = ss.getId();
+  const shouldShowOverlay = !isSilent && !hasContentOnScreen && !localStorage.getItem(DASH_CACHE_KEY);
+  if (typeof window.showLoading === 'function' && shouldShowOverlay) {
+    window.showLoading(true);
+  }
 
   try {
-    // 1. Summary Sheet
-    const defaultSheet = ss.getSheets()[0];
-    defaultSheet.setName('Summary');
+    const fetchFunc = window.fetchHomeSummary || window.fetchHomeSummaryAPI;
+    if (typeof fetchFunc === 'function') {
+      const freshData = await fetchFunc();
+      if (fetchToken !== activeDashFetchToken) return;
 
-    const sumHeader = [['စဉ်', 'စာအုပ်အမည် (Book)', 'စာရင်းဖွင့်လက်ကျန်', 'စုစုပေါင်းဝင်ငွေ', 'စုစုပေါင်းထွက်ငွေ', 'လက်ကျန်ငွေ', 'စာကြောင်းရေ']];
-    const sumBody = (data.summary || []).map((s, idx) => [
-      idx + 1, s.book_name, s.opening_balance, s.total_income, s.total_expense, s.closing_balance, s.row_count,
-    ]);
-    const allSum = sumHeader.concat(sumBody);
-    defaultSheet.getRange(1, 1, allSum.length, sumHeader[0].length).setValues(allSum);
-    defaultSheet.getRange(1, 1, 1, sumHeader[0].length).setFontWeight('bold').setBackground('#fef3c7');
-    if (sumBody.length > 0) {
-      defaultSheet.getRange(2, 3, sumBody.length, 4).setNumberFormat('#,##0');
-    }
+      if (freshData && freshData.success) {
+        const freshHash = JSON.stringify(freshData.data || freshData);
+        try { localStorage.setItem(DASH_CACHE_KEY, JSON.stringify(freshData)); } catch (_) {}
 
-    // 2. All 13 Data Sheets
-    const sheetsMap = data.sheets || {};
-    Object.keys(sheetsMap).forEach(tblName => {
-      const rows = sheetsMap[tblName] || [];
-      const safeName = String(tblName).replace(/[\\/?*[\]:]/g, ' ').trim().slice(0, 31);
-      const sh = ss.insertSheet(safeName);
-
-      let header, body, moneyCols = [];
-      if (tblName === 'Inventory') {
-        header = ['စဉ်', 'ရက်စွဲ', 'တည်နေရာ', 'အမျိုးအစား', 'အကြောင်းအရာ', 'ရေတွက်ပုံ', 'အရေအတွက်', 'မှတ်ချက်', 'လနှစ်'];
-        body = rows.map(r => [r.no, r.date, r.location, r.category, r.description, r.unit, r.qty, r.remark, r.month_year]);
-      } else if (tblName === 'Permanent Yogi' || tblName === 'Camp Yogi') {
-        header = ['စဉ်', 'စတင်ရက်', 'ထွက်ရက်', 'အမျိုးအစား', 'ယောဂီအမည်', 'အဘအမည်', 'မှတ်ပုံတင်', 'မွေးသက္ကရာဇ်', 'အသက်', 'ကျား/မ', 'ယောဂီဖုန်း', 'အိမ်ဖုန်း', 'နေရပ်လိပ်စာ', 'အခြေအနေ'];
-        body = rows.map(r => [r.no, r.start_date, r.end_date, r.yogi_type, r.name, r.father_name, r.nrc, r.dob, r.age, r.gender, r.yogi_phone, r.home_phone, r.address, r.status]);
-      } else {
-        header = ['စဉ်', 'ရက်စွဲ', 'ခေါင်းစဉ်', 'အကြောင်းအရာ', 'ဝင်ငွေ', 'ထွက်ငွေ', 'လက်ကျန်', 'ခေါင်းစဉ်ခွဲ', 'ဘောင်ချာ', 'လက်ခံသူ', 'လနှစ်', 'စာအုပ်အမည်'];
-        body = rows.map(r => [r.no, r.date, r.title, r.description, r.income, r.expense, r.balance, r.sub_title, r.voucher_no, r.receiver, r.month_year, r.book_name]);
-        moneyCols = [5, 3]; // start col 5, 3 cols (income, expense, balance)
+        if (freshHash !== lastRenderedDashboardHash || !document.getElementById('home-bank-table')?.querySelector('table')) {
+          lastRenderedDashboardHash = freshHash;
+          renderHomeData(freshData);
+        }
       }
-
-      const full = [header].concat(body);
-      sh.getRange(1, 1, full.length, header.length).setValues(full);
-      sh.getRange(1, 1, 1, header.length).setFontWeight('bold').setBackground('#e2e8f0');
-      if (moneyCols.length === 2 && body.length > 0) {
-        sh.getRange(2, moneyCols[0], body.length, moneyCols[1]).setNumberFormat('#,##0');
-      }
-    });
-
-    SpreadsheetApp.flush();
-
-    const exportUrl = 'https://docs.google.com/spreadsheets/d/' + ssId + '/export?format=xlsx';
-    const resp = UrlFetchApp.fetch(exportUrl, {
-      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
-      muteHttpExceptions: true,
-    });
-    if (resp.getResponseCode() !== 200) {
-      throw new Error('Excel export HTTP ' + resp.getResponseCode());
     }
-
-    const fileName = `Sasana_ERP_FY_${data.fy || fy}_${dateStr}.xlsx`;
-    return resp.getBlob().setName(fileName);
+  } catch (error) {
+    if (fetchToken !== activeDashFetchToken) return;
+    console.warn('Silent background dashboard sync warning:', error);
   } finally {
-    // Always clean up temporary Google Sheet
-    try { DriveApp.getFileById(ssId).setTrashed(true); } catch (_) {}
+    if (typeof window.showLoading === 'function' && shouldShowOverlay) {
+      window.showLoading(false);
+    }
   }
-}
+};
 
-// ===================================================================
-// 6. GOOGLE DRIVE SQL (.zip) BACKUP ENGINE (Only Saves When Data Changed)
-// ===================================================================
-function getOrCreateSubFolder(parent, name) {
-  const it = parent.getFoldersByName(name);
-  return it.hasNext() ? it.next() : parent.createFolder(name);
-}
-
-function pruneOldFiles(folder, keepCount) {
-  const list = [];
-  const it = folder.getFiles();
-  while (it.hasNext()) list.push(it.next());
-  if (list.length <= keepCount) return;
-
-  list.sort((a, b) => b.getDateCreated().getTime() - a.getDateCreated().getTime());
-  for (let i = keepCount; i < list.length; i++) {
-    list[i].setTrashed(true);
-  }
-}
-
-function runDriveSqlBackupCore(opts) {
-  const mode = String(opts.mode || 'manual').toLowerCase(); // 'weekly' | 'archive' | 'manual'
-  const force = opts.force === true;
-  const props = PropertiesService.getScriptProperties();
-  const fpKey = (mode === 'archive') ? 'LAST_ARCHIVE_FINGERPRINT' : 'LAST_BACKUP_FINGERPRINT';
-
-  // Step 1: Ultra-cheap 13-row fingerprint check
-  const check = callWorkerGet('/api/system/sql-dump?check_only=1');
-  const prevFp = props.getProperty(fpKey) || '';
-
-  if (!force && prevFp && check.fingerprint === prevFp) {
-    return {
-      success: true,
-      skipped: true,
-      mode: mode,
-      message: 'နောက်ဆုံး Backup သိမ်းထားချိန်မှစ၍ ဒေတာအသစ် မရှိသေးပါသဖြင့် Backup အပို မသိမ်းပါ။',
-    };
-  }
-
-  // Step 2: Pull full SQL Dump from Worker D1
-  const dump = callWorkerGet('/api/system/sql-dump');
-  const stamp = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'yyyy-MM-dd_HHmm');
-  const sqlName = `Sasana_ERP_D1_${stamp}.sql`;
-  const zipName = `Sasana_ERP_D1_${mode.toUpperCase()}_${stamp}.zip`;
-
-  const sqlBlob = Utilities.newBlob(dump.sql, 'application/sql', sqlName);
-  const zipBlob = Utilities.zip([sqlBlob], zipName);
-
-  // Step 3: Save to Google Drive -> Sasana_ERP_Backups / (Weekly | Archive | Manual)
-  const rootFolder = getOrCreateSubFolder(DriveApp.getRootFolder(), CONFIG.DRIVE_ROOT_FOLDER);
-  const subName = mode === 'weekly' ? 'Weekly' : (mode === 'archive' ? 'Archive' : 'Manual');
-  const targetFolder = getOrCreateSubFolder(rootFolder, subName);
-
-  const savedFile = targetFolder.createFile(zipBlob);
-  if (mode === 'weekly') {
-    pruneOldFiles(targetFolder, CONFIG.WEEKLY_KEEP_COUNT);
-  }
-
-  // Save latest fingerprint
-  props.setProperty(fpKey, dump.fingerprint || check.fingerprint || '');
-  if (mode === 'manual') {
-    props.setProperty('LAST_BACKUP_FINGERPRINT', dump.fingerprint || check.fingerprint || '');
-  }
-
-  return {
-    success: true,
-    skipped: false,
-    mode: mode,
-    folder: CONFIG.DRIVE_ROOT_FOLDER + '/' + subName,
-    fileName: zipName,
-    fileUrl: savedFile.getUrl(),
-    totalRows: dump.totalRows || 0,
-    message: `Google Drive (${CONFIG.DRIVE_ROOT_FOLDER}/${subName}) ထဲသို့ ${zipName} (${dump.totalRows || 0} rows) သိမ်းဆည်းပြီးပါပြီ။`,
-  };
-}
+window.loadDashboardView = window.renderDashboardView;
+window.renderHomeView = window.renderDashboardView;
+// === END OF Dashboard.js ===
