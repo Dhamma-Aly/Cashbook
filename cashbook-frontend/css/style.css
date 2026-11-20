@@ -1,8 +1,8 @@
 /* ===================================================================
-   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.5)
+   css/style.css - Sāsana ERP Calm Matte Obsidian Theme (v4.6)
    Eye-Comfort Edition: 60-30-10 Neutral Charcoal Slate + Soft Gold Accent
-   iOS/Android Mobile Standard (Zero Auto-Zoom, Safe-Area, 2x2 KPIs,
-   Contact Grid, Overscroll Guard & Symmetrical System Control Center)
+   Complete iOS/Android Mobile Standard across ALL Views (Dashboard,
+   Banks/Ledgers, Inventory, Yogi & Annual Report)
    =================================================================== */
 
 :root {
@@ -197,7 +197,7 @@ button, a, select, input, textarea {
 }
 
 /* ===================================================================
-   🎯 YOGI KPI & CONTACT HUB RESPONSIVE GRIDS
+   🎯 SHARED RESPONSIVE GRIDS (Yogi, Contact, Toolbars & Modals)
    =================================================================== */
 .yogi-kpi-grid {
   display: grid !important;
@@ -236,6 +236,201 @@ button, a, select, input, textarea {
   .contact-info-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* 🔍 Shared Responsive Search & User Filter Group (Banks, Inventory, Yogi) */
+.erp-search-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+}
+
+.erp-search-box {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.erp-user-filter {
+  position: relative;
+  width: 100%;
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .erp-search-group {
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+  }
+  .erp-search-box {
+    max-width: 340px;
+  }
+  .erp-user-filter {
+    width: auto;
+    min-width: 175px;
+    flex-shrink: 0;
+  }
+}
+
+/* 🔘 Shared Responsive Action Buttons (Mobile: 2-Col Refresh/Export + Full-Width Add) */
+.erp-action-bar-btns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.erp-action-bar-btns > button {
+  width: 100%;
+  min-height: 40px;
+  justify-content: center;
+}
+
+.erp-action-bar-btns > .erp-btn-add {
+  grid-column: 1 / -1;
+  min-height: 42px;
+}
+
+@media (min-width: 640px) {
+  .erp-action-bar-btns {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: auto;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .erp-action-bar-btns > button,
+  .erp-action-bar-btns > .erp-btn-add {
+    width: auto;
+    min-height: 36px;
+    grid-column: auto;
+  }
+}
+
+/* 🧘 Yogi Action Controls Wrapper */
+.erp-yogi-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.erp-yogi-status-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.erp-yogi-status-tabs > button {
+  justify-content: center;
+  min-height: 36px;
+}
+
+@media (min-width: 768px) {
+  .erp-yogi-controls {
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    width: auto;
+    flex-shrink: 0;
+  }
+  .erp-yogi-status-tabs {
+    display: flex;
+    width: auto;
+  }
+}
+
+/* 📊 Report System Responsive Toolbar (No 760px Forced Scroll on Phones!) */
+.erp-report-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.erp-report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+@media (min-width: 900px) {
+  .erp-report-toolbar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .erp-report-controls {
+    width: auto;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+}
+
+/* 📝 Responsive Modal Form Grids (1-Col on Mobile, 2-Col / 4-Col on Desktop) */
+.erp-modal-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.erp-modal-grid-nrc {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+}
+
+.erp-modal-grid-dob {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+}
+
+.erp-modal-grid-dob > :first-child {
+  grid-column: 1 / -1;
+}
+
+.erp-modal-grid-2 > *,
+.erp-modal-grid-nrc > *,
+.erp-modal-grid-dob > * {
+  min-width: 0;
+}
+
+@media (min-width: 560px) {
+  .erp-modal-grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .erp-modal-grid-nrc {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .erp-modal-grid-dob {
+    grid-template-columns: 2fr 1fr 1fr;
+  }
+  .erp-modal-grid-dob > :first-child {
+    grid-column: auto;
+  }
+}
+
+#entry-form,
+#inv-entry-form,
+#yogi-entry-form {
+  min-height: 0;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* ===================================================================
@@ -277,6 +472,18 @@ button, a, select, input, textarea {
   #reauth-form input,
   input, select, textarea {
     font-size: 16px !important;
+  }
+
+  #entry-modal input, #entry-modal select,
+  #inv-entry-modal input, #inv-entry-modal select,
+  #yogi-entry-modal input, #yogi-entry-modal select {
+    min-height: 42px;
+  }
+
+  #entry-modal textarea,
+  #inv-entry-modal textarea,
+  #yogi-entry-modal textarea {
+    min-height: 76px;
   }
 }
 
@@ -962,7 +1169,7 @@ table thead th.sticky, table thead th.right-0 {
   #entry-modal > div,
   #inv-entry-modal > div,
   #yogi-entry-modal > div {
-    max-height: 92dvh !important;
+    max-height: 90dvh !important;
   }
 }
 
