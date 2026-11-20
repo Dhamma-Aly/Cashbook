@@ -1,5 +1,5 @@
 // ===================================================================
-// js/Inventory.js - Inventory Management Logic & Controller (v4.3)
+// js/Inventory.js - Inventory Management Logic & Controller (v4.3) 
 // Features: Event-Delegated XSS Safe Actions, Cursor-Safe MM->Eng Qty,
 // Calendar Date Check, CSV Formula Guard, Role Guards & Calm Eye-Comfort UI
 // ===================================================================
