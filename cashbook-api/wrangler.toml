@@ -10,3 +10,4 @@ database_id = "52727cc9-9e40-49d0-92f1-a1b9eb3758fd"
 # 🕛 နေ့စဉ် ည ၁၂:၀၅ နာရီ (မြန်မာစံတော်ချိန် MMT = 17:35 UTC) Auto Mail & SQL ZIP Backup
 [triggers]
 crons = ["35 17 * * *"]
+
