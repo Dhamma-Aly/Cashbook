@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sasana-erp-v4.8-pro-d1';
+const CACHE_NAME = 'sasana-erp-v5.4-pro-d1';
 
 // 📦 App Shell & Static Core Assets
 const STATIC_ASSETS = [
