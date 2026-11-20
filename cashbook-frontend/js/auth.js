@@ -1,52 +1,100 @@
 // ===================================================================
-// js/auth.js - Sāsana ERP Persistent Auth & Role Controller (v4.1)
-// Features: Revocable Session (30-Day + token_version), Role Matrix,
-// Soft Re-Authentication, IndexedDB Cleanup on Silent Logout & Lockout UX
+// js/auth.js - Sāsana ERP Persistent Auth & Role Controller (v4.2)
+// Features: 15s Mobile-Safe Fetch Timeout (No Infinite Spinner),
+// Password Show/Hide Toggle, Revocable 30-Day Session, Role Matrix &
+// iOS Safari Private Storage Protection
 // ===================================================================
 
 (function () {
   "use strict";
 
   const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const LOGIN_TIMEOUT_MS = 15000; // 15 seconds — prevents infinite mobile hang
 
   const ROLE_BURMESE_MAP = {
-  'Admin': '',
-  'Finance': '',
-  'Account': '',
-  'Staff': '',
-  'Viewer': ''
-};
+    'Admin': '',
+    'Finance': '',
+    'Account': '',
+    'Staff': '',
+    'Viewer': ''
+  };
+
+  function safeSetStorage(key, value) {
+    try {
+      localStorage.setItem(key, value);
+      return true;
+    } catch (e) {
+      console.warn('[Storage] setItem failed:', e);
+      return false;
+    }
+  }
+
+  function safeGetStorage(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  async function fetchWithTimeout(url, options, timeoutMs = LOGIN_TIMEOUT_MS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  // 👁️ Toggle Password Visibility (Login & Re-Auth Inputs)
+  window.togglePasswordVisibility = function (inputId, btnEl) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const isHidden = input.type === 'password';
+    input.type = isHidden ? 'text' : 'password';
+
+    const icon = btnEl ? btnEl.querySelector('i') : null;
+    if (icon) {
+      icon.classList.toggle('fa-eye', !isHidden);
+      icon.classList.toggle('fa-eye-slash', isHidden);
+    }
+    if (btnEl) {
+      btnEl.title = isHidden ? 'လျှို့ဝှက်နံပါတ် ဖျောက်ရန်' : 'လျှို့ဝှက်နံပါတ် ကြည့်ရန်';
+      btnEl.setAttribute('aria-label', btnEl.title);
+    }
+  };
 
   const getAppVersion = () => {
     return window.CONFIG?.APP_VERSION || window.APP_CONFIG?.APP_VERSION || "v3.2_D1_ENTERPRISE";
   };
 
-  const storedVersion = localStorage.getItem("sasana_app_version");
+  const storedVersion = safeGetStorage("sasana_app_version");
   const targetVersion = getAppVersion();
   if (storedVersion !== targetVersion) {
-    localStorage.setItem("sasana_app_version", targetVersion);
+    safeSetStorage("sasana_app_version", targetVersion);
   }
 
   window.getCurrentUser = function () {
-    const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
+    const token = safeGetStorage("sasana_auth_token") || safeGetStorage("yogi_auth_token");
     if (!token) return null;
-    return localStorage.getItem("sasana_user_name") || localStorage.getItem("yogi_user_name") || null;
+    return safeGetStorage("sasana_user_name") || safeGetStorage("yogi_user_name") || null;
   };
 
   window.getCurrentUserRole = function () {
-    return localStorage.getItem("sasana_user_role") || "Viewer";
+    return safeGetStorage("sasana_user_role") || "Viewer";
   };
 
   window.getCurrentUserDisplayName = function () {
     const role = window.getCurrentUserRole();
-    const storedName = localStorage.getItem("sasana_display_name");
+    const storedName = safeGetStorage("sasana_display_name");
     if (storedName && storedName !== window.getCurrentUser()) {
       return storedName;
     }
     return ROLE_BURMESE_MAP[role] || role;
   };
 
-  // 🌟 Role Permission Matrix (Matched 100% with worker.js v7.0)
+  // 🌟 Role Permission Matrix (Matched 100% with worker.js)
   window.canUserEdit = function () {
     return window.getCurrentUserRole().toLowerCase() !== "viewer";
   };
@@ -84,8 +132,8 @@
   };
 
   window.checkExistingSession = function () {
-    const token = localStorage.getItem("sasana_auth_token") || localStorage.getItem("yogi_auth_token");
-    const expiresAt = Number(localStorage.getItem("sasana_token_expires_at") || localStorage.getItem("yogi_token_expires_at") || 0);
+    const token = safeGetStorage("sasana_auth_token") || safeGetStorage("yogi_auth_token");
+    const expiresAt = Number(safeGetStorage("sasana_token_expires_at") || safeGetStorage("yogi_token_expires_at") || 0);
     const isValid = Boolean(token && (!expiresAt || Date.now() < expiresAt));
 
     if (isValid) {
@@ -117,6 +165,14 @@
       return;
     }
 
+    if (!navigator.onLine) {
+      if (errDiv) {
+        errDiv.textContent = "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ Login ဝင်ရန် အင်တာနက် ဖွင့်ပေးပါ။";
+        errDiv.classList.remove("hidden");
+      }
+      return;
+    }
+
     if (errDiv) errDiv.classList.add("hidden");
     if (submitBtn) {
       submitBtn.disabled = true;
@@ -125,11 +181,11 @@
 
     try {
       const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) || "https://cashbook-api.dhammaaly.workers.dev";
-      const res = await fetch(`${baseUrl}/api/login`, {
+      const res = await fetchWithTimeout(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
-      });
+      }, LOGIN_TIMEOUT_MS);
 
       const json = await res.json().catch(() => ({ success: false, message: "Server response error" }));
 
@@ -138,17 +194,28 @@
         const expiresAt = Date.now() + expiresInMs;
         const userObj = json.user || { username, role: username, name: username };
 
-        localStorage.setItem("sasana_auth_token", json.token);
-        localStorage.setItem("sasana_user_name", userObj.username);
-        localStorage.setItem("sasana_user_role", userObj.role || username);
-        localStorage.setItem("sasana_display_name", userObj.name || ROLE_BURMESE_MAP[userObj.role] || userObj.username);
-        localStorage.setItem("sasana_token_expires_at", String(expiresAt));
+        const saved = safeSetStorage("sasana_auth_token", json.token);
+        if (!saved) {
+          if (errDiv) {
+            errDiv.textContent = "Browser Storage ပိတ်ထားပါသည် (Safari Private Mode ဖြစ်ပါက ပုံမှန် Tab ဖြင့် ဖွင့်ပေးပါ)။";
+            errDiv.classList.remove("hidden");
+          }
+          return;
+        }
 
-        localStorage.setItem("yogi_auth_token", json.token);
-        localStorage.setItem("yogi_user_name", userObj.username);
-        localStorage.setItem("yogi_token_expires_at", String(expiresAt));
+        safeSetStorage("sasana_user_name", userObj.username);
+        safeSetStorage("sasana_user_role", userObj.role || username);
+        safeSetStorage("sasana_display_name", userObj.name || ROLE_BURMESE_MAP[userObj.role] || userObj.username);
+        safeSetStorage("sasana_token_expires_at", String(expiresAt));
 
-        if (passwordInput) passwordInput.value = "";
+        safeSetStorage("yogi_auth_token", json.token);
+        safeSetStorage("yogi_user_name", userObj.username);
+        safeSetStorage("yogi_token_expires_at", String(expiresAt));
+
+        if (passwordInput) {
+          passwordInput.value = "";
+          passwordInput.type = "password";
+        }
 
         if (typeof window.initApp === "function") {
           window.initApp();
@@ -167,9 +234,13 @@
     } catch (err) {
       console.error("[Login Exception]", err);
       if (errDiv) {
-        errDiv.textContent = !navigator.onLine
-          ? "အင်တာနက်လိုင်း မရှိသေးပါခင်ဗျာ။ စနစ်ကို အင်တာနက်ရှိချိန် အနည်းဆုံးတစ်ကြိမ် ဝင်ရောက်ထားရန် လိုအပ်ပါသည်။"
-          : "ကွန်ရက် သို့မဟုတ် ဆာဗာ အမှားဖြစ်ပေါ်နေပါသည်: " + (err.message || "Failed to fetch");
+        if (!navigator.onLine) {
+          errDiv.textContent = "အင်တာနက်လိုင်း ပြတ်တောက်နေပါသည်။";
+        } else if (err && err.name === "AbortError") {
+          errDiv.textContent = "ဆာဗာ ချိတ်ဆက်ချိန် ကျော်လွန်သွားပါသည် (၁၅ စက္ကန့်)။ ဖုန်းအင်တာနက်လိုင်း သို့မဟုတ် VPN ဖွင့်ပြီး ပြန်လည်ဝင်ရောက်ပါ။";
+        } else {
+          errDiv.textContent = "ဆာဗာသို့ ချိတ်ဆက်၍ မရပါ (VPN သို့မဟုတ် အင်တာနက် စစ်ဆေးပါ): " + (err.message || "Network error");
+        }
         errDiv.classList.remove("hidden");
       }
     } finally {
@@ -191,6 +262,7 @@
       const pwdInput = document.getElementById("reauth-password");
       if (pwdInput) {
         pwdInput.value = "";
+        pwdInput.type = "password";
         setTimeout(() => pwdInput.focus(), 100);
       }
     } else {
@@ -223,11 +295,11 @@
 
     try {
       const baseUrl = (window.CONFIG && window.CONFIG.API_BASE_URL) || "https://cashbook-api.dhammaaly.workers.dev";
-      const res = await fetch(`${baseUrl}/api/login`, {
+      const res = await fetchWithTimeout(`${baseUrl}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password })
-      });
+      }, LOGIN_TIMEOUT_MS);
 
       const json = await res.json().catch(() => ({}));
 
@@ -235,12 +307,15 @@
         const expiresInMs = json.expiresInMs || THIRTY_DAYS_MS;
         const expiresAt = Date.now() + expiresInMs;
 
-        localStorage.setItem("sasana_auth_token", json.token);
-        localStorage.setItem("yogi_auth_token", json.token);
-        localStorage.setItem("sasana_token_expires_at", String(expiresAt));
-        localStorage.setItem("yogi_token_expires_at", String(expiresAt));
+        safeSetStorage("sasana_auth_token", json.token);
+        safeSetStorage("yogi_auth_token", json.token);
+        safeSetStorage("sasana_token_expires_at", String(expiresAt));
+        safeSetStorage("yogi_token_expires_at", String(expiresAt));
 
-        if (passwordInput) passwordInput.value = "";
+        if (passwordInput) {
+          passwordInput.value = "";
+          passwordInput.type = "password";
+        }
         const modal = document.getElementById("reauth-modal");
         if (modal) modal.classList.add("hidden");
 
@@ -258,7 +333,9 @@
       }
     } catch (err) {
       if (errDiv) {
-        errDiv.textContent = "ကွန်ရက် အမှားဖြစ်ပေါ်နေပါသည်။ အင်တာနက်စစ်ဆေးပါ။";
+        errDiv.textContent = (err && err.name === "AbortError")
+          ? "ဆာဗာ ချိတ်ဆက်ချိန် ကျော်လွန်သွားပါသည်။ အင်တာနက် သို့မဟုတ် VPN စစ်ဆေးပါ။"
+          : "ကွန်ရက် အမှားဖြစ်ပေါ်နေပါသည်။ အင်တာနက်စစ်ဆေးပါ။";
         errDiv.classList.remove("hidden");
       }
     } finally {
@@ -291,22 +368,21 @@
       if (typeof window.clearOfflineCache === "function") {
         await window.clearOfflineCache();
       }
-      const ver = localStorage.getItem("sasana_app_version");
-      localStorage.clear();
-      if (ver) localStorage.setItem("sasana_app_version", ver);
+      const ver = safeGetStorage("sasana_app_version");
+      try { localStorage.clear(); } catch (_) {}
+      if (ver) safeSetStorage("sasana_app_version", ver);
       window.location.reload();
     }
   };
 
-  // 🌟 Security Fix: Clear BOTH localStorage AND IndexedDB Cache on Silent Logout
   window.handleLogoutSilent = async function () {
     if (window.autoRefreshTimer) clearInterval(window.autoRefreshTimer);
     if (typeof window.clearOfflineCache === "function") {
       await window.clearOfflineCache();
     }
-    const ver = localStorage.getItem("sasana_app_version");
-    localStorage.clear();
-    if (ver) localStorage.setItem("sasana_app_version", ver);
+    const ver = safeGetStorage("sasana_app_version");
+    try { localStorage.clear(); } catch (_) {}
+    if (ver) safeSetStorage("sasana_app_version", ver);
     window.showLoginOverlay();
   };
 
