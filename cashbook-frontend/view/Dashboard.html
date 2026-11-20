@@ -1,4 +1,4 @@
-<!-- view/Dashboard.html - Home Dashboard Fragment (v4.3 with System Control Center) -->
+<!-- view/Dashboard.html - Home Dashboard Fragment (v4.4 Symmetrical Executive System Control) -->
 
 <div class="h-full flex flex-col space-y-4 sm:space-y-5">
 
@@ -236,36 +236,37 @@
     </div>
   </div>
 
-  <!-- ⚙️ Section 5: System Control Center (စနစ်စီမံမှု) -->
+  <!-- ⚙️ Section 5: System Control Center (စနစ်စီမံမှု — Symmetrical Executive Layout) -->
   <div id="dash-system-section" class="flex-1 flex flex-col bg-[#0f172a] border border-amber-500/20 rounded-xl shadow-2xl overflow-y-auto hidden" style="-webkit-overflow-scrolling: touch;">
 
     <!-- Top Header -->
-    <div class="px-4 sm:px-6 py-3 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between gap-2">
+    <div class="px-4 sm:px-6 py-2.5 border-b border-amber-500/20 bg-[#080d1a] shrink-0 flex items-center justify-between gap-2">
       <h3 class="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wider flex items-center gap-2">
         <i class="fa-solid fa-sliders text-amber-400"></i> စနစ်စီမံမှု နှင့် D1 စောင့်ကြည့်ရေး
       </h3>
-      <div class="flex items-center gap-2 shrink-0">
-        <button type="button" onclick="loadSystemMetrics(true)" class="sys-action-btn sys-btn-slate" style="padding: 5px 10px; font-size: 11.5px;" title="D1 Metrics ပြန်စစ်ရန်">
-          <i class="fa-solid fa-arrows-rotate"></i>
-          <span class="hidden sm:inline">Metrics စစ်ရန်</span>
-        </button>
-      </div>
+      <button type="button" onclick="loadSystemMetrics(true)" class="sys-action-btn sys-btn-slate" style="width: auto; height: 30px; padding: 0 12px; font-size: 11.5px;" title="D1 Metrics ပြန်စစ်ရန်">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        <span class="hidden sm:inline">Metrics စစ်ရန်</span>
+      </button>
     </div>
 
     <!-- Body Content -->
     <div class="p-4 sm:p-5 space-y-4">
 
-      <!-- D1 Notice Banner (shown only if CF_API_TOKEN missing or error) -->
+      <!-- D1 Notice Banner -->
       <div id="sys-d1-notice" class="hidden sys-status-box" style="border-color: rgba(245, 158, 11, 0.35); color: #fde68a;"></div>
 
-      <!-- 1. Cloudflare D1 Live Quota & Metrics Cards (4 Boxes) -->
+      <!-- ROW 1: 4 Equal-Height Cloudflare D1 Live Quota & Metrics Cards -->
       <div class="sys-grid-4">
 
         <!-- Card 1: Daily Rows Read -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-book-open text-sky-400"></i>
-            <span>တစ်နေ့တာ Read (D1)</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-sky"><i class="fa-solid fa-book-open"></i></span>
+              <span>တစ်နေ့တာ Read</span>
+            </h4>
+            <span class="sys-tag">5M / day</span>
           </div>
           <div id="sys-d1-read-val" class="sys-metric-value" style="color: #7dd3fc;">--</div>
           <div class="sys-progress-track">
@@ -275,17 +276,20 @@
             <span>သုံးပြီး: <b id="sys-d1-read-used-pct" style="color:#7dd3fc;">0%</b></span>
             <span>ကျန်ရှိ: <b id="sys-d1-read-rem-pct" style="color:#6ee7b7;">100%</b></span>
           </div>
-          <div class="sys-metric-sub" style="font-size: 11px; color: #64748b;">
+          <div class="sys-card-footer">
             <span id="sys-d1-read-queries">Queries: 0</span>
-            <span>Limit: 5,000,000 / day</span>
+            <span>Reset 6:30 AM</span>
           </div>
         </div>
 
         <!-- Card 2: Daily Rows Written -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-pen-nib text-emerald-400"></i>
-            <span>တစ်နေ့တာ Write (D1)</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-emerald"><i class="fa-solid fa-pen-nib"></i></span>
+              <span>တစ်နေ့တာ Write</span>
+            </h4>
+            <span class="sys-tag">100K / day</span>
           </div>
           <div id="sys-d1-write-val" class="sys-metric-value" style="color: #6ee7b7;">--</div>
           <div class="sys-progress-track">
@@ -295,42 +299,48 @@
             <span>သုံးပြီး: <b id="sys-d1-write-used-pct" style="color:#fbbf24;">0%</b></span>
             <span>ကျန်ရှိ: <b id="sys-d1-write-rem-pct" style="color:#6ee7b7;">100%</b></span>
           </div>
-          <div class="sys-metric-sub" style="font-size: 11px; color: #64748b;">
+          <div class="sys-card-footer">
             <span id="sys-d1-write-queries">Queries: 0</span>
-            <span>Limit: 100,000 / day</span>
+            <span>Reset 6:30 AM</span>
           </div>
         </div>
 
         <!-- Card 3: 30-Day Total Read & Write -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-chart-line text-amber-400"></i>
-            <span>စုစုပေါင်း Read / Write (ရက် ၃၀)</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-gold"><i class="fa-solid fa-chart-line"></i></span>
+              <span>စုစုပေါင်း (ရက် ၃၀)</span>
+            </h4>
+            <span class="sys-tag">30 Days</span>
           </div>
-          <div style="display:flex; flex-direction:column; gap:6px; margin: 2px 0;">
-            <div class="sys-metric-sub">
-              <span>Total Read:</span>
-              <b id="sys-d1-total-read" class="font-mono" style="color:#7dd3fc; font-size:14px;">--</b>
+          <div>
+            <div class="sys-stat-row">
+              <span>Total Read</span>
+              <b id="sys-d1-total-read" class="font-mono" style="color:#7dd3fc;">--</b>
             </div>
-            <div class="sys-metric-sub">
-              <span>Total Write:</span>
-              <b id="sys-d1-total-write" class="font-mono" style="color:#6ee7b7; font-size:14px;">--</b>
+            <div class="sys-stat-row">
+              <span>Total Write</span>
+              <b id="sys-d1-total-write" class="font-mono" style="color:#6ee7b7;">--</b>
             </div>
-            <div class="sys-metric-sub">
-              <span>စာရင်းစုစုပေါင်း Rows:</span>
-              <b id="sys-d1-tracked-rows" class="font-mono" style="color:#fde68a; font-size:14px;">--</b>
+            <div class="sys-stat-row">
+              <span>စာရင်း Rows</span>
+              <b id="sys-d1-tracked-rows" class="font-mono" style="color:#fde68a;">--</b>
             </div>
           </div>
-          <div id="sys-d1-window-label" style="font-size: 11px; color: #64748b; margin-top: auto;">
-            UTC Reset: နေ့စဉ် မနက် ၆:၃၀ (MMT)
+          <div class="sys-card-footer">
+            <span id="sys-d1-window-label" class="truncate">UTC Reset: 6:30 AM MMT</span>
           </div>
         </div>
 
         <!-- Card 4: D1 Storage -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-hard-drive text-amber-300"></i>
-            <span>Database Storage (500 MB)</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-gold"><i class="fa-solid fa-hard-drive"></i></span>
+              <span>DB Storage</span>
+            </h4>
+            <span class="sys-tag">500 MB</span>
           </div>
           <div id="sys-d1-storage-val" class="sys-metric-value" style="color: #fde68a;">--</div>
           <div class="sys-progress-track">
@@ -340,142 +350,147 @@
             <span>သုံးပြီး: <b id="sys-d1-storage-used-pct" style="color:#fbbf24;">0%</b></span>
             <span>ကျန်ရှိ: <b id="sys-d1-storage-rem-pct" style="color:#6ee7b7;">100%</b></span>
           </div>
-          <div id="sys-d1-last-update" style="font-size: 11px; color: #64748b;">
-            Last Update: --
+          <div class="sys-card-footer">
+            <span id="sys-d1-last-update" class="truncate">Last Data: --</span>
           </div>
         </div>
 
       </div>
 
-      <!-- 2. Multi-Sheet FY Excel Export, Daily Mail & Google Drive SQL Backup -->
+      <!-- ROW 2: Symmetrical FY Multi-Sheet Excel / Daily Mail & SQL (.zip) Backup -->
       <div class="sys-grid-2">
 
         <!-- Left: FY Multi-Sheet Excel & Daily Mail -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-file-excel text-emerald-400"></i>
-            <span>ဘဏ္ဍာနှစ် (FY) Excel Export နှင့် နေ့စဉ် Mail ပို့ခြင်း</span>
-          </div>
-
-          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
-            စာအုပ်အားလုံး (Bank ၃ ခု + Ledger ၇ ခု + Inventory + ယောဂီ ၂ ခု + Summary) ကို သက်ဆိုင်ရာ Sheet Name အစုံဖြင့် Excel (<code>.xlsx</code>) တစ်ဖိုင်တည်း ထုတ်ယူနိုင်ပါသည်။
-          </p>
-
-          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:4px;">
-            <label for="sys-fy-select" style="font-size:12px; color:#cbd5e1; font-weight:700;">နှစ်ရွေးရန် (Jan–Dec):</label>
-            <select id="sys-fy-select" class="sys-select" style="min-width: 155px;">
-              <option value="2026" selected>2026 (Jan – Dec)</option>
-              <option value="2025">2025 (Jan – Dec)</option>
-              <option value="2024">2024 (Jan – Dec)</option>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-emerald"><i class="fa-solid fa-file-excel"></i></span>
+              <span>FY Excel နှင့် နေ့စဉ် Mail</span>
+            </h4>
+            <select id="sys-fy-select" class="sys-select" title="ဘဏ္ဍာနှစ် (Jan–Dec) ရွေးရန်">
+              <option value="2026" selected>2026 (Jan–Dec)</option>
+              <option value="2025">2025 (Jan–Dec)</option>
+              <option value="2024">2024 (Jan–Dec)</option>
               <option value="ALL">All (နှစ်အားလုံး)</option>
             </select>
           </div>
 
-          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
+          <p class="sys-card-desc">
+            စာအုပ်အားလုံး (Sheet ၁၄ ခု အပြည့်အစုံ) ကို Excel (<code>.xlsx</code>) ဖိုင်အဖြစ် ထုတ်ယူနိုင်ပြီး <b>dhammaaly@gmail.com</b> သို့ နေ့စဉ် Mail ပေးပို့နိုင်ပါသည်။
+          </p>
+
+          <div class="sys-btn-grid-2">
             <button type="button" id="btn-sys-excel" onclick="downloadMultiSheetExcel()" class="sys-action-btn sys-btn-emerald">
               <i class="fa-solid fa-file-excel"></i>
-              <span>Excel (.xlsx) ဒေါင်းလုပ်ဆွဲရန်</span>
+              <span>Excel (.xlsx) ဒေါင်းလုပ်</span>
             </button>
-
             <button type="button" id="btn-sys-mail" onclick="triggerManualDailyMail()" class="sys-action-btn sys-btn-sky" title="dhammaaly@gmail.com သို့ ယနေ့ Mail ချက်ချင်းပို့ရန်">
               <i class="fa-solid fa-paper-plane"></i>
               <span>Daily Mail ယခုပို့မည်</span>
             </button>
           </div>
 
-          <div style="font-size:11.5px; color:#94a3b8; padding-top:6px; border-top:1px solid rgba(148,163,184,0.12); display:flex; align-items:center; gap:6px;">
-            <i class="fa-solid fa-clock text-amber-400"></i>
-            <span>Auto Mail: နေ့စဉ် ည ၁၂:၀၀ → <b style="color:#e2e8f0;">dhammaaly@gmail.com</b> *(စာရင်းအသစ်ရှိမှသာ)*</span>
+          <div class="sys-card-footer">
+            <span><i class="fa-solid fa-clock text-amber-400 mr-1"></i> Auto Mail: နေ့စဉ် ည ၁၂:၀၅</span>
+            <span class="sys-tag">စာရင်းအသစ်ရှိမှသာ</span>
           </div>
         </div>
 
-        <!-- Right: Google Drive SQL ZIP Backup -->
+        <!-- Right: SQL (.zip) Cloud Backup -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-cloud-arrow-up text-amber-400"></i>
-            <span>Google Drive SQL (.zip) Backup စနစ်</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-gold"><i class="fa-solid fa-cloud-arrow-up"></i></span>
+              <span>SQL (.zip) Backup စနစ်</span>
+            </h4>
+            <span class="sys-tag">Email + Drive</span>
           </div>
 
-          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
-            D1 Database တစ်ခုလုံးကို SQL (<code>.sql</code>) ဖိုင်အဖြစ် ထုတ်ပြီး ZIP ချုံ့၍ Google Drive ထဲသို့ သိမ်းဆည်းပေးပါသည်။ ဒေတာအသစ်ရှိမှသာ Backup အသစ် သိမ်းပေးပါမည်။
+          <p class="sys-card-desc">
+            D1 Database တစ်ခုလုံးကို SQL (<code>.zip</code>) ဖိုင်ချုံ့၍ <b>dhammaaly@gmail.com</b> သို့ ပေးပို့သိမ်းဆည်းပေးပါသည် (Gmail မှ Drive သို့ ၁ ချက်နှိပ် သိမ်းနိုင်သည်)။
           </p>
 
-          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:6px;">
+          <div class="sys-btn-grid-2">
             <button type="button" id="btn-sys-drive-backup" onclick="triggerManualDriveBackup()" class="sys-action-btn sys-btn-gold">
               <i class="fa-solid fa-file-zipper"></i>
-              <span>Google Drive သို့ SQL (.zip) သိမ်းမည်</span>
+              <span>SQL (.zip) Backup ပို့မည်</span>
             </button>
-
             <button type="button" id="btn-sys-sql-local" onclick="downloadLocalSqlDump()" class="sys-action-btn sys-btn-slate hidden" title="Admin သီးသန့် — SQL ဖိုင် စက်ထဲတိုက်ရိုက်သိမ်းရန်">
               <i class="fa-solid fa-database"></i>
               <span>SQL စက်ထဲဒေါင်းရန်</span>
             </button>
           </div>
 
-          <div style="font-size:11.5px; color:#94a3b8; padding-top:6px; border-top:1px solid rgba(148,163,184,0.12); display:flex; align-items:center; gap:6px;">
-            <i class="fa-solid fa-shield-halved text-emerald-400"></i>
-            <span>Auto Schedule: အပတ်စဉ် (တနင်္ဂနွေ) + ၃ လတစ်ကြိမ် Archive *(ဒေတာအသစ်ရှိမှသာ)*</span>
+          <div class="sys-card-footer">
+            <span><i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i> Auto: အပတ်စဉ် + ၃ လ Archive</span>
+            <span class="sys-tag">ဒေတာအသစ်ရှိမှသာ</span>
           </div>
         </div>
 
       </div>
 
-      <!-- Live Feedback Box for Mail / Drive / Export -->
+      <!-- Live Feedback Box for Mail / Backup / Export -->
       <div id="sys-automation-status" class="hidden sys-status-box"></div>
 
-      <!-- 3. Cloud Quick Links, Code Download & Force Hard Refresh -->
+      <!-- ROW 3: Symmetrical 2x2 Quick Links & Hard Refresh -->
       <div class="sys-grid-2">
 
-        <!-- Left: Cloudflare & GitHub Quick Links -->
+        <!-- Left: Cloudflare & GitHub Quick Links (Symmetrical 2x2 Equal Buttons) -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-link text-sky-400"></i>
-            <span>Cloudflare နှင့် GitHub ကုတ်ဖိုင်များ</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-sky"><i class="fa-solid fa-link"></i></span>
+              <span>Cloudflare နှင့် GitHub ကုတ်ဖိုင်များ</span>
+            </h4>
+            <span class="sys-tag">Quick Access</span>
           </div>
 
-          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
-            <a href="https://dash.cloudflare.com/bf411663ab2f1ced269542eaf3369104/workers/services/view/cashbook-api/production/metrics" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-gold">
-              <i class="fa-brands fa-cloudflare"></i>
-              <span>Cloudflare Metrics ဖွင့်ရန်</span>
+          <div class="sys-btn-grid-2" style="margin-top: auto;">
+            <a href="https://dash.cloudflare.com/bf411663ab2f1ced269542eaf3369104/workers/services/view/cashbook-api/production/metrics" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-slate">
+              <i class="fa-brands fa-cloudflare text-amber-400"></i>
+              <span>Cloudflare Metrics</span>
             </a>
 
             <a href="https://github.com/Dhamma-Aly/Cashbook" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-slate">
               <i class="fa-brands fa-github"></i>
-              <span>GitHub Repo ဖွင့်ရန်</span>
+              <span>GitHub Repository</span>
             </a>
 
             <a href="https://github.com/Dhamma-Aly/Cashbook/archive/refs/heads/main.zip" target="_blank" rel="noopener noreferrer" class="sys-action-btn sys-btn-emerald">
               <i class="fa-solid fa-download"></i>
-              <span>ကုတ်အားလုံး Download (ZIP)</span>
+              <span>ကုတ်အားလုံး (ZIP)</span>
             </a>
 
             <button type="button" onclick="openGitHubFilesModal()" class="sys-action-btn sys-btn-sky">
               <i class="fa-solid fa-code"></i>
-              <span>ဖိုင်တစ်ခုချင်းစီ ဒေါင်းရန်</span>
+              <span>ဖိုင်တစ်ခုချင်း ဒေါင်းရန်</span>
             </button>
           </div>
         </div>
 
         <!-- Right: Force Hard Refresh & Maintenance -->
         <div class="sys-card">
-          <div class="sys-card-title">
-            <i class="fa-solid fa-bolt text-amber-400"></i>
-            <span>ကုတ်အသစ် ပြန်တင်ခြင်း (Hard Refresh) နှင့် ထိန်းသိမ်းရေး</span>
+          <div class="sys-card-header">
+            <h4 class="sys-card-title">
+              <span class="sys-icon-box sys-icon-rose"><i class="fa-solid fa-bolt"></i></span>
+              <span>Hard Refresh နှင့် ထိန်းသိမ်းရေး</span>
+            </h4>
+            <span class="sys-tag">PWA Cache</span>
           </div>
 
-          <p style="margin:0; font-size:12px; color:#94a3b8; line-height:1.6;">
-            ကုတ်များ ပြင်ဆင်ပြီးသည့်အခါ ကီးဘုတ် <code>Ctrl+Shift+R</code> နှိပ်စရာမလိုဘဲ အောက်ပါခလုတ်ကို နှိပ်လိုက်ရုံဖြင့် Cache အဟောင်းရှင်းပြီး ဗားရှင်းအသစ် ချက်ချင်းတက်လာပါမည်။
+          <p class="sys-card-desc">
+            ကုတ်အသစ်တင်ပြီးချိန် <code>Ctrl+Shift+R</code> နှိပ်စရာမလိုဘဲ Cache အဟောင်းရှင်း၍ ဗားရှင်းအသစ် ချက်ချင်းပြန်တင်နိုင်ပါသည်။
           </p>
 
-          <div style="display:flex; flex-wrap:wrap; gap:10px; margin-top:4px;">
+          <div class="sys-btn-grid-2" style="margin-top: auto;">
             <button type="button" onclick="forceHardRefreshApp()" class="sys-action-btn sys-btn-rose">
               <i class="fa-solid fa-arrows-rotate"></i>
-              <span>Cache ရှင်းပြီး Hard Refresh လုပ်မည်</span>
+              <span>Hard Refresh (Cache ရှင်း)</span>
             </button>
 
             <button type="button" id="btn-sys-rebuild" onclick="rebuildSystemSummaries()" class="sys-action-btn sys-btn-slate hidden">
               <i class="fa-solid fa-calculator"></i>
-              <span>Summary ပြန်တွက်ရန် (Admin)</span>
+              <span>Summary ပြန်တွက်ရန်</span>
             </button>
           </div>
         </div>
@@ -486,6 +501,10 @@
   </div>
 
 </div>
+
+<style>
+  #sys-github-files-list .sys-action-btn { width: auto; height: 30px; padding: 0 10px; font-size: 11px; }
+</style>
 
 <!-- 📦 GitHub Individual File Explorer & Downloader Modal -->
 <div id="sys-github-files-modal" class="fixed inset-0 flex items-center justify-center p-4 hidden" style="z-index: 220; background-color: rgba(8, 12, 18, 0.88); backdrop-filter: blur(8px);" onclick="if(event.target === this) closeGitHubFilesModal()">
