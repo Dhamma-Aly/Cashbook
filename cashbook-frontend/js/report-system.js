@@ -1,5 +1,5 @@
 // ===================================================================
-// js/report-system.js - Annual & Summary Expense Report Renderer (v4.2)
+// js/report-system.js - Annual & Summary Expense Report Renderer (v4.2) 
 // Features: CSV Formula Injection Guard, Calm Eye-Comfort Palette,
 // Dynamic Future-Proof Years, Anti-Jitter Hash & XSS Safe
 // ===================================================================
